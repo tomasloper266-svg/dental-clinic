@@ -3,7 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export default function LogoutButton() {
+export default function LogoutButton({
+  className,
+}: {
+  className?: string;
+}) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
 
@@ -23,7 +27,10 @@ export default function LogoutButton() {
       type="button"
       onClick={onLogout}
       disabled={submitting}
-      className="mt-6 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 disabled:opacity-50"
+      className={
+        className ??
+        "mt-6 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 disabled:opacity-50"
+      }
     >
       {submitting ? "جارٍ الخروج..." : "تسجيل الخروج"}
     </button>
