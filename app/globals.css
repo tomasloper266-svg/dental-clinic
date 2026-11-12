@@ -108,3 +108,13 @@ body {
   outline: 2px solid var(--color-primary-500);
   outline-offset: 2px;
 }
+
+/* روابط ثانوية هادئة في صفحات المصادقة — تُنسب بلا ضجيج */
+.link-quiet {
+  color: var(--color-warm-600);
+}
+.link-quiet:hover {
+  color: var(--color-ink-800);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
