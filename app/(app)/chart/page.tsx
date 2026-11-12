@@ -46,7 +46,11 @@ export default async function ChartPage({
       />
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
-        <PatientPicker basePath="/chart" selectedPatientId={patient?.id} />
+        <PatientPicker
+          basePath="/chart"
+          selectedPatientId={patient?.id}
+          className="min-w-0"
+        />
         {patient ? (
           <OdontogramWorkbench
             patientId={patient.id}

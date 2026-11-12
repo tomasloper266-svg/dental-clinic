@@ -21,7 +21,7 @@ export default function OdontogramWorkbench({
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       <OdontogramBoard
         patientId={patientId}
         initialFindings={initialFindings}
