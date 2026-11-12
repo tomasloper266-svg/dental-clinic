@@ -1,6 +1,6 @@
 "use client";
 
-import { PanelRightClose, PanelRightOpen } from "lucide-react";
+import { PanelRightClose, PanelRightOpen, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LogoutButton from "@/components/LogoutButton";
@@ -138,6 +138,19 @@ export function Sidebar({ collapsed, onToggle, userName, badges }: SidebarProps)
         {!collapsed && (
           <span className="truncate text-xs text-warm-100/70">{userName}</span>
         )}
+        <Link
+          href="/settings"
+          aria-current={isItemActive(pathname, "/settings") ? "page" : undefined}
+          title={collapsed ? "الإعدادات" : undefined}
+          className={cn(
+            "flex items-center gap-3 rounded-field px-3 py-2 text-sm text-warm-100/80 transition-colors hover:bg-white/10 hover:text-white",
+            pathname === "/settings" && "bg-white/10 font-semibold text-white",
+            collapsed && "justify-center px-0",
+          )}
+        >
+          <Settings size={20} className="shrink-0" aria-hidden />
+          {!collapsed && <span>الإعدادات</span>}
+        </Link>
         <div className={cn("flex items-center gap-2", collapsed && "flex-col")}>
           <LogoutButton
             className={cn(

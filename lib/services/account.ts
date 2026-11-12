@@ -10,6 +10,8 @@ import { OTP_RESEND_COOLDOWN_MS } from "@/lib/auth/otp";
 import { OTP_MAX_ATTEMPTS } from "@/lib/auth/otp";
 import { channelFor } from "@/lib/notifications/delivery";
 import { describeChannelConfig } from "@/lib/notifications/delivery";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { hashToken } from "@/lib/auth/session";
 import type { RecoveryError } from "@/lib/auth/recovery";
 import type { TenantContext } from "@/lib/tenant/context";
 
@@ -202,3 +204,44 @@ export async function getAccountOverview(ctx: TenantContext): Promise<{
     channels: describeChannelConfig(),
   };
 }
+
+// ─── تغيير كلمة السر من صفحة الإعدادات ──────────────────────────────────────
+
+// تغيير كلمة السر وهو مسجّل الدخول: يتطلب كلمة السر الحالية، ثم يحدّث
+// الهاش ويبطل الجلسات الأخرى (الأجهزة الأخرى) مع إبقاء الجلسة الحالية
+// حيّة — نفس معاملة الاستعادة دون إبطال الجهاز الحالي.
+export async function changePassword(
+  ctx: TenantContext,
+  input: { currentToken?: string; currentPassword: string; newPassword: string },
+): Promise<AccountOutcome<{ otherSessionsRevoked: number }>> {
+  if (input.newPassword.length < 8) {
+    return fail("invalid-input", "كلمة السر الجديدة يجب ألا تقل عن 8 أحرف");
+  }
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: ctx.userId },
+    select: { passwordHash: true },
+  });
+  if (!(await verifyPassword(input.currentPassword, user.passwordHash))) {
+    return fail("invalid-code", "كلمة السر الحالية غير صحيحة");
+  }
+
+  const passwordHash = await hashPassword(input.newPassword);
+  const updated = await prisma.$transaction([
+    prisma.user.update({
+      where: { id: ctx.userId },
+      data: { passwordHash },
+      select: { id: true },
+    }),
+    // إبقاء جهاز المستخدم الحالي مسجلاً — إبطال بقية الأجهزة فقط.
+    prisma.session.deleteMany({
+      where: {
+        userId: ctx.userId,
+        ...(input.currentToken
+          ? { tokenHash: { not: hashToken(input.currentToken) } }
+          : {}),
+      },
+    }),
+  ]);
+  return { ok: true, value: { otherSessionsRevoked: updated[1].count } };
+}
+

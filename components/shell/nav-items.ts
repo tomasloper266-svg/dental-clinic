@@ -51,6 +51,7 @@ const segmentLabels: Record<string, string> = {
   reminders: "تذكير الغد",
   instructions: "قوالب التعليمات",
   odontogram: "الأودوغرام",
+  settings: "الإعدادات",
 };
 
 /** تسمية عربية لقطعة مسار — دالة نقية تُستخدم في الـ breadcrumbs */

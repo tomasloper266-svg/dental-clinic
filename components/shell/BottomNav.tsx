@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -111,6 +111,26 @@ export function BottomNav({ badges }: BottomNavProps) {
               </li>
             );
           })}
+          <li
+            className="my-1 border-t border-warm-200"
+            aria-hidden
+          />
+          <li>
+            <Link
+              href="/settings"
+              onClick={() => setMoreOpen(false)}
+              aria-current={isItemActive(pathname, "/settings") ? "page" : undefined}
+              className={cn(
+                "flex items-center gap-3 rounded-field px-3 py-2.5 text-sm",
+                isItemActive(pathname, "/settings")
+                  ? "bg-primary-50 font-semibold text-primary-700"
+                  : "text-ink-900 hover:bg-surface-hover",
+              )}
+            >
+              <Settings size={20} aria-hidden />
+              الإعدادات
+            </Link>
+          </li>
         </ul>
       </Drawer>
     </>
