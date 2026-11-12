@@ -32,6 +32,12 @@ export default async function DashboardPage() {
           >
             المواعيد وقائمة الانتظار
           </a>
+          <a
+            href="/reminders"
+            className="rounded-xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white"
+          >
+            تذكير الغد
+          </a>
           <LogoutButton />
         </div>
       </div>
