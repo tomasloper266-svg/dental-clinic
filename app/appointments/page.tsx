@@ -20,6 +20,9 @@ export default async function AppointmentsPage() {
         <header className="flex items-center justify-between">
           <h1 className="text-lg font-bold text-teal-800">المواعيد</h1>
           <div className="flex items-center gap-3 text-xs">
+            <a href="/waitlist" className="text-teal-700 underline">
+              قائمة الانتظار
+            </a>
             <a href="/dashboard" className="text-teal-700 underline">
               لوحة الطبيب
             </a>
