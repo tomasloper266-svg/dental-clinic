@@ -12,6 +12,10 @@ import {
   GET as patientsGET,
   POST as patientsPOST,
 } from "@/app/api/patients/route";
+import {
+  GET as patientGET,
+  PATCH as patientPATCH,
+} from "@/app/api/patients/[id]/route";
 import { POST as loginPOST } from "@/app/api/auth/login/route";
 import type { TenantContext } from "@/lib/tenant/context";
 
@@ -213,5 +217,99 @@ describeDb("عزل العيادات — integration", () => {
     const created = await db.patient.create({ data: { name: "حقن-تلقائي" } });
     expect(created.clinicId).toBe(clinicAId);
     expect(created.clinicId).not.toBe(clinicBId);
+  });
+
+  it("GET /api/patients/[id] لمريض عيادة أ يعيد بياناته كاملة", async () => {
+    const token = await loginToken(PHONE_A, PASSWORD);
+    const res = await patientGET(
+      authedRequest(`/api/patients/${patientAId}`, token),
+      { params: Promise.resolve({ id: patientAId }) },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { patient: { id: string } };
+    expect(body.patient.id).toBe(patientAId);
+  });
+
+  it("GET /api/patients/[id] لمريض عيادة ب بجلسة عيادة أ يعيد 404 بلا تسرّب", async () => {
+    const token = await loginToken(PHONE_A, PASSWORD);
+    const res = await patientGET(
+      authedRequest(`/api/patients/${patientBId}`, token),
+      { params: Promise.resolve({ id: patientBId }) },
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("PATCH /api/patients/[id] بجلسة عيادة أ يحدّث الحقول ويثبّتها", async () => {
+    const token = await loginToken(PHONE_A, PASSWORD);
+    const res = await patientPATCH(
+      authedRequest(`/api/patients/${patientAId}`, token, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: "مريض-أ-محدّث",
+          address: "دمشق - المزة",
+          medicalNotes: "حساسية: بنسلين\nأمراض: سكري",
+        }),
+      }),
+      { params: Promise.resolve({ id: patientAId }) },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      patient: { id: string; address: string | null; medicalNotes: string | null };
+    };
+    expect(body.patient.address).toBe("دمشق - المزة");
+    expect(body.patient.medicalNotes).toContain("بنسلين");
+    const stored = await prisma.patient.findUnique({
+      where: { id: patientAId },
+    });
+    expect(stored?.name).toBe("مريض-أ-محدّث");
+  });
+
+  it("PATCH لمريض عيادة ب بجلسة عيادة أ يعيد 404 ولا يعدّل شيئاً", async () => {
+    const token = await loginToken(PHONE_A, PASSWORD);
+    const res = await patientPATCH(
+      authedRequest(`/api/patients/${patientBId}`, token, {
+        method: "PATCH",
+        body: JSON.stringify({ name: "عبث-عبر-الحدود" }),
+      }),
+      { params: Promise.resolve({ id: patientBId }) },
+    );
+    expect(res.status).toBe(404);
+    const unchanged = await prisma.patient.findUnique({
+      where: { id: patientBId },
+    });
+    expect(unchanged?.name).toBe("مريض-ب");
+  });
+
+  it("البحث برقم هاتف جزئي يعيد المريض المطابق من عيادة الجلسة فقط", async () => {
+    const token = await loginToken(PHONE_A, PASSWORD);
+    const res = await patientsGET(
+      authedRequest("/api/patients?q=090011", token),
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { patients: Array<{ id: string }> };
+    expect(body.patients.map((p) => p.id)).toContain(patientAId);
+    expect(body.patients.map((p) => p.id)).not.toContain(patientBId);
+  });
+
+  it("البحث باسم جزئي لا يتجاوز حدود العيادة", async () => {
+    const token = await loginToken(PHONE_A, PASSWORD);
+    const res = await patientsGET(
+      authedRequest("/api/patients?q=" + encodeURIComponent("مريض-ب"), token),
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { patients: unknown[] };
+    expect(body.patients).toHaveLength(0);
+  });
+
+  it("PATCH بحمولة غير صالحة يعيد 400", async () => {
+    const token = await loginToken(PHONE_A, PASSWORD);
+    const res = await patientPATCH(
+      authedRequest(`/api/patients/${patientAId}`, token, {
+        method: "PATCH",
+        body: JSON.stringify({ name: "أ" }),
+      }),
+      { params: Promise.resolve({ id: patientAId }) },
+    );
+    expect(res.status).toBe(400);
   });
 });
