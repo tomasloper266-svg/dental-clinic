@@ -20,13 +20,15 @@ const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   OTHER: "أخرى",
 };
 
-export function expenseCategoryLabel(category: ExpenseCategory): string {
-  return CATEGORY_LABELS[category];
+// تسمية الفئة بالعربية — قيمة غير معروفة تُعرض كما هي بدل أن تُخفى
+export function expenseCategoryLabel(category: string): string {
+  return CATEGORY_LABELS[category as ExpenseCategory] ?? category;
 }
 
 export type ExpenseDto = {
   id: string;
-  category: ExpenseCategory;
+  // القاعدة تخزن سلسلة نصية — صلاحية الفئة مضمونة عند الإدخال حصراً
+  category: string;
   amountSyp: number;
   note: string | null;
   spentAt: Date;
