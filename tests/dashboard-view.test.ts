@@ -3,6 +3,7 @@ import type { AppointmentDto } from "@/lib/services/appointments";
 import {
   appointmentsWithin,
   countDistinctPatients,
+  greetingForDate,
   selectUpcomingAppointments,
 } from "@/lib/dashboard-view";
 
@@ -78,5 +79,26 @@ describe("selectUpcomingAppointments", () => {
     const t = new Date("2026-11-12T09:00:00Z");
     const list = [appt("a", "p1", t), appt("b", "p2", t)];
     expect(selectUpcomingAppointments(list, 1).map((a) => a.id)).toEqual(["a"]);
+  });
+});
+
+describe("greetingForDate", () => {
+  // التواريخ تُبنى بالمتكلّم المحلي حتى يختبر التوقيت لا المنطقة الزمنية.
+  it("يحيي بالصباح قبل الظهر", () => {
+    expect(greetingForDate(new Date(2026, 10, 12, 5, 0, 0))).toBe(
+      "صباح الخير",
+    );
+    expect(greetingForDate(new Date(2026, 10, 12, 11, 59, 0))).toBe(
+      "صباح الخير",
+    );
+  });
+
+  it("يحيي بالمساء من الظهر فصاعداً", () => {
+    expect(greetingForDate(new Date(2026, 10, 12, 12, 0, 0))).toBe(
+      "مساء الخير",
+    );
+    expect(greetingForDate(new Date(2026, 10, 12, 23, 0, 0))).toBe(
+      "مساء الخير",
+    );
   });
 });

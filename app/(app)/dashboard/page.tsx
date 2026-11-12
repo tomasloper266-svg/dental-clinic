@@ -12,6 +12,7 @@ import { dayStart } from "@/lib/dates";
 import {
   appointmentsWithin,
   countDistinctPatients,
+  greetingForDate,
   selectUpcomingAppointments,
 } from "@/lib/dashboard-view";
 import { formatDayLabel } from "@/lib/appointment-ui";
@@ -61,7 +62,7 @@ export default async function DashboardPage() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-ink-900 text-xl font-semibold">
-            مرحباً، {session.name}
+            {greetingForDate(now)}، {session.name}
           </h1>
           <p className="text-warm-500 mt-1 text-sm">{formatDayLabel(now)}</p>
         </div>

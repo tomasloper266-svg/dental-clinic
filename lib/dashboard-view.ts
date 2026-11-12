@@ -11,6 +11,11 @@ export function countDistinctPatients(
   return new Set(appointments.map((a) => a.patientId)).size;
 }
 
+// تحية حسب الوقت — الصباح حتى الثانية عشرة، والمساء بعدها، بتوقيت العيادة.
+export function greetingForDate(now: Date): string {
+  return now.getHours() < 12 ? "صباح الخير" : "مساء الخير";
+}
+
 // مواعيد نافذة زمنية [from, to) — القائمة قادمة مرتبة تصاعدياً من الخدمة
 // لكن الفرز هنا صريح حتى يبقى المساعد صحيحاً بأي ترتيب إدخال.
 export function appointmentsWithin(
