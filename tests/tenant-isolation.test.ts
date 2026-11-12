@@ -15,7 +15,7 @@ import {
 import {
   GET as patientGET,
   PATCH as patientPATCH,
-} from "@/app/api/patients/[id]/route";
+} from "@/app/api/patients/[patientId]/route";
 import { POST as loginPOST } from "@/app/api/auth/login/route";
 import type { TenantContext } from "@/lib/tenant/context";
 
@@ -219,27 +219,27 @@ describeDb("عزل العيادات — integration", () => {
     expect(created.clinicId).not.toBe(clinicBId);
   });
 
-  it("GET /api/patients/[id] لمريض عيادة أ يعيد بياناته كاملة", async () => {
+  it("GET /api/patients/[patientId] لمريض عيادة أ يعيد بياناته كاملة", async () => {
     const token = await loginToken(PHONE_A, PASSWORD);
     const res = await patientGET(
       authedRequest(`/api/patients/${patientAId}`, token),
-      { params: Promise.resolve({ id: patientAId }) },
+      { params: Promise.resolve({ patientId: patientAId }) },
     );
     expect(res.status).toBe(200);
     const body = (await res.json()) as { patient: { id: string } };
     expect(body.patient.id).toBe(patientAId);
   });
 
-  it("GET /api/patients/[id] لمريض عيادة ب بجلسة عيادة أ يعيد 404 بلا تسرّب", async () => {
+  it("GET /api/patients/[patientId] لمريض عيادة ب بجلسة عيادة أ يعيد 404 بلا تسرّب", async () => {
     const token = await loginToken(PHONE_A, PASSWORD);
     const res = await patientGET(
       authedRequest(`/api/patients/${patientBId}`, token),
-      { params: Promise.resolve({ id: patientBId }) },
+      { params: Promise.resolve({ patientId: patientBId }) },
     );
     expect(res.status).toBe(404);
   });
 
-  it("PATCH /api/patients/[id] بجلسة عيادة أ يحدّث الحقول ويثبّتها", async () => {
+  it("PATCH /api/patients/[patientId] بجلسة عيادة أ يحدّث الحقول ويثبّتها", async () => {
     const token = await loginToken(PHONE_A, PASSWORD);
     const res = await patientPATCH(
       authedRequest(`/api/patients/${patientAId}`, token, {
@@ -250,7 +250,7 @@ describeDb("عزل العيادات — integration", () => {
           medicalNotes: "حساسية: بنسلين\nأمراض: سكري",
         }),
       }),
-      { params: Promise.resolve({ id: patientAId }) },
+      { params: Promise.resolve({ patientId: patientAId }) },
     );
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
@@ -271,7 +271,7 @@ describeDb("عزل العيادات — integration", () => {
         method: "PATCH",
         body: JSON.stringify({ name: "عبث-عبر-الحدود" }),
       }),
-      { params: Promise.resolve({ id: patientBId }) },
+      { params: Promise.resolve({ patientId: patientBId }) },
     );
     expect(res.status).toBe(404);
     const unchanged = await prisma.patient.findUnique({
@@ -308,7 +308,7 @@ describeDb("عزل العيادات — integration", () => {
         method: "PATCH",
         body: JSON.stringify({ name: "أ" }),
       }),
-      { params: Promise.resolve({ id: patientAId }) },
+      { params: Promise.resolve({ patientId: patientAId }) },
     );
     expect(res.status).toBe(400);
   });
