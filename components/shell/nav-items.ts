@@ -1,44 +1,109 @@
 import type { LucideIcon } from "lucide-react";
 import {
   BarChart3,
+  BellRing,
   BookOpen,
   CalendarDays,
+  ClipboardList,
   Clock,
   FileText,
   LayoutDashboard,
   Package,
+  Settings,
   Users,
 } from "lucide-react";
+import { ToothIcon } from "./icons/ToothIcon";
+
+/** أيقونة عنصر تنقل — أيقونات lucide أو رسوم الريبو الخاصة (ToothIcon) */
+export type NavIcon = LucideIcon | typeof ToothIcon;
 
 export type BadgeKey = "waitlist" | "lowStock";
 
 export type NavItem = {
   href: string;
   label: string;
-  icon: LucideIcon;
+  icon: NavIcon;
   /** شارة عددية مرتبطة بخدمة قائمة — تُحسب في غلاف (app) */
   badge?: BadgeKey;
 };
 
-/** الأوامر الأساسية — السايدبار والأوامر الأربعة الأولى في تنقل الموبايل */
-export const primaryNav: NavItem[] = [
-  { href: "/dashboard", label: "الرئيسية", icon: LayoutDashboard },
-  { href: "/patients", label: "المرضى", icon: Users },
-  { href: "/appointments", label: "المواعيد", icon: CalendarDays },
-  { href: "/waitlist", label: "قائمة الانتظار", icon: Clock, badge: "waitlist" },
+export type NavGroupKey = "clinical" | "operations" | "financial" | "admin";
+
+export type NavGroup = {
+  key: NavGroupKey;
+  label: string;
+  items: NavItem[];
+};
+
+/** بوابة التطبيق — أوّل عنصر في السايدبار وشريط الموبايل */
+export const homeNav: NavItem = {
+  href: "/dashboard",
+  label: "الرئيسية",
+  icon: LayoutDashboard,
+};
+
+/**
+ * تجميع الأقسام منطقياً — مصدر واحد يستهلكه السايدبار ودرج «المزيد»
+ * في الموبايل، فتبقى الشارات والأيقونات متطابقة بينهما.
+ */
+export const navGroups: NavGroup[] = [
+  {
+    key: "clinical",
+    label: "علاجي",
+    items: [
+      { href: "/patients", label: "المرضى", icon: Users },
+      { href: "/chart", label: "مخطط الأسنان", icon: ToothIcon },
+      { href: "/plans", label: "خطط العلاج", icon: ClipboardList },
+    ],
+  },
+  {
+    key: "operations",
+    label: "تشغيلي",
+    items: [
+      { href: "/appointments", label: "المواعيد", icon: CalendarDays },
+      {
+        href: "/waitlist",
+        label: "قائمة الانتظار",
+        icon: Clock,
+        badge: "waitlist",
+      },
+      { href: "/reminders", label: "تذكير الغد", icon: BellRing },
+    ],
+  },
+  {
+    key: "financial",
+    label: "مالي",
+    items: [
+      { href: "/finance", label: "الدفتر المالي", icon: BookOpen },
+      { href: "/reports", label: "التقارير", icon: BarChart3 },
+    ],
+  },
+  {
+    key: "admin",
+    label: "إداري",
+    items: [
+      { href: "/inventory", label: "المخزون", icon: Package, badge: "lowStock" },
+      { href: "/instructions", label: "قوالب التعليمات", icon: FileText },
+      { href: "/settings", label: "الإعدادات", icon: Settings },
+    ],
+  },
 ];
 
-/** بقية الأقسام — في ذيل السايدبار وفي شريحة «المزيد» على الموبايل */
-export const secondaryNav: NavItem[] = [
-  { href: "/finance", label: "الدفتر المالي", icon: BookOpen },
-  { href: "/reports", label: "التقارير", icon: BarChart3 },
-  { href: "/inventory", label: "المخزون", icon: Package, badge: "lowStock" },
-  { href: "/reminders", label: "تذكير الغد", icon: Clock },
-  { href: "/instructions", label: "قوالب التعليمات", icon: FileText },
+/** كل عناصر التنقل مسطّحة — للبحث وتحديد العنصر الحالي */
+export const allNavItems: NavItem[] = [
+  homeNav,
+  ...navGroups.flatMap((group) => group.items),
+];
+
+/** شريط الموبايل السفلي: الرئيسية والمرضى (بحث المرضى) والمواعيد + درج «المزيد» */
+export const mobileBarNav: NavItem[] = [
+  homeNav,
+  { href: "/patients", label: "المرضى", icon: Users },
+  { href: "/appointments", label: "المواعيد", icon: CalendarDays },
 ];
 
 export const navItemByHref = (href: string): NavItem | undefined =>
-  [...primaryNav, ...secondaryNav].find((item) => item.href === href);
+  allNavItems.find((item) => item.href === href);
 
 const segmentLabels: Record<string, string> = {
   dashboard: "الرئيسية",
@@ -50,6 +115,8 @@ const segmentLabels: Record<string, string> = {
   inventory: "المخزون",
   reminders: "تذكير الغد",
   instructions: "قوالب التعليمات",
+  chart: "مخطط الأسنان",
+  plans: "خطط العلاج",
   odontogram: "الأودوغرام",
   settings: "الإعدادات",
   setup: "الإعداد",
