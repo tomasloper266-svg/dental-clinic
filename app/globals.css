@@ -1,26 +1,98 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * نظام التصميم — هوية إدارية هادئة ثابتة (فاتح دائماً).
+ * الألوان كلها عبر tokens: عاجي للأسطح، رمادي دافئ للنصوص،
+ * كحلي عميق للعناوين والسايدبار، أخضر طبي للتفاعل،
+ * كهرماني للتنبيهات وأحمر هادئ للأخطاء.
+ *
+ * الوضع الداكن التلقائي معطّل: المتغير `dark` في Tailwind 4
+ * يُقيَّد بالصنف `.dark` الصريح الذي لا نضعه أبداً.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@theme {
+  /* الخط الأساسي — IBM Plex Sans Arabic (من next/font في layout.tsx) */
+  --font-sans: var(--font-plex-arabic), "IBM Plex Sans Arabic", ui-sans-serif,
+    system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* الأسطح — عاجي دافئ */
+  --color-surface: #faf9f7;
+  --color-surface-raised: #ffffff;
+  --color-surface-sunken: #f2f0ea;
+  --color-surface-hover: #f6f4ef;
+
+  /* الرمادي الدافئ — نصوص ثانوية وحدود hairline */
+  --color-warm-50: #faf9f7;
+  --color-warm-100: #f2f0ea;
+  --color-warm-200: #e5e1d8;
+  --color-warm-300: #d3cec2;
+  --color-warm-400: #a8a294;
+  --color-warm-500: #857f72;
+  --color-warm-600: #6b665b;
+  --color-warm-700: #524e45;
+  --color-warm-800: #3a372f;
+  --color-warm-900: #262420;
+
+  /* الكحلي العميق — العناوين والسايدبار */
+  --color-ink-600: #33547a;
+  --color-ink-700: #274466;
+  --color-ink-800: #1e3350;
+  --color-ink-900: #16263a;
+  --color-ink-950: #101d2e;
+
+  /* الأخضر الطبي الهادئ — لون التفاعل الأساسي */
+  --color-primary-50: #eef6f2;
+  --color-primary-100: #d8ebe2;
+  --color-primary-200: #b2d7c8;
+  --color-primary-300: #88bfa9;
+  --color-primary-400: #5ca48c;
+  --color-primary-500: #3e8a72;
+  --color-primary-600: #32705d;
+  --color-primary-700: #295a4b;
+  --color-primary-800: #21463b;
+  --color-primary-900: #1a372f;
+
+  /* الكهرماني — تنبيهات وحدود مخزون */
+  --color-warning-50: #fdf6e7;
+  --color-warning-100: #f9e9c4;
+  --color-warning-300: #ecc66e;
+  --color-warning-500: #d09a2b;
+  --color-warning-700: #9a6d15;
+  --color-warning-900: #5c410c;
+
+  /* الأحمر الهادئ — أخطاء وتحقق فاشل */
+  --color-danger-50: #fbf1f0;
+  --color-danger-100: #f5dcd9;
+  --color-danger-300: #dfa19a;
+  --color-danger-500: #b3564d;
+  --color-danger-600: #9c453d;
+  --color-danger-700: #7f3731;
+  --color-danger-900: #4f221e;
+
+  /* نصف قطر موحّد: ألواح 12px وحقول 8px */
+  --radius-panel: 12px;
+  --radius-field: 8px;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-surface);
+  color: var(--color-warm-900);
+  font-family: var(--font-sans);
+}
+
+/*
+ * الأرقام والقيود المالية — تبويبي دائماً حتى لا تقفز الأعمدة
+ * عند تحديث القيم. يُستخدم مع font-mono حيث يلزم.
+ */
+@utility numeric {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}
+
+/* تركيز واضح ومتسق للوحة المفاتيح عبر التطبيق */
+@utility focus-ring {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
 }
