@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatSyp } from "@/lib/utils";
-import type { PlanItemDto, PlanItemStatus } from "@/lib/services/treatment-plan";
+import InstructionSendPanel from "@/components/odontogram/InstructionSendPanel";
+import type {
+  PlanItemDto,
+  PlanItemStatus,
+} from "@/lib/services/treatment-plan";
 import { toothStatusMeta } from "@/lib/odontogram/statuses";
 
 // قسم خطة العلاج المسعّرة — إضافة بنود بأسعار، تعديل غير المنفذ، وبدء التنفيذ.
@@ -16,7 +20,10 @@ type Props = {
   preselectedTooth: number | null;
 };
 
-const STATUS_META: Record<PlanItemStatus, { labelAr: string; chipClass: string }> = {
+const STATUS_META: Record<
+  PlanItemStatus,
+  { labelAr: string; chipClass: string }
+> = {
   PROPOSED: {
     labelAr: "مخطط",
     chipClass: "bg-gray-100 text-gray-700 border-gray-300",
@@ -55,6 +62,10 @@ export default function TreatmentPlanSection({
   const [editProcedure, setEditProcedure] = useState("");
   const [editPrice, setEditPrice] = useState("");
   const [startingId, setStartingId] = useState<string | null>(null);
+  // لوحة التعليمات تُفتح تلقائياً بعد إتمام البند — إتمام العلاج يعني TREATMENT_DONE
+  const [instructionsForId, setInstructionsForId] = useState<string | null>(
+    null,
+  );
 
   const base = `/api/patients/${encodeURIComponent(patientId)}/treatment-plan`;
 
@@ -162,6 +173,7 @@ export default function TreatmentPlanSection({
         prev.map((it) => (it.id === id ? (data.item as PlanItemDto) : it)),
       );
       setStartingId(null);
+      setInstructionsForId(id);
       // إعادة القراءة من الخادم ليظهر قيد «علاج منفذ» على الأودوغرام فوراً.
       router.refresh();
     } catch {
@@ -172,7 +184,8 @@ export default function TreatmentPlanSection({
   }
 
   const toothNum = Number(tooth);
-  const canAdd = Number.isInteger(toothNum) && procedure.trim().length >= 2 && price !== "";
+  const canAdd =
+    Number.isInteger(toothNum) && procedure.trim().length >= 2 && price !== "";
 
   const groups: { status: PlanItemStatus; labelAr: string }[] = [
     { status: "PROPOSED", labelAr: "مخطط" },
@@ -283,7 +296,7 @@ export default function TreatmentPlanSection({
                       </div>
                     ) : (
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-lg border border-teal-300 bg-teal-50 px-2 py-0.5 text-xs font-bold tabular-nums text-teal-800">
+                        <span className="rounded-lg border border-teal-300 bg-teal-50 px-2 py-0.5 text-xs font-bold text-teal-800 tabular-nums">
                           {item.toothFdi}
                         </span>
                         <span className="text-sm font-semibold text-gray-800">
@@ -357,10 +370,19 @@ export default function TreatmentPlanSection({
                           })}
                         </div>
                         <p className="mt-1 text-[11px] text-gray-500">
-                          سيُضاف قيد «علاج منفذ» لسجل السن — القيود السابقة تبقى محفوظة.
+                          سيُضاف قيد «علاج منفذ» لسجل السن — القيود السابقة تبقى
+                          محفوظة.
                         </p>
                       </div>
                     )}
+
+                    {instructionsForId === item.id &&
+                      item.status === "DONE" && (
+                        <InstructionSendPanel
+                          patientId={patientId}
+                          procedure={item.procedure}
+                        />
+                      )}
                   </li>
                 ))}
               </ul>

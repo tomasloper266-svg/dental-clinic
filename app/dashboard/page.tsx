@@ -38,6 +38,12 @@ export default async function DashboardPage() {
           >
             تذكير الغد
           </a>
+          <a
+            href="/instructions"
+            className="rounded-xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white"
+          >
+            قوالب التعليمات
+          </a>
           <LogoutButton />
         </div>
       </div>

@@ -66,6 +66,12 @@ enum LedgerEntryType {
   REFUND
 }
 
+// قناة إرسال تعليمات ما بعد الجراحة — رابط واتساب أو نسخة نصية
+enum InstructionChannel {
+  WHATSAPP
+  TEXT
+}
+
 // ─── العيادة والمستخدمون والجلسات ────────────────────────────────────────────
 
 model Clinic {
@@ -85,6 +91,7 @@ model Clinic {
   materials            Material[]
   materialUsages       MaterialUsage[]
   instructionTemplates InstructionTemplate[]
+  instructionSends     InstructionSend[]
 }
 
 model User {
@@ -102,6 +109,7 @@ model User {
   createdLedgerEntries  LedgerEntry[]   @relation("LedgerEntryCreator")
   recordedMaterialUsage MaterialUsage[] @relation("MaterialUsageRecorder")
   appointmentStatusChanges AppointmentStatusChange[] @relation("AppointmentStatusChanger")
+  sentInstructions      InstructionSend[] @relation("InstructionSender")
 
   @@unique([clinicId, phone])
   @@index([clinicId])
@@ -139,6 +147,7 @@ model Patient {
   treatmentPlanItems TreatmentPlanItem[]
   ledgerEntries      LedgerEntry[]
   materialUsages     MaterialUsage[]
+  instructionSends   InstructionSend[]
 
   @@index([clinicId, name])
   @@index([clinicId, phone])
@@ -323,4 +332,24 @@ model InstructionTemplate {
   clinic Clinic @relation(fields: [clinicId], references: [id])
 
   @@index([clinicId, procedure])
+}
+
+// سجل ما أُرسل للمريض من تعليمات — إلحاقي فقط: لا تعديل ولا حذف من طبقة
+// الخدمة. يخزّن نص التعليمات كما أُرسل ليبقى التاريخ صحيحاً حتى لو تعدّل القالب.
+model InstructionSend {
+  id         String             @id @default(cuid())
+  clinicId   String
+  patientId  String
+  templateId String?
+  procedure  String
+  body       String
+  channel    InstructionChannel
+  sentById   String
+  sentAt     DateTime           @default(now())
+
+  clinic  Clinic  @relation(fields: [clinicId], references: [id])
+  patient Patient @relation(fields: [patientId], references: [id])
+  sentBy  User    @relation("InstructionSender", fields: [sentById], references: [id])
+
+  @@index([clinicId, patientId, sentAt])
 }
