@@ -21,10 +21,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ar" dir="rtl">
-      <body className={`${plexArabic.variable} font-sans antialiased`}>
-        {children}
-      </body>
+    <html lang="ar" dir="rtl" className={plexArabic.variable}>
+      {/*
+        متغير الخط على <html> وليس <body>: لأن `--font-sans` في
+        @theme يُصدر على :root ويشير إلى `var(--font-plex-arabic)` —
+        لو عُرّف المتغير على body فقط صار `--font-sans` غير صالحٍ
+        عند الجذر (var غير محلول) فتسقط كومة الخط كلها.
+      */}
+      <body className="font-sans antialiased">{children}</body>
     </html>
   );
 }
