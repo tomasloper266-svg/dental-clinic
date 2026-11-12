@@ -9,7 +9,7 @@ import {
 // معرّف المريض يُقرأ من المسار فقط، والعيادة من الجلسة حصراً —
 // مريض عيادة أخرى يظهر كـ 404 ولا يُكشف وجوده أصلاً.
 
-type RouteContext = { params: Promise<{ id: string }> };
+type RouteContext = { params: Promise<{ patientId: string }> };
 
 export async function GET(_req: NextRequest, ctx: RouteContext) {
   const tenant = await requireTenant(_req);
@@ -17,7 +17,7 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
 
-  const { id } = await ctx.params;
+  const { patientId: id } = await ctx.params;
   const patient = await getPatient(tenant, id);
   if (!patient) {
     return NextResponse.json({ error: "المريض غير موجود" }, { status: 404 });
@@ -43,7 +43,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
-  const { id } = await ctx.params;
+  const { patientId: id } = await ctx.params;
   try {
     const patient = await updatePatient(tenant, id, parsed.value);
     if (!patient) {
