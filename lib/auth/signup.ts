@@ -7,8 +7,7 @@ export type SignupInput = {
 };
 
 export type ParseResult =
-  | { ok: true; value: SignupInput }
-  | { ok: false; error: string };
+  { ok: true; value: SignupInput } | { ok: false; error: string };
 
 const PHONE_RE = /^[0-9+\-\s]{6,20}$/;
 
@@ -21,7 +20,8 @@ export function parseSignup(body: unknown): ParseResult {
     return { ok: false, error: "طلب غير صالح" };
   }
   const b = body as Record<string, unknown>;
-  const clinicName = typeof b.clinicName === "string" ? b.clinicName.trim() : "";
+  const clinicName =
+    typeof b.clinicName === "string" ? b.clinicName.trim() : "";
   const name = typeof b.name === "string" ? b.name.trim() : "";
   const phone = typeof b.phone === "string" ? normalizePhone(b.phone) : "";
   const password = typeof b.password === "string" ? b.password : "";

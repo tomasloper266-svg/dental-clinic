@@ -26,17 +26,32 @@ describe("parseSignup", () => {
   });
 
   it("يرفض اسم عيادة قصيراً جداً", () => {
-    const r = parseSignup({ clinicName: "ع", name: "د. محمد", phone: "0999123456", password: "secret123" });
+    const r = parseSignup({
+      clinicName: "ع",
+      name: "د. محمد",
+      phone: "0999123456",
+      password: "secret123",
+    });
     expect(r.ok).toBe(false);
   });
 
   it("يرفض كلمة سر أقل من 8 أحرف", () => {
-    const r = parseSignup({ clinicName: "عيادة", name: "د. محمد", phone: "0999123456", password: "short" });
+    const r = parseSignup({
+      clinicName: "عيادة",
+      name: "د. محمد",
+      phone: "0999123456",
+      password: "short",
+    });
     expect(r.ok).toBe(false);
   });
 
   it("يرفض هاتفاً غير صالح", () => {
-    const r = parseSignup({ clinicName: "عيادة", name: "د. محمد", phone: "abc", password: "secret123" });
+    const r = parseSignup({
+      clinicName: "عيادة",
+      name: "د. محمد",
+      phone: "abc",
+      password: "secret123",
+    });
     expect(r.ok).toBe(false);
   });
 });

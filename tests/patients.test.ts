@@ -3,7 +3,11 @@ import { parseCreatePatient } from "@/lib/services/patients";
 
 describe("parseCreatePatient", () => {
   it("يقبل بيانات صحيحة", () => {
-    const r = parseCreatePatient({ name: "أحمد", birthYear: 1990, phone: "0999" });
+    const r = parseCreatePatient({
+      name: "أحمد",
+      birthYear: 1990,
+      phone: "0999",
+    });
     expect(r.ok).toBe(true);
   });
 

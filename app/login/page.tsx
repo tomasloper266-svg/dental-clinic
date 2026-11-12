@@ -65,7 +65,10 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label htmlFor="password" className="mb-1 block text-sm font-medium">
+            <label
+              htmlFor="password"
+              className="mb-1 block text-sm font-medium"
+            >
               كلمة السر
             </label>
             <input
@@ -79,7 +82,10 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            <p
+              role="alert"
+              className="rounded-lg bg-red-50 p-3 text-sm text-red-700"
+            >
               {error}
             </p>
           )}

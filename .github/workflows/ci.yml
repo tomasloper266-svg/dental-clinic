@@ -8,6 +8,22 @@ on:
 jobs:
   lint-build-test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: dental_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U testuser"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://testuser:testpass@localhost:5432/dental_test?schema=public
     steps:
       - uses: actions/checkout@v4
 
@@ -22,10 +38,13 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
+      - name: Push Prisma schema to test database
+        run: npx prisma db push --accept-data-loss
+
       - name: Lint
         run: npm run lint
 
-      - name: Test
+      - name: Test (unit + tenant-isolation integration)
         run: npm run test
 
       - name: Build

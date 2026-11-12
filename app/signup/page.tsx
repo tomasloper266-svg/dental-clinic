@@ -71,7 +71,10 @@ export default function SignupPage() {
           className="space-y-4 rounded-2xl bg-white p-6 shadow-md"
         >
           <div>
-            <label htmlFor="clinicName" className="mb-1 block text-sm font-medium">
+            <label
+              htmlFor="clinicName"
+              className="mb-1 block text-sm font-medium"
+            >
               اسم العيادة
             </label>
             <input
@@ -117,7 +120,10 @@ export default function SignupPage() {
           </div>
 
           <div>
-            <label htmlFor="password" className="mb-1 block text-sm font-medium">
+            <label
+              htmlFor="password"
+              className="mb-1 block text-sm font-medium"
+            >
               كلمة السر
             </label>
             <input
@@ -132,7 +138,10 @@ export default function SignupPage() {
           </div>
 
           {error && (
-            <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            <p
+              role="alert"
+              className="rounded-lg bg-red-50 p-3 text-sm text-red-700"
+            >
               {error}
             </p>
           )}

@@ -4,7 +4,9 @@ import type { SignupInput } from "@/lib/auth/signup";
 
 // إنشاء العيادة + حساب الطبيب المالك في معاملة واحدة.
 // الهاتف فريد لكل عيادة (@@unique([clinicId, phone])) — لا تعارض هنا بين العيادات.
-export async function createClinicWithOwner(input: SignupInput): Promise<string> {
+export async function createClinicWithOwner(
+  input: SignupInput,
+): Promise<string> {
   const passwordHash = await hashPassword(input.password);
 
   const clinic = await prisma.$transaction(async (tx) => {

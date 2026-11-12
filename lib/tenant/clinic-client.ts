@@ -23,9 +23,17 @@ const WHERE_OPERATIONS = new Set([
   "deleteMany",
 ]);
 
-const CREATE_OPERATIONS = new Set(["create", "createMany", "createManyAndReturn"]);
+const CREATE_OPERATIONS = new Set([
+  "create",
+  "createMany",
+  "createManyAndReturn",
+]);
 
-function injectClinicId(operation: string, args: RawArgs, clinicId: string): RawArgs {
+function injectClinicId(
+  operation: string,
+  args: RawArgs,
+  clinicId: string,
+): RawArgs {
   const next = { ...args };
 
   if (WHERE_OPERATIONS.has(operation)) {
@@ -54,7 +62,11 @@ export function clinicScope(clinicId: string) {
     query: {
       $allModels: {
         async $allOperations({ operation, args, query }) {
-          const scoped = injectClinicId(operation, (args ?? {}) as RawArgs, clinicId);
+          const scoped = injectClinicId(
+            operation,
+            (args ?? {}) as RawArgs,
+            clinicId,
+          );
           return query(scoped as typeof args);
         },
       },

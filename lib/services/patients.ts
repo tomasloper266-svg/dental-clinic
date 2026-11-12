@@ -20,10 +20,7 @@ export async function listPatients(
   const patients = await db.patient.findMany({
     where: search
       ? {
-          OR: [
-            { name: { contains: search } },
-            { phone: { contains: search } },
-          ],
+          OR: [{ name: { contains: search } }, { phone: { contains: search } }],
         }
       : {},
     orderBy: { createdAt: "desc" },
@@ -64,9 +61,9 @@ export type CreatePatientInput = {
 };
 
 // تحقق نقي — يُختبر في وحدة منفصلة عن قاعدة البيانات.
-export function parseCreatePatient(body: unknown):
-  | { ok: true; value: CreatePatientInput }
-  | { ok: false; error: string } {
+export function parseCreatePatient(
+  body: unknown,
+): { ok: true; value: CreatePatientInput } | { ok: false; error: string } {
   if (typeof body !== "object" || body === null) {
     return { ok: false, error: "طلب غير صالح" };
   }
