@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/appointments/ConfirmDialog";
 import { Field, Input, Textarea } from "@/components/ui/Field";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
+import { cn } from "@/components/ui/cn";
 import { MessagePreview } from "@/components/instructions/MessagePreview";
 
 // لوحة قوالب ما بعد العلاج — كل قالب يُعرض بمعاينة حقيقية للرسالة
@@ -32,6 +33,8 @@ export default function InstructionTemplatesBoard() {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<TemplateJson | null>(null);
   const [removing, setRemoving] = useState<TemplateJson | null>(null);
+  /** القالب المعروض في لوحة المعاينة — الافتراضي أول قالب */
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoadError(false);
@@ -135,6 +138,10 @@ export default function InstructionTemplatesBoard() {
     }
   }
 
+  // القالب المعروض في المعاينة الحية — الافتراضي أول قالب عند التحميل.
+  const selected =
+    templates?.find((t) => t.id === selectedId) ?? templates?.[0] ?? null;
+
   return (
     <>
       <PageHeader
@@ -184,42 +191,67 @@ export default function InstructionTemplatesBoard() {
             }
           />
         </div>
-      ) : (
-        <ul className="mt-5 grid gap-4 md:grid-cols-2">
-          {templates.map((t) => (
-            <li key={t.id}>
-              <Card>
-                <CardBody className="flex flex-col gap-3 py-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <StatusPill tone="success">{t.procedure}</StatusPill>
-                    <div className="flex gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setEditing(t)}
-                        disabled={busy}
-                      >
-                        <Pencil size={13} aria-hidden />
-                        تعديل
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setRemoving(t)}
-                        disabled={busy}
-                      >
-                        <Trash2 size={13} aria-hidden />
-                        حذف
-                      </Button>
-                    </div>
-                  </div>
-                  <MessagePreview body={t.body} />
-                </CardBody>
-              </Card>
-            </li>
-          ))}
-        </ul>
-      )}
+      ) : selected ? (
+        <div className="mt-5 grid items-start gap-4 xl:grid-cols-[240px_minmax(0,1fr)]">
+          {/* فهرس القوالب جانباً — شرائط أفقية على الشاشات الضيقة */}
+          <aside
+            role="tablist"
+            aria-label="فهرس القوالب"
+            className="border-warm-200 flex gap-2 overflow-x-auto pb-1 xl:flex-col xl:overflow-visible xl:border-s xl:pb-0 xl:ps-4"
+          >
+            {templates.map((t) => {
+              const active = t.id === selected.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setSelectedId(t.id)}
+                  className={cn(
+                    "shrink-0 rounded-field border px-3 py-2 text-start text-sm font-medium transition-colors",
+                    active
+                      ? "border-primary-600 bg-primary-600 shadow-xs text-white"
+                      : "border-warm-200 bg-surface-raised text-ink-900 hover:bg-surface-hover",
+                  )}
+                >
+                  {t.procedure}
+                </button>
+              );
+            })}
+          </aside>
+
+          {/* معاينة القالب المختار — حية دائماً */}
+          <Card>
+            <CardBody className="flex flex-col gap-3 py-4">
+              <div className="flex items-center justify-between gap-2">
+                <StatusPill tone="success">{selected.procedure}</StatusPill>
+                <div className="flex gap-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setEditing(selected)}
+                    disabled={busy}
+                  >
+                    <Pencil size={13} aria-hidden />
+                    تعديل
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setRemoving(selected)}
+                    disabled={busy}
+                  >
+                    <Trash2 size={13} aria-hidden />
+                    حذف
+                  </Button>
+                </div>
+              </div>
+              <MessagePreview body={selected.body} />
+            </CardBody>
+          </Card>
+        </div>
+      ) : null}
 
       <TemplateModal
         key="add-template"
