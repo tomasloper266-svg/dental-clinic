@@ -9,8 +9,8 @@ import {
   STATUS_META,
 } from "@/lib/appointment-ui";
 import { addDays, toDateInputValue } from "@/lib/dates";
-import { ALLOWED_TRANSITIONS } from "@/lib/services/appointment-state";
-import type { AppointmentStatus } from "@/lib/services/appointments";
+import { ALLOWED_TRANSITIONS } from "@/lib/appointment-state";
+import type { AppointmentStatus } from "@/lib/appointment-state";
 
 // لوحة الجدول اليومي/الأسبوعي — موبايل-أولاً، تنقّل بين الأيام والأسابيع،
 // وحالات ملونة مع تسمية نصية صريحة.

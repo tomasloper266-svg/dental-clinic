@@ -1,32 +1,15 @@
 import { clinicScope } from "@/lib/tenant/clinic-client";
 import type { TenantContext } from "@/lib/tenant/context";
-import type {
-  AppointmentStatus,
-  ServiceError,
-} from "@/lib/services/appointments";
+import type { ServiceError } from "@/lib/services/appointments";
+import {
+  ALLOWED_TRANSITIONS,
+  canTransition,
+} from "@/lib/appointment-state";
+import type { AppointmentStatus } from "@/lib/appointment-state";
 
-// آلة حالات الموعد — الانتقالات المسموحة فقط، وكل تغيير يُسجل
-// (من → إلى، مَن، متى) في AppointmentStatusChange كسجل إلحاقي.
-
-export const ALLOWED_TRANSITIONS: Record<
-  AppointmentStatus,
-  AppointmentStatus[]
-> = {
-  SCHEDULED: ["CONFIRMED", "CANCELLED", "NO_SHOW"],
-  CONFIRMED: ["IN_TREATMENT", "CANCELLED", "NO_SHOW"],
-  IN_TREATMENT: ["COMPLETED"],
-  COMPLETED: [],
-  CANCELLED: [],
-  NO_SHOW: [],
-};
-
-// نقي — يُختبر لكل زوج من الحالات.
-export function canTransition(
-  from: AppointmentStatus,
-  to: AppointmentStatus,
-): boolean {
-  return ALLOWED_TRANSITIONS[from].includes(to);
-}
+// آلة حالات الموعد — منطق الخادم: كل تغيير يُسجل (من → إلى، مَن، متى)
+// في AppointmentStatusChange كسجل إلحاقي. القواعد النقية في
+// lib/appointment-state.ts (بلا I/O — آمنة لعميل المتصفح).
 
 export type StatusChangeDto = {
   id: string;

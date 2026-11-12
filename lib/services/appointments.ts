@@ -1,5 +1,6 @@
 import { clinicScope } from "@/lib/tenant/clinic-client";
 import type { TenantContext } from "@/lib/tenant/context";
+import type { AppointmentStatus } from "@/lib/appointment-state";
 
 // خدمة المواعيد — نفس نمط خدمة المرضى: كل استعلام عبر clinicScope بمعرّف
 // العيادة من سياق الجلسة. قاعدة منع التعارض: فترة جديدة تتقاطع مع موعد
@@ -7,13 +8,7 @@ import type { TenantContext } from "@/lib/tenant/context";
 
 const DAY_MIN = 24 * 60;
 
-export type AppointmentStatus =
-  | "SCHEDULED"
-  | "CONFIRMED"
-  | "IN_TREATMENT"
-  | "COMPLETED"
-  | "CANCELLED"
-  | "NO_SHOW";
+export type { AppointmentStatus };
 
 export type AppointmentDto = {
   id: string;
@@ -99,14 +94,15 @@ export async function createAppointment(
     return { ok: false, error: "المريض غير موجود", code: "NOT_FOUND" };
   }
 
-  // التداخل يتطلب أن يبدأ موعد القاعدة قبل نهاية المرشح — يكفي مسح
-  // مواعيد بدأت خلال (مدة أطول من أي مدة مسموحة) قبل نهاية المرشح.
+  // التداخل يتطلب busyStart < نهاية المرشح و busyEnd > بدايته — يكفي مسح
+  // مواعيد بدأت في النافذة [بداية المرشح − مدة أقصى، نهاية المرشح).
+  const end = new Date(input.startsAt.getTime() + input.durationMin * 60_000);
   const earliestRelevant = new Date(
     input.startsAt.getTime() - DAY_MIN * 60_000,
   );
   const busy = await db.appointment.findMany({
     where: {
-      startsAt: { gte: earliestRelevant, lt: input.startsAt },
+      startsAt: { gte: earliestRelevant, lt: end },
       status: { notIn: ["CANCELLED", "COMPLETED"] },
     },
     select: { startsAt: true, durationMin: true },
