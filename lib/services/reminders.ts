@@ -45,14 +45,12 @@ export async function listTomorrowReminders(
   const db = clinicScope(ctx.clinicId);
   const [from, to] = dayRange(addDays(now, 1));
 
-  const [clinic, doctor, appointments] = await Promise.all([
-    db.clinic.findUnique({
-      where: { id: ctx.clinicId },
-      select: { name: true },
-    }),
-    db.user.findUnique({
+  // نموذج Clinic لا يحمل clinicId — حقنه في where يُبطل الاستعلام. لذلك
+  // يُجلب اسم العيادة عبر علاقة المستخدم clinic في استعلام واحد صالح.
+  const [doctor, appointments] = await Promise.all([
+    db.user.findFirst({
       where: { id: ctx.userId },
-      select: { name: true },
+      select: { name: true, clinic: { select: { name: true } } },
     }),
     db.appointment.findMany({
       where: {
@@ -72,7 +70,7 @@ export async function listTomorrowReminders(
     }),
   ]);
 
-  const clinicName = clinic?.name ?? "";
+  const clinicName = doctor?.clinic.name ?? "";
   const doctorName = doctor?.name ?? "";
 
   return appointments.map((a) => {
