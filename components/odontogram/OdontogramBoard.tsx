@@ -133,24 +133,23 @@ export default function OdontogramBoard({
     // المصفوفة مرتبة يسار→يمين بعين الطبيب (18→11 ثم 21→28) — لكن الحاوية
     // ترث dir="rtl" من الصفحة فتعكس ترتيبها البصري؛ نثبّت الاتجاه هنا فقط.
     return (
-      <div
-        dir="ltr"
-        className="flex justify-center gap-0.5 overflow-x-auto py-1"
-      >
-        {cells.map((cell) => {
-          const current = latest.get(cell.fdi);
-          const meta = current ? toothStatusMeta(current.status) : null;
-          const anatomy = toothAnatomy(cell.fdi);
-          return (
-            <ToothSvg
-              key={cell.fdi}
-              tooth={anatomy as NonNullable<ReturnType<typeof toothAnatomy>>}
-              meta={meta}
-              selected={selected === cell.fdi}
-              onSelect={selectTooth}
-            />
-          );
-        })}
+      <div dir="ltr" className="overflow-x-auto py-1">
+        <div className="mx-auto flex w-max gap-0.5">
+          {cells.map((cell) => {
+            const current = latest.get(cell.fdi);
+            const meta = current ? toothStatusMeta(current.status) : null;
+            const anatomy = toothAnatomy(cell.fdi);
+            return (
+              <ToothSvg
+                key={cell.fdi}
+                tooth={anatomy as NonNullable<ReturnType<typeof toothAnatomy>>}
+                meta={meta}
+                selected={selected === cell.fdi}
+                onSelect={selectTooth}
+              />
+            );
+          })}
+        </div>
       </div>
     );
   }
