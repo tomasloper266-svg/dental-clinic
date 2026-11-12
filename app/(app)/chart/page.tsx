@@ -8,16 +8,18 @@ import { listPlan } from "@/lib/services/treatment-plan";
 import { PatientPicker } from "@/components/patients/PatientPicker";
 import OdontogramWorkbench from "@/components/odontogram/OdontogramWorkbench";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { isValidToothFdi } from "@/lib/odontogram/fdi";
 
 /**
  * مخطط الأسنان المستقل — منتقي مريض أعلى والرسم التشريحي الكامل تحته.
  * نفس مكوّنات ملف المريض (مصدر واحد، تجربتان): الرسم بالعرض الكامل
  * والحفظ إلحاقي عبر مسارات findings وtreatment-plan القائمة.
+ * ?tooth=<fdi> يفتح لوحة السن مباشرة — ربط بنود الخطط بالمخطط.
  */
 export default async function ChartPage({
   searchParams,
 }: {
-  searchParams: Promise<{ patient?: string }>;
+  searchParams: Promise<{ patient?: string; tooth?: string }>;
 }) {
   const session = await getSessionUser(
     (await cookies()).get(SESSION_COOKIE)?.value,
@@ -25,8 +27,10 @@ export default async function ChartPage({
   if (!session) redirect("/login");
 
   const ctx = tenantContextFromSession(session);
-  const { patient: patientId } = await searchParams;
+  const { patient: patientId, tooth: toothParam } = await searchParams;
   const patient = patientId ? await getPatient(ctx, patientId) : null;
+  const initialTooth =
+    toothParam && isValidToothFdi(Number(toothParam)) ? Number(toothParam) : null;
   const [findings, planItems] = patient
     ? await Promise.all([
         listFindings(ctx, patient.id),
@@ -56,6 +60,7 @@ export default async function ChartPage({
             patientId={patient.id}
             initialFindings={findings}
             initialPlan={planItems}
+            initialTooth={initialTooth}
           />
         ) : (
           <div className="rounded-panel border-warm-300 bg-surface-raised/60 grid min-h-80 place-items-center border border-dashed">

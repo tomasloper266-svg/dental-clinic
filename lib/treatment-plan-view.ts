@@ -46,3 +46,19 @@ export function planByTooth(items: readonly PlanItemDto[]): PlanItemDto[] {
     (a, b) => a.toothFdi - b.toothFdi || b.priority - a.priority,
   );
 }
+
+/** أعمدة لوحة الخطط الثلاثة — بنود كل حالة مرتبة حسب السن ثم الأولوية. */
+export function planBoardColumns(
+  items: readonly PlanItemDto[],
+): Record<PlanItemStatus, PlanItemDto[]> {
+  return {
+    PROPOSED: planByTooth(items.filter((it) => it.status === "PROPOSED")),
+    ACCEPTED: planByTooth(items.filter((it) => it.status === "ACCEPTED")),
+    DONE: planByTooth(items.filter((it) => it.status === "DONE")),
+  };
+}
+
+/** رابط سنٍّ على مخطط المريض المستقل — الصفحة تفتح لوحة السن من ?tooth=. */
+export function chartToothHref(patientId: string, fdi: number): string {
+  return `/chart?patient=${encodeURIComponent(patientId)}&tooth=${fdi}`;
+}

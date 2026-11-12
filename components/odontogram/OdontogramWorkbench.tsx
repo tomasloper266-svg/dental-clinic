@@ -11,14 +11,19 @@ type Props = {
   patientId: string;
   initialFindings: FindingDto[];
   initialPlan: PlanItemDto[];
+  // سن مبدئي من رابط ?tooth= — يفتح لوحة السن عند الوصول من لوحة الخطط.
+  initialTooth?: number | null;
 };
 
 export default function OdontogramWorkbench({
   patientId,
   initialFindings,
   initialPlan,
+  initialTooth = null,
 }: Props) {
-  const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
+  const [selectedTooth, setSelectedTooth] = useState<number | null>(
+    initialTooth,
+  );
 
   return (
     <div className="min-w-0 space-y-4">
