@@ -238,8 +238,9 @@ export default function FinanceBoard() {
         </Card>
       </div>
 
-      {/* تصفية */}
-      <div className="mt-5 flex flex-wrap items-center gap-2">
+      {/* تصفية — عمود رأسي على الشاشات العريضة، وصف ملفوف تحتها */}
+      <div className="mt-5 grid items-start gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
+      <div className="flex flex-wrap items-center gap-2 xl:flex-col xl:items-stretch">
         {(["ALL", ...TYPE_ORDER] as TypeFilter[]).map((key) => (
           <button
             key={key}
@@ -260,7 +261,7 @@ export default function FinanceBoard() {
           </button>
         ))}
 
-        <div className="relative ms-auto w-full sm:w-64">
+        <div className="relative ms-auto w-full sm:w-64 xl:ms-0 xl:w-full">
           <Search
             size={14}
             aria-hidden
@@ -312,7 +313,7 @@ export default function FinanceBoard() {
       </div>
 
       {/* الجدول */}
-      <div className="mt-3">
+      <div className="mt-3 xl:mt-0">
         {loadError ? (
           <div
             role="alert"
@@ -463,6 +464,7 @@ export default function FinanceBoard() {
             )}
           </>
         )}
+      </div>
       </div>
 
       {/* نافذة قيد جديد */}
