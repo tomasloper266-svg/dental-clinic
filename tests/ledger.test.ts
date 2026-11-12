@@ -65,7 +65,6 @@ describe("التحقق من إشارة المبلغ حسب النوع", () => {
 
 describe("تحقق جسم طلب إنشاء قيد", () => {
   const valid = {
-    patientId: "p1",
     type: "PAYMENT",
     amountSyp: -100_000,
   };
@@ -85,10 +84,6 @@ describe("تحقق جسم طلب إنشاء قيد", () => {
     expect(
       parseCreateLedgerEntry({ ...valid, amountSyp: 100_000 }).ok,
     ).toBe(false);
-  });
-
-  it("يرفض طلباً بدون معرّف مريض", () => {
-    expect(parseCreateLedgerEntry({ ...valid, patientId: "" }).ok).toBe(false);
   });
 
   it("يرفض غير الكائنات", () => {

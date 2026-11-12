@@ -39,13 +39,16 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!parsed.ok) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
-  // المريض من المسار — المعرّف في جسم الطلب لا يُوثق به.
-  if (parsed.value.patientId !== patientId) {
-    return NextResponse.json({ error: "معرّف المريض غير مطابق" }, { status: 400 });
-  }
 
   try {
-    const entry = await createLedgerEntry(ctx, parsed.value);
+    const entry = await createLedgerEntry(ctx, {
+      ...parsed.value,
+      // المريض من المسار — المعرّف في جسم الطلب لا يُوثق به.
+      patientId,
+    });
+    if (!entry) {
+      return NextResponse.json({ error: "المريض غير موجود" }, { status: 404 });
+    }
     return NextResponse.json({ entry }, { status: 201 });
   } catch (err) {
     console.error("[ledger:create] failed:", err);

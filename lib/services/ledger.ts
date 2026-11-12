@@ -61,18 +61,14 @@ export function validateEntrySign(
 }
 
 // تحقق نقي من جسم الطلب — يُختبر وحدوياً قبل أي لمس لقاعدة البيانات.
+// معرّف المريض ليس هنا — يأتي من المسار (source of truth) لا من جسم الطلب.
 export function parseCreateLedgerEntry(
   body: unknown,
-): { ok: true; value: LedgerEntryInput } | { ok: false; error: string } {
+): { ok: true; value: Omit<LedgerEntryInput, "patientId"> } | { ok: false; error: string } {
   if (typeof body !== "object" || body === null) {
     return { ok: false, error: "طلب غير صالح" };
   }
   const b = body as Record<string, unknown>;
-
-  const patientId = typeof b.patientId === "string" ? b.patientId : "";
-  if (!patientId) {
-    return { ok: false, error: "معرّف المريض مطلوب" };
-  }
 
   const type = b.type as LedgerEntryType;
   if (!ENTRY_TYPES.includes(type)) {
@@ -91,7 +87,7 @@ export function parseCreateLedgerEntry(
 
   return {
     ok: true,
-    value: { patientId, type, amountSyp, note, treatmentItemId },
+    value: { type, amountSyp, note, treatmentItemId },
   };
 }
 
@@ -119,8 +115,15 @@ export async function listLedgerEntries(
 export async function createLedgerEntry(
   ctx: TenantContext,
   input: LedgerEntryInput,
-): Promise<LedgerEntryDto> {
+): Promise<LedgerEntryDto | null> {
   const db = clinicScope(ctx.clinicId);
+  // المريض يجب أن يكون ضمن العيادة نفسها — مريض عيادة أخرى يُرفض بغض النظر عن المعرّف.
+  const patient = await db.patient.findUnique({
+    where: { id: input.patientId },
+    select: { id: true },
+  });
+  if (!patient) return null;
+
   const entry = await db.ledgerEntry.create({
     data: {
       clinicId: ctx.clinicId,
@@ -157,7 +160,7 @@ export type TreatmentChargeInput = {
 export async function recordTreatmentCharge(
   ctx: TenantContext,
   input: TreatmentChargeInput,
-): Promise<{ entry: LedgerEntryDto; alreadyCharged: boolean }> {
+): Promise<{ entry: LedgerEntryDto | null; alreadyCharged: boolean }> {
   const db = clinicScope(ctx.clinicId);
 
   const existing = await db.ledgerEntry.findFirst({
