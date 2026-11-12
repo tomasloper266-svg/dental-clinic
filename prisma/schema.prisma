@@ -72,6 +72,25 @@ enum InstructionChannel {
   TEXT
 }
 
+// غرض رمز التحقق — يحدد ما يصرح به الرمز حصراً
+enum VerificationPurpose {
+  PASSWORD_RESET
+  EMAIL_VERIFICATION
+  PHONE_RECOVERY
+}
+
+// قناة إيصال رموز التحقق — عبر موفّر خارجي قابل للربط (انظر lib/notifications)
+enum NotificationChannel {
+  SMS
+  EMAIL
+}
+
+enum SupportRequestStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
 // ─── العيادة والمستخدمون والجلسات ────────────────────────────────────────────
 
 model Clinic {
@@ -103,8 +122,15 @@ model User {
   role         UserRole @default(DENTIST)
   createdAt    DateTime @default(now())
 
+  // حقول الاستعادة — البريد يُخزَّن بعد التحقق منه فقط (OTP)، ورمز الاسترداد
+  // يُنشأ عند التسجيل ويُعرض مرة واحدة وتُخزَّن هاشته فقط.
+  email           String?
+  emailVerifiedAt DateTime?
+  recoveryCodeHash String?
+
   clinic                Clinic          @relation(fields: [clinicId], references: [id])
   sessions              Session[]
+  otpTokens             VerificationToken[]
   recordedFindings      ToothFinding[]  @relation("FindingRecorder")
   createdLedgerEntries  LedgerEntry[]   @relation("LedgerEntryCreator")
   recordedMaterialUsage MaterialUsage[] @relation("MaterialUsageRecorder")
@@ -113,6 +139,7 @@ model User {
 
   @@unique([clinicId, phone])
   @@index([clinicId])
+  @@index([email])
 }
 
 // الجلسات مخزّنة في القاعدة — كوكي يحمل توكيناً عشوائياً ويُخزَّن هاشه فقط
@@ -126,6 +153,36 @@ model Session {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// رموز تحقق مرة واحدة (OTP) — تُخزَّن مُهشَّرة، لكل غرض وقناة، واستهلاك واحد.
+// إنشاء رمز جديد لنفس الغرض يُبطل الرموز السابقة غير المستهلكة.
+model VerificationToken {
+  id          String               @id @default(cuid())
+  userId      String
+  purpose     VerificationPurpose
+  channel     NotificationChannel
+  destination String
+  codeHash    String
+  expiresAt   DateTime
+  attempts    Int                  @default(0)
+  consumedAt  DateTime?
+  createdAt   DateTime             @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose, createdAt])
+}
+
+// طلبات الدعم من غير المسجلين — «نسيت رقم الهاتف» بلا بريد موثق ينتهي هنا.
+model SupportRequest {
+  id           String               @id @default(cuid())
+  clinicName   String
+  contactEmail String?
+  contactPhone String?
+  message      String
+  status       SupportRequestStatus @default(OPEN)
+  createdAt    DateTime             @default(now())
 }
 
 // ─── المرضى ──────────────────────────────────────────────────────────────────
