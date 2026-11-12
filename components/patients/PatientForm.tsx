@@ -6,14 +6,17 @@ import {
   parseMedicalNotes,
 } from "@/lib/medical-notes";
 import type { PatientDto } from "@/lib/services/patients";
+import { Button } from "@/components/ui/Button";
+import { Field, Input, Textarea } from "@/components/ui/Field";
 
 // نموذج إنشاء/تحرير مريض — نفس النموذج للحالتين: يُرسل POST عند الإنشاء
 // وPATCH عند التحرير، والأخطاء تعرض حسب الرد من الخادم.
+// يُعرض داخل Modal في صفحة المرضى وملف المريض — بلا سطح خاص به.
 
 type Props = {
   // null = إنشاء مريض جديد
   editing: PatientDto | null;
-  onSaved: (patient: PatientDto) => void;
+  onSaved: () => void;
   onCancel: () => void;
 };
 
@@ -42,9 +45,6 @@ function initialState(patient: PatientDto | null): FormState {
     other: notes.other,
   };
 }
-
-const inputClass =
-  "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-teal-600 focus:outline-none";
 
 export default function PatientForm({ editing, onSaved, onCancel }: Props) {
   const [form, setForm] = useState<FormState>(() => initialState(editing));
@@ -92,7 +92,7 @@ export default function PatientForm({ editing, onSaved, onCancel }: Props) {
         setError(data.error ?? "حدث خطأ غير متوقع");
         return;
       }
-      onSaved(data.patient);
+      onSaved();
     } catch {
       setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
     } finally {
@@ -101,34 +101,23 @@ export default function PatientForm({ editing, onSaved, onCancel }: Props) {
   }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="space-y-4 rounded-2xl bg-white p-4 shadow-md sm:p-6"
-    >
-      <h2 className="text-lg font-bold text-teal-800">
-        {editing ? "تحرير مريض" : "مريض جديد"}
-      </h2>
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <Field label="الاسم" htmlFor="name">
+            <Input
+              id="name"
+              type="text"
+              required
+              value={form.name}
+              onChange={(e) => set("name", e.target.value)}
+              aria-required="true"
+            />
+          </Field>
+        </div>
 
-      <div>
-        <label htmlFor="name" className="mb-1 block text-sm font-medium">
-          الاسم *
-        </label>
-        <input
-          id="name"
-          type="text"
-          required
-          value={form.name}
-          onChange={(e) => set("name", e.target.value)}
-          className={inputClass}
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label htmlFor="birthYear" className="mb-1 block text-sm font-medium">
-            سنة الميلاد
-          </label>
-          <input
+        <Field label="سنة الميلاد" htmlFor="birthYear" hint="لحساب العمر في القائمة والملف">
+          <Input
             id="birthYear"
             type="number"
             inputMode="numeric"
@@ -136,116 +125,86 @@ export default function PatientForm({ editing, onSaved, onCancel }: Props) {
             max={2100}
             value={form.birthYear}
             onChange={(e) => set("birthYear", e.target.value)}
-            className={inputClass}
           />
-        </div>
-        <div>
-          <label htmlFor="phone" className="mb-1 block text-sm font-medium">
-            الهاتف
-          </label>
-          <input
+        </Field>
+
+        <Field label="الهاتف" htmlFor="phone">
+          <Input
             id="phone"
             type="tel"
             dir="ltr"
+            className="text-start"
             value={form.phone}
             onChange={(e) => set("phone", e.target.value)}
-            className={`${inputClass} text-left`}
             placeholder="09xxxxxxxx"
           />
+        </Field>
+
+        <div className="sm:col-span-2">
+          <Field label="العنوان" htmlFor="address">
+            <Input
+              id="address"
+              type="text"
+              value={form.address}
+              onChange={(e) => set("address", e.target.value)}
+            />
+          </Field>
         </div>
       </div>
 
-      <div>
-        <label htmlFor="address" className="mb-1 block text-sm font-medium">
-          العنوان
-        </label>
-        <input
-          id="address"
-          type="text"
-          value={form.address}
-          onChange={(e) => set("address", e.target.value)}
-          className={inputClass}
-        />
-      </div>
-
-      <fieldset className="rounded-lg border border-gray-200 p-3">
-        <legend className="px-1 text-sm font-semibold text-gray-700">
+      {/* الملاحظات الطبية — الحساسية أولى بالتلميح البصري لأنها الأخطر سريرياً */}
+      <fieldset className="rounded-field border border-warm-200 bg-surface px-3 py-3">
+        <legend className="text-warm-700 px-1 text-xs font-semibold">
           الملاحظات الطبية
         </legend>
         <div className="space-y-3">
-          <div>
-            <label
-              htmlFor="allergies"
-              className="mb-1 block text-sm font-medium text-red-700"
-            >
-              حساسية
-            </label>
-            <textarea
+          <Field label="حساسية" htmlFor="allergies">
+            <Textarea
               id="allergies"
               rows={2}
+              className="border-danger-300"
               value={form.allergies}
               onChange={(e) => set("allergies", e.target.value)}
-              className={inputClass}
-              placeholder="بنسلين، لاتكس..."
+              placeholder="بنسلين، لاتكس…"
             />
-          </div>
-          <div>
-            <label
-              htmlFor="conditions"
-              className="mb-1 block text-sm font-medium"
-            >
-              أمراض مزمنة
-            </label>
-            <textarea
+          </Field>
+          <Field label="أمراض مزمنة" htmlFor="conditions">
+            <Textarea
               id="conditions"
               rows={2}
               value={form.conditions}
               onChange={(e) => set("conditions", e.target.value)}
-              className={inputClass}
-              placeholder="سكري، ضغط..."
+              placeholder="سكري، ضغط…"
             />
-          </div>
-          <div>
-            <label
-              htmlFor="medications"
-              className="mb-1 block text-sm font-medium"
-            >
-              أدوية حالية
-            </label>
-            <textarea
+          </Field>
+          <Field label="أدوية حالية" htmlFor="medications">
+            <Textarea
               id="medications"
               rows={2}
               value={form.medications}
               onChange={(e) => set("medications", e.target.value)}
-              className={inputClass}
-              placeholder="وارفارين، إنسولين..."
+              placeholder="وارفارين، إنسولين…"
             />
-          </div>
+          </Field>
         </div>
       </fieldset>
 
       {error && (
-        <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+        <p
+          role="alert"
+          className="rounded-field border border-danger-300 bg-danger-50 text-danger-700 px-3 py-2 text-sm"
+        >
           {error}
         </p>
       )}
 
-      <div className="flex gap-3">
-        <button
-          type="submit"
-          disabled={submitting}
-          className="flex-1 rounded-lg bg-teal-700 px-4 py-3 font-semibold text-white disabled:opacity-50"
-        >
-          {submitting ? "جارٍ الحفظ..." : "حفظ"}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={submitting}
-          className="rounded-lg border border-gray-300 px-4 py-3 font-medium text-gray-700 disabled:opacity-50"
-        >
+      <div className="flex justify-start gap-2 pt-1">
+        <Button type="submit" loading={submitting}>
+          {submitting ? "جارٍ الحفظ…" : "حفظ"}
+        </Button>
+        <Button variant="ghost" onClick={onCancel} disabled={submitting}>
           إلغاء
-        </button>
+        </Button>
       </div>
     </form>
   );

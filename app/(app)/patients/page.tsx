@@ -10,9 +10,5 @@ export default async function PatientsPage() {
   );
   if (!session) redirect("/login");
 
-  return (
-    <main className="min-h-screen bg-neutral-50">
-      <PatientsView />
-    </main>
-  );
+  return <PatientsView />;
 }
