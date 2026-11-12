@@ -1,13 +1,13 @@
 import { cookies } from "next/headers";
 import { pageWrapClass } from "@/lib/page-width";
-import { cn } from "@/components/ui/cn";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
 import { addDays } from "@/lib/dates";
 import RemindersBoard from "@/components/reminders/RemindersBoard";
-import LogoutButton from "@/components/LogoutButton";
 
-// صفحة التذكير اليومي — مواعيد الغد بأرقامها وأزرار واتساب لكل مريض.
+// صفحة التذكير اليومي — لوحة عمليات عريضة: مواعيد الغد بأرقامها وأزرار
+// واتساب لكل مريض. التنقل والخروج من السايدبار لا من الصفحة، والهوية
+// من الـ tokens لا من ألوان خام.
 export default async function RemindersPage() {
   const session = await getSessionUser(
     (await cookies()).get(SESSION_COOKIE)?.value,
@@ -22,24 +22,18 @@ export default async function RemindersPage() {
   }).format(tomorrow);
 
   return (
-    <main className="min-h-screen bg-gray-50 px-4 py-6">
-      <div className={cn(pageWrapClass("wide"), "flex flex-col gap-4")}>
-        <header className="flex items-center justify-between">
-          <h1 className="text-lg font-bold text-teal-800">
-            تذكير الغد — {label}
-          </h1>
-          <div className="flex items-center gap-3 text-xs">
-            <a href="/appointments" className="text-teal-700 underline">
-              المواعيد
-            </a>
-            <a href="/dashboard" className="text-teal-700 underline">
-              لوحة الطبيب
-            </a>
-            <LogoutButton />
-          </div>
-        </header>
+    <div className={pageWrapClass("full")}>
+      <header className="flex flex-wrap items-baseline justify-between gap-2">
+        <h1 className="text-primary-800 text-xl font-semibold">
+          تذكير الغد — {label}
+        </h1>
+        <p className="text-warm-500 text-xs">
+          لوحة عمليات: أرسل التذكير لكل مريض بواتساب أو انسخ نصّه
+        </p>
+      </header>
+      <div className="mt-5">
         <RemindersBoard />
       </div>
-    </main>
+    </div>
   );
 }

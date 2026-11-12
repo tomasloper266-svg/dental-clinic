@@ -65,7 +65,7 @@ export default function RemindersBoard() {
       {state.kind === "loading" && <RemindersSkeleton />}
 
       {state.kind === "error" && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-center text-sm text-red-700">
+        <div className="rounded-panel border-danger-200 bg-danger-50 border p-4 text-center text-sm text-danger-700">
           تعذر تحميل قائمة التذكير
           <button type="button" onClick={refresh} className="ms-2 underline">
             إعادة المحاولة
@@ -75,21 +75,21 @@ export default function RemindersBoard() {
 
       {state.kind === "loaded" &&
         (state.reminders.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-500">
+          <div className="rounded-panel border-warm-300 bg-surface-raised border border-dashed p-6 text-center text-sm text-warm-500">
             لا مواعيد غداً — القائمة فارغة.
           </div>
         ) : (
-          <ul className="space-y-2">
+          <ul className="flex flex-col gap-2">
             {state.reminders.map((r) => (
               <li
                 key={r.appointmentId}
-                className="rounded-2xl bg-white p-4 shadow-md"
+                className="rounded-panel bg-surface-raised shadow-xs border border-warm-200 p-4"
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-bold text-teal-800 tabular-nums">
+                  <span className="text-primary-800 text-sm font-bold tabular-nums">
                     {formatTime(r.startsAt)}
                   </span>
-                  <span className="text-sm font-semibold text-gray-800">
+                  <span className="text-ink-900 text-sm font-semibold">
                     {r.patientName}
                   </span>
                   <span
@@ -99,9 +99,9 @@ export default function RemindersBoard() {
                   </span>
                 </div>
                 {r.reason && (
-                  <p className="mt-1 text-xs text-gray-500">{r.reason}</p>
+                  <p className="text-warm-500 mt-1 text-xs">{r.reason}</p>
                 )}
-                <p className="mt-2 rounded-lg bg-gray-50 px-3 py-2 text-xs leading-5 text-gray-700">
+                <p className="bg-surface-sunken text-ink-900 mt-2 rounded-field px-3 py-2 text-xs leading-5">
                   {r.message}
                 </p>
                 {r.whatsappUrl ? (
@@ -110,20 +110,20 @@ export default function RemindersBoard() {
                       href={r.whatsappUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="rounded-lg bg-green-600 px-4 py-2 text-xs font-bold text-white"
+                      className="bg-primary-600 hover:bg-primary-700 rounded-field px-4 py-2 text-xs font-bold text-white transition-colors"
                     >
                       إرسال واتساب
                     </a>
                     <button
                       type="button"
                       onClick={() => copyMessage(r)}
-                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-gray-700"
+                      className="border-warm-300 bg-surface-raised text-ink-900 hover:bg-surface-hover rounded-field border px-3 py-2 text-xs transition-colors"
                     >
                       {copiedId === r.appointmentId ? "تم النسخ ✓" : "نسخ النص"}
                     </button>
                   </div>
                 ) : (
-                  <p className="mt-2 text-xs text-amber-700">
+                  <p className="text-warning-700 mt-2 text-xs">
                     لا يوجد رقم هاتف لهذا المريض — أضف الرقم في ملفه ليظهر زر
                     واتساب.
                   </p>
@@ -142,7 +142,7 @@ function RemindersSkeleton() {
       {[0, 1, 2].map((i) => (
         <div
           key={i}
-          className="h-28 animate-pulse rounded-xl border border-gray-100 bg-gray-50"
+          className="border-warm-100 bg-surface-sunken h-28 animate-pulse rounded-panel border"
         />
       ))}
     </div>
