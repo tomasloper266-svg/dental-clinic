@@ -21,6 +21,12 @@ export default async function DashboardPage() {
         </p>
         <div className="mt-4 flex flex-col gap-2">
           <a
+            href="/patients"
+            className="rounded-xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white"
+          >
+            المرضى
+          </a>
+          <a
             href="/appointments"
             className="rounded-xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white"
           >
