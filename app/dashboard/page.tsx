@@ -17,9 +17,17 @@ export default async function DashboardPage() {
           مرحباً، {session.name}
         </h1>
         <p className="mt-2 text-sm text-gray-600">
-          جلسة آمنة عاملة — وحدات المرضى والمواعيد والأودوغرام والحسابات قادمة.
+          جلسة آمنة عاملة — وحدات الأودوغرام والحسابات والمخزون قادمة.
         </p>
-        <LogoutButton />
+        <div className="mt-4 flex flex-col gap-2">
+          <a
+            href="/appointments"
+            className="rounded-xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white"
+          >
+            المواعيد وقائمة الانتظار
+          </a>
+          <LogoutButton />
+        </div>
       </div>
     </main>
   );
