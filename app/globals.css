@@ -36,11 +36,23 @@
   --color-warm-900: #262420;
 
   /* الكحلي العميق — العناوين والسايدبار */
+  --color-ink-50: #eef3f9;
+  --color-ink-100: #dce6f0;
+  --color-ink-200: #c1d3e4;
   --color-ink-600: #33547a;
   --color-ink-700: #274466;
   --color-ink-800: #1e3350;
   --color-ink-900: #16263a;
   --color-ink-950: #101d2e;
+
+  /* البُرموني — حالات الأودوغرام (معالجة الجذور) — امتداد دلالي فقط */
+  --color-plum-50: #f7f2f7;
+  --color-plum-100: #ece0ec;
+  --color-plum-200: #dcc6dc;
+  --color-plum-300: #c2a0c2;
+  --color-plum-500: #965a96;
+  --color-plum-700: #6f3f6f;
+  --color-plum-900: #452645;
 
   /* الأخضر الطبي الهادئ — لون التفاعل الأساسي */
   --color-primary-50: #eef6f2;

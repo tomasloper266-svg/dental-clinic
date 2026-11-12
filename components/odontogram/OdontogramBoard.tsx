@@ -19,9 +19,16 @@ import {
   findingsForTooth,
 } from "@/lib/odontogram/findings-view";
 import type { FindingDto } from "@/lib/services/findings";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Drawer } from "@/components/ui/Drawer";
+import { Field, Input } from "@/components/ui/Field";
+import { cn } from "@/components/ui/cn";
 
 // لوحة الأودوغرام التفاعلية — السن يُنقر لفتح لوحة حالته وسجله الكامل.
 // المشاهدات إلحاقية: كل حفظ يضيف قيداً جديداً بتاريخه ولا يستبدل السابق.
+// الهوية البصرية: السن السليم بلا تلوين، والحالات اللافتة وحدها تحمل لوناً
+// وأيقونة نصية — التمييز لا يعتمد على اللون وحده.
 
 type Props = {
   patientId: string;
@@ -36,6 +43,14 @@ function formatDateAr(iso: string): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(iso));
+}
+
+function QuadrantLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-warm-400 py-1 text-center text-[11px] font-medium">
+      {children}
+    </p>
+  );
 }
 
 export default function OdontogramBoard({
@@ -100,6 +115,9 @@ export default function OdontogramBoard({
   const selected = selectedTooth;
   const history = selected !== null ? findingsForTooth(findings, selected) : [];
   const selectedLatest = selected !== null ? latest.get(selected) : undefined;
+  const selectedLatestMeta = selectedLatest
+    ? toothStatusMeta(selectedLatest.status)
+    : null;
 
   function renderRow(cells: ToothCell[]) {
     return (
@@ -108,18 +126,31 @@ export default function OdontogramBoard({
           const current = latest.get(cell.fdi);
           const meta = current ? toothStatusMeta(current.status) : null;
           const isSelected = selected === cell.fdi;
+          const noteworthy = meta && meta.value !== "HEALTHY";
           return (
             <button
               key={cell.fdi}
               type="button"
               onClick={() => selectTooth(cell)}
-              aria-label={`سن ${cell.fdi} — ${cell.nameAr}`}
-              className={`flex h-11 w-9 shrink-0 flex-col items-center justify-center rounded-lg border text-center transition ${
-                meta ? meta.cellClass : "border-gray-300 bg-white text-gray-700"
-              } ${isSelected ? "ring-2 ring-teal-600 ring-offset-1" : ""}`}
+              aria-label={`سن ${cell.fdi} — ${cell.nameAr}${meta ? ` — ${meta.labelAr}` : ""}`}
+              aria-pressed={isSelected}
+              className={cn(
+                "flex h-12 w-10 shrink-0 flex-col items-center justify-center rounded-field border text-center transition-colors",
+                "hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
+                meta ? meta.cellClass : "border-warm-300 bg-surface-raised text-warm-600",
+                isSelected && "ring-2 ring-primary-600 ring-offset-1",
+              )}
             >
-              <span className="text-xs font-bold leading-none">{meta?.icon ?? ""}</span>
-              <span className="mt-0.5 text-[10px] leading-none tabular-nums">
+              <span
+                className={cn(
+                  "text-xs font-bold leading-none",
+                  noteworthy ? "" : "opacity-0",
+                )}
+                aria-hidden
+              >
+                {meta?.icon}
+              </span>
+              <span className="numeric mt-0.5 text-[10px] leading-none">
                 {cell.fdi}
               </span>
             </button>
@@ -130,33 +161,36 @@ export default function OdontogramBoard({
   }
 
   return (
-    <section className="space-y-4">
-      <div className="rounded-2xl bg-white p-4 shadow-md">
-        <h2 className="mb-1 text-lg font-bold text-teal-800">مخطط الأسنان</h2>
-        <p className="mb-3 text-xs text-gray-500">
-          الترقيم FDI الدائم (11–48) — أرباع المريض كما يواجهها الطبيب. انقر سناً
-          لعرض حالته وسجله.
+    <section>
+      <div className="rounded-panel border-warm-200 bg-surface-raised border p-4 sm:p-5">
+        <h2 className="text-ink-900 text-base font-semibold">مخطط الأسنان</h2>
+        <p className="text-warm-500 mt-1 text-xs">
+          الترقيم FDI الدائم (11–48) — أرباع المريض كما يواجهها الطبيب. انقر
+          سناً لعرض حالته وسجله وتسجيل مشاهدة جديدة.
         </p>
 
-        <div className="space-y-1">
-          <p className="text-center text-[11px] font-semibold text-gray-400">
+        <div className="mt-4 space-y-1">
+          <QuadrantLabel>
             {QUADRANT_LABEL_AR[1]} / {QUADRANT_LABEL_AR[2]}
-          </p>
+          </QuadrantLabel>
           {renderRow(upperRowLeftToRight())}
-          <div className="my-1 border-t border-dashed border-gray-300" />
+          <div className="border-warm-300 my-2 border-t border-dashed" aria-hidden />
           {renderRow(lowerRowLeftToRight())}
-          <p className="text-center text-[11px] font-semibold text-gray-400">
+          <QuadrantLabel>
             {QUADRANT_LABEL_AR[4]} / {QUADRANT_LABEL_AR[3]}
-          </p>
+          </QuadrantLabel>
         </div>
 
-        <div className="mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1 border-t border-gray-100 pt-3">
+        <div className="border-warm-200 mt-4 flex flex-wrap justify-center gap-x-3 gap-y-1.5 border-t pt-3">
           {TOOTH_STATUS_KEYS.map((key) => {
             const meta = TOOTH_STATUS_META[key];
             return (
               <span
                 key={key}
-                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${meta.chipClass}`}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]",
+                  meta.chipClass,
+                )}
               >
                 <span className="font-bold">{meta.icon}</span>
                 {meta.labelAr}
@@ -166,158 +200,162 @@ export default function OdontogramBoard({
         </div>
       </div>
 
-      {selected !== null && (
-        <div className="rounded-2xl bg-white p-4 shadow-md">
-          <div className="flex items-baseline justify-between">
-            <h3 className="text-base font-bold text-teal-800">
-              السن {selected} — {toothNameAr(selected)}
-            </h3>
-            <button
-              type="button"
-              onClick={() => onSelectTooth(null)}
-              className="text-xs text-gray-400 hover:text-gray-600"
-            >
-              إغلاق
-            </button>
-          </div>
-
-          {selectedLatest && (
-            <p className="mt-1 text-xs text-gray-500">
-              الحالة المسجلة حالياً:{" "}
-              <span
-                className={`rounded-full border px-2 py-0.5 font-semibold ${
-                  toothStatusMeta(selectedLatest.status)?.chipClass ?? ""
-                }`}
-              >
-                {toothStatusMeta(selectedLatest.status)?.icon}{" "}
-                {toothStatusMeta(selectedLatest.status)?.labelAr}
-              </span>{" "}
-              ({findingKindLabel(selectedLatest.kind)})
-            </p>
-          )}
-
-          <div className="mt-3">
-            <p className="mb-1 text-xs font-semibold text-gray-600">
-              نوع القيد الجديد
-            </p>
-            <div className="flex gap-2">
-              {(["EXISTING", "DIAGNOSIS"] as const).map((kind) => (
-                <button
-                  key={kind}
-                  type="button"
-                  onClick={() => setChosenKind(kind)}
-                  className={`rounded-lg border px-3 py-1 text-xs font-semibold ${
-                    chosenKind === kind
-                      ? "border-teal-600 bg-teal-50 text-teal-800"
-                      : "border-gray-300 bg-white text-gray-600"
-                  }`}
+      {/* لوحة تفاصيل السن — جانبية للحفاظ على الأودوغرام مرئياً بجانبها */}
+      <Drawer
+        open={selected !== null}
+        onClose={() => onSelectTooth(null)}
+        title={selected !== null ? `السن ${selected} — ${toothNameAr(selected)}` : ""}
+        className="max-w-md"
+      >
+        {selected !== null && (
+          <div className="space-y-5">
+            {selectedLatestMeta && selectedLatest && (
+              <div className="flex items-center gap-2">
+                <span className="text-warm-600 text-xs">الحالة المسجلة حالياً:</span>
+                <Badge
+                  className={cn("border", selectedLatestMeta.chipClass)}
                 >
-                  {findingKindLabel(kind)}
-                </button>
-              ))}
-            </div>
-          </div>
+                  <span className="font-bold">{selectedLatestMeta.icon}</span>
+                  {selectedLatestMeta.labelAr}
+                </Badge>
+                <span className="text-warm-500 text-xs">
+                  {findingKindLabel(selectedLatest.kind)}
+                </span>
+              </div>
+            )}
 
-          <div className="mt-3">
-            <p className="mb-1 text-xs font-semibold text-gray-600">
-              الحالة الجديدة
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {TOOTH_STATUS_KEYS.map((key) => {
-                const meta = TOOTH_STATUS_META[key];
-                const active = chosenStatus === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setChosenStatus(key)}
-                    className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-semibold ${
-                      active
-                        ? "ring-2 ring-teal-600 ring-offset-1 " + meta.chipClass
-                        : meta.chipClass + " opacity-70"
-                    }`}
-                  >
-                    <span className="font-bold">{meta.icon}</span>
-                    {meta.labelAr}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="mt-3">
-            <label
-              htmlFor={`finding-note-${selected}`}
-              className="mb-1 block text-xs font-semibold text-gray-600"
-            >
-              ملاحظة (اختياري)
-            </label>
-            <input
-              id={`finding-note-${selected}`}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              maxLength={500}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none"
-              placeholder="مثال: تسوس سطح مضغي"
-            />
-          </div>
-
-          {error && (
-            <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
-              {error}
-            </p>
-          )}
-
-          <button
-            type="button"
-            onClick={saveFinding}
-            disabled={saving || !chosenStatus}
-            className="mt-3 w-full rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50 sm:w-auto sm:px-8"
-          >
-            {saving ? "جارٍ الحفظ…" : "تسجيل المشاهدة"}
-          </button>
-          <p className="mt-1 text-[11px] text-gray-400">
-            التسجيل يضيف قيداً جديداً — القيود السابقة لا تُمحى ولا تُستبدل.
-          </p>
-
-          {history.length > 0 && (
-            <div className="mt-4 border-t border-gray-100 pt-3">
-              <p className="mb-2 text-xs font-semibold text-gray-600">
-                سجل هذا السن ({history.length})
+            <div>
+              <p className="text-warm-600 mb-1.5 text-xs font-semibold">
+                نوع القيد الجديد
               </p>
-              <ul className="space-y-1.5">
-                {history
-                  .slice()
-                  .reverse()
-                  .map((f) => {
-                    const meta = toothStatusMeta(f.status);
-                    return (
-                      <li
-                        key={f.id}
-                        className="flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-700"
-                      >
-                        <span
-                          className={`rounded-full border px-2 py-0.5 font-semibold ${
-                            meta?.chipClass ?? ""
-                          }`}
-                        >
-                          {meta?.icon} {meta?.labelAr ?? f.status}
-                        </span>
-                        <span className="text-gray-500">
-                          {findingKindLabel(f.kind)}
-                        </span>
-                        <span className="tabular-nums text-gray-400">
-                          {formatDateAr(f.recordedAt)}
-                        </span>
-                        {f.note && <span className="text-gray-600">{f.note}</span>}
-                      </li>
-                    );
-                  })}
-              </ul>
+              <div className="flex gap-2" role="group" aria-label="نوع القيد">
+                {(["EXISTING", "DIAGNOSIS"] as const).map((kind) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    aria-pressed={chosenKind === kind}
+                    onClick={() => setChosenKind(kind)}
+                    className={cn(
+                      "rounded-field border px-3 py-1.5 text-xs font-medium transition-colors",
+                      "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
+                      chosenKind === kind
+                        ? "border-primary-600 bg-primary-600 text-white"
+                        : "border-warm-300 bg-surface-raised text-warm-600 hover:bg-surface-hover active:bg-surface-sunken",
+                    )}
+                  >
+                    {findingKindLabel(kind)}
+                  </button>
+                ))}
+              </div>
             </div>
-          )}
-        </div>
-      )}
+
+            <div>
+              <p className="text-warm-600 mb-1.5 text-xs font-semibold">
+                الحالة الجديدة
+              </p>
+              <div className="flex flex-wrap gap-1.5" role="group" aria-label="حالة السن">
+                {TOOTH_STATUS_KEYS.map((key) => {
+                  const meta = TOOTH_STATUS_META[key];
+                  const active = chosenStatus === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setChosenStatus(key)}
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-field border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
+                        meta.chipClass,
+                        active
+                          ? "ring-2 ring-primary-600 ring-offset-1"
+                          : "opacity-80 hover:opacity-100",
+                      )}
+                    >
+                      <span className="font-bold">{meta.icon}</span>
+                      {meta.labelAr}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <Field
+              label="ملاحظة (اختياري)"
+              htmlFor={`finding-note-${selected}`}
+            >
+              <Input
+                id={`finding-note-${selected}`}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                maxLength={500}
+                placeholder="مثال: تسوس سطح مضغي"
+              />
+            </Field>
+
+            {error && (
+              <p
+                role="alert"
+                className="border-danger-300 bg-danger-50 text-danger-700 rounded-field border px-3 py-2 text-xs"
+              >
+                {error}
+              </p>
+            )}
+
+            <div>
+              <Button
+                onClick={saveFinding}
+                loading={saving}
+                disabled={!chosenStatus}
+                className="w-full sm:w-auto"
+              >
+                {saving ? "جارٍ الحفظ…" : "تسجيل المشاهدة"}
+              </Button>
+              <p className="text-warm-400 mt-1.5 text-[11px]">
+                التسجيل يضيف قيداً جديداً — القيود السابقة لا تُمحى ولا تُستبدل.
+              </p>
+            </div>
+
+            {history.length > 0 && (
+              <div className="border-warm-200 border-t pt-4">
+                <p className="text-warm-600 mb-2 text-xs font-semibold">
+                  سجل هذا السن (<span className="numeric">{history.length}</span>)
+                </p>
+                <ul className="space-y-1.5">
+                  {history
+                    .slice()
+                    .reverse()
+                    .map((f) => {
+                      const meta = toothStatusMeta(f.status);
+                      return (
+                        <li
+                          key={f.id}
+                          className="bg-surface text-warm-700 flex flex-wrap items-center gap-2 rounded-field px-3 py-2 text-xs"
+                        >
+                          <span
+                            className={cn(
+                              "rounded-full border px-2 py-0.5 font-semibold",
+                              meta?.chipClass ?? "",
+                            )}
+                          >
+                            {meta?.icon} {meta?.labelAr ?? f.status}
+                          </span>
+                          <span className="text-warm-500">
+                            {findingKindLabel(f.kind)}
+                          </span>
+                          <span className="text-warm-400 numeric">
+                            {formatDateAr(f.recordedAt)}
+                          </span>
+                          {f.note && <span className="w-full">{f.note}</span>}
+                        </li>
+                      );
+                    })}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </Drawer>
     </section>
   );
 }
