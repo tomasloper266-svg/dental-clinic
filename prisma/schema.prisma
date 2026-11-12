@@ -126,6 +126,7 @@ model Patient {
   name         String
   birthYear    Int?
   phone        String?
+  address      String?
   medicalNotes String?
   createdAt    DateTime @default(now())
 
