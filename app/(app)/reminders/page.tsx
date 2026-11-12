@@ -1,4 +1,6 @@
 import { cookies } from "next/headers";
+import { pageWrapClass } from "@/lib/page-width";
+import { cn } from "@/components/ui/cn";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
 import { addDays } from "@/lib/dates";
@@ -21,7 +23,7 @@ export default async function RemindersPage() {
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-6">
-      <div className="mx-auto flex w-full max-w-md flex-col gap-4">
+      <div className={cn(pageWrapClass("wide"), "flex flex-col gap-4")}>
         <header className="flex items-center justify-between">
           <h1 className="text-lg font-bold text-teal-800">
             تذكير الغد — {label}

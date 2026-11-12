@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { pageWrapClass } from "@/lib/page-width";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
 import { tenantContextFromSession } from "@/lib/tenant/context";
@@ -56,7 +57,7 @@ export default async function DashboardPage() {
   const upcoming = selectUpcomingAppointments(weekAppointments, 5);
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6">
+    <div className={pageWrapClass("wide")}>
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-ink-900 text-xl font-semibold">

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { FileText, Pencil, Plus, Search, TriangleAlert, Users } from "lucide-react";
 import { parseMedicalNotes } from "@/lib/medical-notes";
+import { pageWrapClass } from "@/lib/page-width";
 import type { PatientDto } from "@/lib/services/patients";
 import {
   PATIENT_FILTERS,
@@ -167,7 +168,7 @@ export default function PatientsView() {
   const searching = query.trim().length > 0;
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6">
+    <div className={pageWrapClass("full")}>
       <PageHeader
         title="المرضى"
         description="سجل مرضى العيادة — البحث والفلاتر من النتائج المرجعة، وملف طبي كامل لكل مريض."

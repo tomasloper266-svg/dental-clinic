@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { pageWrapClass } from "@/lib/page-width";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
@@ -32,7 +33,7 @@ export default async function OdontogramPage({
   ]);
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-6">
+    <div className={pageWrapClass("full")}>
       <PageHeader
         title={`أودوغرام — ${patient.name}`}
         description="المشاهدات المسجلة تُحفظ كسجل زمني ولا تُستبدل بخطة العلاج. اختيار السن على المخطط يعبّئ بند الخطة الجديد."

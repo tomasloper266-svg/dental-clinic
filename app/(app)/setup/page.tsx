@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { pageWrapClass } from "@/lib/page-width";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
 import SetupBoard from "@/components/auth/SetupBoard";
@@ -12,7 +13,7 @@ export default async function SetupPage() {
   if (!session) redirect("/login");
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-8">
+    <div className={pageWrapClass("reading")}>
       <SetupBoard />
     </div>
   );

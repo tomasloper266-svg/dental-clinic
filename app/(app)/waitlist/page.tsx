@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { pageWrapClass } from "@/lib/page-width";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
 import { toDateInputValue } from "@/lib/dates";
@@ -13,7 +14,7 @@ export default async function WaitlistPage() {
   if (!session) redirect("/login");
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6">
+    <div className={pageWrapClass("full")}>
       <WaitlistBoard initialDate={toDateInputValue(new Date())} />
     </div>
   );

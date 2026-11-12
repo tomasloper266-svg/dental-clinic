@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { pageWrapClass } from "@/lib/page-width";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
@@ -115,7 +116,7 @@ export default async function PatientProfilePage({
   const noteworthy = [...latest.values()].filter((f) => f.status !== "HEALTHY");
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6">
+    <div className={pageWrapClass("full")}>
       {/* ─── بيانات أساسية ─────────────────────────────────────────── */}
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-4 p-5">
