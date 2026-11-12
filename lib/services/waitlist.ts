@@ -214,13 +214,14 @@ export async function bookFromWaitlist(
     return { ok: false, error: "تم حجز هذا القيد مسبقاً", code: "INVALID" };
   }
 
-  // فحص التعارض نفسه المستخدم في الحجز المباشر.
+  // فحص التعارض نفسه المستخدم في الحجز المباشر — نافذة [بداية − 24 ساعة، نهاية).
+  const end = new Date(input.startsAt.getTime() + input.durationMin * 60_000);
   const earliestRelevant = new Date(
     input.startsAt.getTime() - 24 * 60 * 60_000,
   );
   const busy = await db.appointment.findMany({
     where: {
-      startsAt: { gte: earliestRelevant, lt: input.startsAt },
+      startsAt: { gte: earliestRelevant, lt: end },
       status: { notIn: ["CANCELLED", "COMPLETED"] },
     },
     select: { startsAt: true, durationMin: true },
