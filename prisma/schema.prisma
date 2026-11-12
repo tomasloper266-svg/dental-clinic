@@ -247,13 +247,16 @@ model LedgerEntry {
   amountSyp   Int
   note        String?
   createdById String
-  createdAt   DateTime        @default(now())
+  createdAt   DateTime @default(now())
+  // ربط اختياري ببند خطة علاج — لقيد الرسوم التلقائي عند اكتمال العلاج
+  treatmentItemId String?
 
   clinic    Clinic  @relation(fields: [clinicId], references: [id])
   patient   Patient @relation(fields: [patientId], references: [id])
   createdBy User    @relation("LedgerEntryCreator", fields: [createdById], references: [id])
 
   @@index([clinicId, patientId, createdAt])
+  @@index([clinicId, treatmentItemId])
 }
 
 // ─── مصاريف العيادة ──────────────────────────────────────────────────────────
