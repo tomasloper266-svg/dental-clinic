@@ -130,8 +130,13 @@ export default function OdontogramBoard({
     selected !== null ? (toothAnatomy(selected)?.surfaces ?? []) : [];
 
   function renderRow(cells: ToothCell[]) {
+    // المصفوفة مرتبة يسار→يمين بعين الطبيب (18→11 ثم 21→28) — لكن الحاوية
+    // ترث dir="rtl" من الصفحة فتعكس ترتيبها البصري؛ نثبّت الاتجاه هنا فقط.
     return (
-      <div className="flex justify-center gap-0.5 overflow-x-auto py-1">
+      <div
+        dir="ltr"
+        className="flex justify-center gap-0.5 overflow-x-auto py-1"
+      >
         {cells.map((cell) => {
           const current = latest.get(cell.fdi);
           const meta = current ? toothStatusMeta(current.status) : null;
