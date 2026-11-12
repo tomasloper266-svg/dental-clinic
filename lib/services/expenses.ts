@@ -1,29 +1,20 @@
 import { clinicScope } from "@/lib/tenant/clinic-client";
 import type { TenantContext } from "@/lib/tenant/context";
+import { EXPENSE_CATEGORIES, type ExpenseCategory } from "@/lib/reports-view";
 
 // خدمة مصاريف العيادة — سجل مستقل بفئات ثابتة، يعرض لاحقاً مقابل التحصيل
 // في تقرير الفترة (انظر lib/services/reports.ts).
+// الفئات الثابتة وتسمياتها نقية وتسكن في lib/reports-view.ts — من هنا
+// يُعاد تصديرها لسائر الخدمات بلا تكرار.
+export { EXPENSE_CATEGORIES } from "@/lib/reports-view";
+export type { ExpenseCategory } from "@/lib/reports-view";
 
-export const EXPENSE_CATEGORIES = [
-  "RENT",
-  "SALARIES",
-  "MATERIALS",
-  "OTHER",
-] as const;
-
-export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
-
-const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
-  RENT: "إيجار",
-  SALARIES: "رواتب",
-  MATERIALS: "مواد",
-  OTHER: "أخرى",
-};
-
-// تسمية الفئة بالعربية — قيمة غير معروفة تُعرض كما هي بدل أن تُخفى
-export function expenseCategoryLabel(category: string): string {
-  return CATEGORY_LABELS[category as ExpenseCategory] ?? category;
-}
+// التسميات العربية نقية وتسكن في lib/reports-view.ts لتحصل الواجهة عليها
+// بلا سحب كود الخادم إلى حزمة المتصفح — ومن هنا يُعاد تصديرها لسائر الخدمات.
+export {
+  EXPENSE_CATEGORY_LABELS,
+  expenseCategoryLabel,
+} from "@/lib/reports-view";
 
 export type ExpenseDto = {
   id: string;

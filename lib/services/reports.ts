@@ -95,3 +95,81 @@ export async function getMonthlyReport(
 ): Promise<PeriodReport> {
   return getPeriodReport(ctx, monthRange(year, month));
 }
+
+export type DailySeriesPoint = {
+  /** يوم السلسلة بصيغة YYYY-MM-DD (UTC) */
+  date: string;
+  collectedSyp: number;
+  expensesSyp: number;
+  netSyp: number;
+  refundsSyp: number;
+};
+
+/**
+ * نقي — توزيع قيود ومصاريف نطاق على أيام UTC. كل يوم يُجمَّع بنفس
+ * summarizePeriod فلا يُعاد تفسير أي حساب مالي. الأيام بلا حركة تعيد أصفاراً.
+ */
+export function bucketDailySeries(
+  ledgerRows: ReadonlyArray<{ type: string; amountSyp: number; createdAt: Date }>,
+  expenseRows: ReadonlyArray<{ amountSyp: number; spentAt: Date }>,
+  days: number,
+  endDate: Date,
+): DailySeriesPoint[] {
+  const points: DailySeriesPoint[] = [];
+  const index = new Map<string, DailySeriesPoint>();
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const day = new Date(dayRange(endDate).from);
+    day.setUTCDate(day.getUTCDate() - i);
+    const key = day.toISOString().slice(0, 10);
+    const point: DailySeriesPoint = {
+      date: key,
+      collectedSyp: 0,
+      expensesSyp: 0,
+      netSyp: 0,
+      refundsSyp: 0,
+    };
+    points.push(point);
+    index.set(key, point);
+  }
+
+  for (const row of ledgerRows) {
+    const point = index.get(row.createdAt.toISOString().slice(0, 10));
+    if (!point) continue;
+    if (row.type === "PAYMENT") {
+      point.collectedSyp += Math.abs(row.amountSyp);
+    } else if (row.type === "REFUND") {
+      point.refundsSyp += row.amountSyp;
+    }
+  }
+  for (const row of expenseRows) {
+    const point = index.get(row.spentAt.toISOString().slice(0, 10));
+    if (!point) continue;
+    point.expensesSyp += row.amountSyp;
+  }
+  for (const point of points) {
+    point.netSyp = point.collectedSyp - point.refundsSyp - point.expensesSyp;
+  }
+  return points;
+}
+
+/** سلسلة يومية لأحدث N يوماً منتهية بيوم محدد — لرسم التقارير. */
+export async function getDailySeries(
+  ctx: TenantContext,
+  endDate: Date,
+  days: number,
+): Promise<DailySeriesPoint[]> {
+  const to = dayRange(endDate).to;
+  const from = dayRange(new Date(endDate.getTime() - (days - 1) * 24 * 60 * 60 * 1000)).from;
+  const db = clinicScope(ctx.clinicId);
+  const [ledgerRows, expenseRows] = await Promise.all([
+    db.ledgerEntry.findMany({
+      where: { createdAt: { gte: from, lt: to } },
+      select: { type: true, amountSyp: true, createdAt: true },
+    }),
+    db.expense.findMany({
+      where: { spentAt: { gte: from, lt: to } },
+      select: { amountSyp: true, spentAt: true },
+    }),
+  ]);
+  return bucketDailySeries(ledgerRows, expenseRows, days, endDate);
+}

@@ -3,6 +3,7 @@ import { requireTenant } from "@/lib/tenant/require-tenant";
 import {
   dayRange,
   getDailyReport,
+  getDailySeries,
   getMonthlyReport,
 } from "@/lib/services/reports";
 
@@ -19,6 +20,26 @@ export async function GET(req: NextRequest) {
   const dateParam = params.get("date");
   const yearParam = params.get("year");
   const monthParam = params.get("month");
+
+  // سلسلة يومية لأحدث N يوماً (7–60، افتراضي 14) منتهية بـ ?endDate=
+  // أو اليوم الحالي — لرسم اتجاه التحصيل والمصاريف.
+  const daysParam = params.get("days");
+  if (daysParam) {
+    const days = Number(daysParam);
+    if (!Number.isInteger(days) || days < 7 || days > 60) {
+      return NextResponse.json(
+        { error: "عدد الأيام يجب أن يكون بين 7 و60" },
+        { status: 400 },
+      );
+    }
+    const endParam = params.get("endDate");
+    const end = endParam ? new Date(endParam) : new Date();
+    if (Number.isNaN(end.getTime())) {
+      return NextResponse.json({ error: "التاريخ غير صالح" }, { status: 400 });
+    }
+    const series = await getDailySeries(ctx, end, days);
+    return NextResponse.json({ series }, { status: 200 });
+  }
 
   if (dateParam) {
     const date = new Date(dateParam);
