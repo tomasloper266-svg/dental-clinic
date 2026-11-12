@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatSyp } from "@/lib/utils";
 import InstructionSendPanel from "@/components/odontogram/InstructionSendPanel";
@@ -9,10 +9,16 @@ import type {
   PlanItemStatus,
 } from "@/lib/services/treatment-plan";
 import { toothStatusMeta } from "@/lib/odontogram/statuses";
+import { planTotals, planByTooth } from "@/lib/treatment-plan-view";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Field";
+import { cn } from "@/components/ui/cn";
 
 // قسم خطة العلاج المسعّرة — إضافة بنود بأسعار، تعديل غير المنفذ، وبدء التنفيذ.
 // بدء التنفيذ يحول البند إلى منفذ ويضيف مشاهدة «علاج منفذ» على الأودوغرام،
 // ثم router.refresh() لإعادة القراءة من الخادم — السجل الإلحاقي لا يُستبدل.
+// العرض: بنود كل حالة مرتبة حسب رقم السن، مع مجموع لكل حالة وإجمالي عام،
+// وتدرّج بصري لحالة البند: مخطط (محايد) ← مقبول (ملوّن) ← منفَّذ (صلب).
 
 type Props = {
   patientId: string;
@@ -26,15 +32,15 @@ const STATUS_META: Record<
 > = {
   PROPOSED: {
     labelAr: "مخطط",
-    chipClass: "bg-gray-100 text-gray-700 border-gray-300",
+    chipClass: "border-warm-300 bg-warm-100 text-warm-700",
   },
   ACCEPTED: {
     labelAr: "مقبول",
-    chipClass: "bg-blue-100 text-blue-800 border-blue-300",
+    chipClass: "border-ink-200 bg-ink-100 text-ink-800",
   },
   DONE: {
     labelAr: "منفذ",
-    chipClass: "bg-green-100 text-green-800 border-green-300",
+    chipClass: "border-primary-600 bg-primary-600 text-white",
   },
 };
 
@@ -67,7 +73,14 @@ export default function TreatmentPlanSection({
     null,
   );
 
+  // اختيار سن على الأودوغرام يعبّئ بند الخطة الجديد — حتى بعد أول تركيب.
+  useEffect(() => {
+    if (preselectedTooth !== null) setTooth(preselectedTooth.toString());
+  }, [preselectedTooth]);
+
   const base = `/api/patients/${encodeURIComponent(patientId)}/treatment-plan`;
+
+  const totals = useMemo(() => planTotals(items), [items]);
 
   async function addItem() {
     setError(null);
@@ -188,20 +201,56 @@ export default function TreatmentPlanSection({
     Number.isInteger(toothNum) && procedure.trim().length >= 2 && price !== "";
 
   const groups: { status: PlanItemStatus; labelAr: string }[] = [
-    { status: "PROPOSED", labelAr: "مخطط" },
-    { status: "ACCEPTED", labelAr: "مقبول" },
-    { status: "DONE", labelAr: "منفذ" },
+    { status: "PROPOSED", labelAr: "مخطط — بانتظار موافقة المريض" },
+    { status: "ACCEPTED", labelAr: "مقبول — جاهز للتنفيذ" },
+    { status: "DONE", labelAr: "منفَّذ" },
   ];
 
-  return (
-    <section className="rounded-2xl bg-white p-4 shadow-md">
-      <h2 className="text-lg font-bold text-teal-800">خطة العلاج</h2>
-      <p className="mb-3 text-xs text-gray-500">
-        بنود مسعّرة بالليرة السورية — البند المنفَّذ نهائي ولا يُعدَّل.
-      </p>
+  const inputClass =
+    "rounded-field border-warm-300 bg-surface-raised text-ink-900 placeholder:text-warm-400 focus:border-primary-600 focus:outline-none focus:ring-1 focus:ring-primary-600 w-full";
 
-      <div className="grid grid-cols-3 gap-2 sm:max-w-md">
-        <input
+  return (
+    <section className="rounded-panel border-warm-200 bg-surface-raised border p-4 sm:p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-ink-900 text-base font-semibold">خطة العلاج</h2>
+        <p className="text-warm-500 text-xs">
+          البند المنفَّذ نهائي ولا يُعدَّل — الأسعار بالليرة السورية.
+        </p>
+      </div>
+
+      {/* شريط الإجماليات — قرار الطبيب والمريض يعتمد عليه */}
+      {items.length > 0 && (
+        <div className="border-warm-200 bg-surface-sunken mt-3 grid grid-cols-2 gap-3 rounded-field border p-3 sm:grid-cols-4">
+          {(["PROPOSED", "ACCEPTED", "DONE"] as const).map((status) => {
+            const meta = STATUS_META[status];
+            const summary = totals.byStatus[status];
+            return (
+              <div key={status}>
+                <p className="text-warm-500 text-[11px]">{meta.labelAr}</p>
+                <p className="text-ink-900 numeric text-sm font-semibold">
+                  <span className="numeric">{summary.count}</span> بند ·{" "}
+                  {formatSyp(summary.total)}
+                </p>
+              </div>
+            );
+          })}
+          <div className="border-warm-200 border-r pr-3">
+            <p className="text-ink-700 text-[11px] font-semibold">
+              الإجمالي الكلي
+            </p>
+            <p className="text-ink-900 numeric text-sm font-bold">
+              {formatSyp(totals.grandTotal)}
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-[5rem_1fr_8rem_auto]">
+        <label className="sr-only" htmlFor="plan-tooth">
+          رقم السن (FDI)
+        </label>
+        <Input
+          id="plan-tooth"
           type="number"
           inputMode="numeric"
           min={11}
@@ -209,147 +258,163 @@ export default function TreatmentPlanSection({
           value={tooth}
           onChange={(e) => setTooth(e.target.value)}
           placeholder="سن"
-          aria-label="رقم السن (FDI)"
-          className="rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-teal-600 focus:outline-none"
+          className={cn(inputClass, "numeric")}
         />
-        <input
+        <label className="sr-only" htmlFor="plan-procedure">
+          الإجراء
+        </label>
+        <Input
+          id="plan-procedure"
           value={procedure}
           onChange={(e) => setProcedure(e.target.value)}
           placeholder="الإجراء — حشو، خلع…"
-          aria-label="الإجراء"
-          className="col-span-2 rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-teal-600 focus:outline-none"
+          className={inputClass}
         />
-        <input
+        <label className="sr-only" htmlFor="plan-price">
+          السعر بالليرة السورية
+        </label>
+        <Input
+          id="plan-price"
           type="number"
           inputMode="numeric"
           min={0}
           value={price}
           onChange={(e) => setPrice(e.target.value)}
           placeholder="السعر ل.س"
-          aria-label="السعر بالليرة السورية"
-          className="rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-teal-600 focus:outline-none"
+          className={cn(inputClass, "numeric")}
         />
-        <button
-          type="button"
-          onClick={addItem}
-          disabled={busy || !canAdd}
-          className="col-span-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
-        >
+        <Button onClick={addItem} loading={busy} disabled={busy || !canAdd}>
           إضافة بند
-        </button>
+        </Button>
       </div>
 
       {error && (
-        <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
+        <p
+          role="alert"
+          className="border-danger-300 bg-danger-50 text-danger-700 mt-3 rounded-field border px-3 py-2 text-xs"
+        >
           {error}
         </p>
       )}
 
       {items.length === 0 ? (
-        <p className="mt-4 text-sm text-gray-400">لا توجد بنود بعد.</p>
+        <div className="border-warm-200 mt-5 rounded-field border border-dashed px-4 py-8 text-center">
+          <p className="text-warm-600 text-sm font-medium">
+            لا توجد بنود في خطة العلاج بعد
+          </p>
+          <p className="text-warm-400 mt-1 text-xs">
+            أضف أول بند أعلاه — أو انقر سناً على الأودوغرام لتعبئة رقمه مباشرة.
+          </p>
+        </div>
       ) : (
         groups.map(({ status, labelAr }) => {
-          const group = items.filter((it) => it.status === status);
+          // مرتبة حسب رقم السن داخل كل حالة — قراءة سريرية متوقعة
+          const group = planByTooth(
+            items.filter((it) => it.status === status),
+          );
           if (group.length === 0) return null;
+          const groupTotal = totals.byStatus[status].total;
           return (
-            <div key={status} className="mt-4">
-              <p className="mb-1 text-xs font-semibold text-gray-600">
-                {labelAr} ({group.length})
-              </p>
-              <ul className="space-y-1.5">
+            <div key={status} className="mt-5">
+              <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-1">
+                <p className="text-ink-700 text-xs font-semibold">{labelAr}</p>
+                <p className="text-warm-500 numeric text-xs">
+                  <span className="numeric">{group.length}</span> بنود ·{" "}
+                  {formatSyp(groupTotal)}
+                </p>
+              </div>
+              <ul className="divide-warm-200 divide-y rounded-field border-warm-200 border">
                 {group.map((item) => (
-                  <li
-                    key={item.id}
-                    className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2"
-                  >
+                  <li key={item.id} className="bg-surface-raised px-3 py-2.5">
                     {editingId === item.id ? (
-                      <div className="grid grid-cols-3 gap-2">
-                        <input
+                      <div className="grid gap-2 sm:grid-cols-[1fr_8rem_auto_auto]">
+                        <Input
                           value={editProcedure}
                           onChange={(e) => setEditProcedure(e.target.value)}
                           aria-label="الإجراء"
-                          className="col-span-2 rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+                          className={inputClass}
                         />
-                        <input
+                        <Input
                           type="number"
                           min={0}
                           value={editPrice}
                           onChange={(e) => setEditPrice(e.target.value)}
                           aria-label="السعر"
-                          className="rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+                          className={cn(inputClass, "numeric")}
                         />
-                        <button
-                          type="button"
+                        <Button
                           onClick={() => saveEdit(item.id)}
-                          disabled={busy}
-                          className="col-span-2 rounded-lg bg-teal-700 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+                          loading={busy}
+                          className="h-9"
                         >
                           حفظ التعديل
-                        </button>
-                        <button
-                          type="button"
+                        </Button>
+                        <Button
+                          variant="ghost"
                           onClick={() => setEditingId(null)}
-                          className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs text-gray-600"
+                          className="h-9"
                         >
                           إلغاء
-                        </button>
+                        </Button>
                       </div>
                     ) : (
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-lg border border-teal-300 bg-teal-50 px-2 py-0.5 text-xs font-bold text-teal-800 tabular-nums">
+                        <span className="border-ink-200 bg-ink-50 text-ink-800 numeric rounded-field border px-2 py-0.5 text-xs font-bold">
                           {item.toothFdi}
                         </span>
-                        <span className="text-sm font-semibold text-gray-800">
+                        <span className="text-ink-900 text-sm font-semibold">
                           {item.procedure}
                         </span>
-                        <span className="text-xs text-gray-600">
+                        <span className="text-warm-700 numeric text-xs font-semibold">
                           {formatSyp(item.priceSyp)}
                         </span>
                         <span
-                          className={`ms-auto rounded-full border px-2 py-0.5 text-[11px] font-semibold ${STATUS_META[item.status].chipClass}`}
+                          className={cn(
+                            "rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+                            STATUS_META[item.status].chipClass,
+                          )}
                         >
                           {STATUS_META[item.status].labelAr}
                         </span>
                         {item.status !== "DONE" && (
-                          <div className="flex w-full gap-1.5 sm:w-auto">
-                            <button
-                              type="button"
+                          <div className="flex w-full gap-1.5 sm:ms-auto sm:w-auto">
+                            <Button
+                              variant="ghost"
                               onClick={() => beginEdit(item)}
                               disabled={busy}
-                              className="rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-700"
+                              className="h-8 px-2.5 text-xs"
                             >
                               تعديل
-                            </button>
+                            </Button>
                             {item.status === "PROPOSED" && (
-                              <button
-                                type="button"
+                              <Button
+                                variant="secondary"
                                 onClick={() => setStatus(item.id, "ACCEPTED")}
                                 disabled={busy}
-                                className="rounded-lg border border-blue-300 bg-blue-50 px-2.5 py-1 text-xs text-blue-800"
+                                className="h-8 px-2.5 text-xs"
                               >
                                 قبول
-                              </button>
+                              </Button>
                             )}
-                            <button
-                              type="button"
+                            <Button
                               onClick={() =>
                                 setStartingId(
                                   startingId === item.id ? null : item.id,
                                 )
                               }
                               disabled={busy}
-                              className="rounded-lg bg-teal-700 px-2.5 py-1 text-xs font-bold text-white"
+                              className="h-8 px-2.5 text-xs"
                             >
                               بدء التنفيذ
-                            </button>
+                            </Button>
                           </div>
                         )}
                       </div>
                     )}
 
                     {startingId === item.id && (
-                      <div className="mt-2 rounded-lg border border-teal-200 bg-teal-50 p-2">
-                        <p className="mb-1 text-xs font-semibold text-teal-800">
+                      <div className="border-primary-200 bg-primary-50 mt-2 rounded-field border p-2">
+                        <p className="text-primary-800 mb-1 text-xs font-semibold">
                           الحالة الناتجة على السن {item.toothFdi}:
                         </p>
                         <div className="flex flex-wrap gap-1.5">
@@ -361,7 +426,12 @@ export default function TreatmentPlanSection({
                                 type="button"
                                 onClick={() => startItem(item.id, key)}
                                 disabled={busy}
-                                className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-semibold ${meta?.chipClass}`}
+                                className={cn(
+                                  "inline-flex items-center gap-1 rounded-field border px-2 py-1 text-xs font-semibold",
+                                  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
+                                  "hover:opacity-90 disabled:opacity-50",
+                                  meta?.chipClass,
+                                )}
                               >
                                 <span className="font-bold">{meta?.icon}</span>
                                 {meta?.labelAr}
@@ -369,7 +439,7 @@ export default function TreatmentPlanSection({
                             );
                           })}
                         </div>
-                        <p className="mt-1 text-[11px] text-gray-500">
+                        <p className="text-warm-500 mt-1 text-[11px]">
                           سيُضاف قيد «علاج منفذ» لسجل السن — القيود السابقة تبقى
                           محفوظة.
                         </p>
@@ -389,6 +459,20 @@ export default function TreatmentPlanSection({
             </div>
           );
         })
+      )}
+
+      {items.length > 0 && (
+        <p className="text-warm-400 mt-3 text-[11px]">
+          الإجمالي الكلي{" "}
+          <span className="numeric font-semibold">
+            {formatSyp(totals.grandTotal)}
+          </span>{" "}
+          — منه{" "}
+          <span className="numeric font-semibold">
+            {formatSyp(totals.acceptedTotal)}
+          </span>{" "}
+          على بنود مقبولة بانتظار التنفيذ.
+        </p>
       )}
     </section>
   );
