@@ -112,6 +112,50 @@ export async function listLedgerEntries(
   return { entries: rows, balance: computeBalance(rows) };
 }
 
+// قيود العيادة كلها بأحدثها أولاً — لشاشة الدفتر المالي الموحّد.
+// قراءة فقط: نفس النموذج والنطاق، مع اسم المريض وهاتفه للعمود الأول.
+export type ClinicLedgerEntryDto = LedgerEntryDto & {
+  patientName: string;
+  patientPhone: string | null;
+};
+
+const CLINIC_ENTRY_SELECT = {
+  id: true,
+  patientId: true,
+  type: true,
+  amountSyp: true,
+  note: true,
+  treatmentItemId: true,
+  createdAt: true,
+  patient: { select: { name: true, phone: true } },
+} as const;
+
+export async function listClinicLedgerEntries(
+  ctx: TenantContext,
+  options?: { patientId?: string; limit?: number },
+): Promise<ClinicLedgerEntryDto[]> {
+  const db = clinicScope(ctx.clinicId);
+  const rows = await db.ledgerEntry.findMany({
+    where: options?.patientId
+      ? { patientId: options.patientId }
+      : {},
+    orderBy: { createdAt: "desc" },
+    take: options?.limit ?? 300,
+    select: CLINIC_ENTRY_SELECT,
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    patientId: row.patientId,
+    type: row.type,
+    amountSyp: row.amountSyp,
+    note: row.note,
+    treatmentItemId: row.treatmentItemId,
+    createdAt: row.createdAt,
+    patientName: row.patient.name,
+    patientPhone: row.patient.phone,
+  }));
+}
+
 export async function createLedgerEntry(
   ctx: TenantContext,
   input: LedgerEntryInput,

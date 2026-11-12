@@ -1,5 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  BarChart3,
+  BookOpen,
   CalendarDays,
   Clock,
   FileText,
@@ -28,6 +30,8 @@ export const primaryNav: NavItem[] = [
 
 /** بقية الأقسام — في ذيل السايدبار وفي شريحة «المزيد» على الموبايل */
 export const secondaryNav: NavItem[] = [
+  { href: "/finance", label: "الدفتر المالي", icon: BookOpen },
+  { href: "/reports", label: "التقارير", icon: BarChart3 },
   { href: "/inventory", label: "المخزون", icon: Package, badge: "lowStock" },
   { href: "/reminders", label: "تذكير الغد", icon: Clock },
   { href: "/instructions", label: "قوالب التعليمات", icon: FileText },
@@ -41,6 +45,8 @@ const segmentLabels: Record<string, string> = {
   patients: "المرضى",
   appointments: "المواعيد",
   waitlist: "قائمة الانتظار",
+  finance: "الدفتر المالي",
+  reports: "التقارير",
   inventory: "المخزون",
   reminders: "تذكير الغد",
   instructions: "قوالب التعليمات",
