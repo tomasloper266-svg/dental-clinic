@@ -1,0 +1,458 @@
+import { clinicScope } from "@/lib/tenant/clinic-client";
+import type { TenantContext } from "@/lib/tenant/context";
+
+// خدمة المخزون — مواد العيادة، التوريد، وخصم الاستعمال مع منع الرصيد السالب.
+// كل استعلام عبر clinicScope بمعرّف العيادة من سياق الجلسة، ولا يلمس الـ
+// route handler العميل مباشرة.
+
+export type MaterialDto = {
+  id: string;
+  name: string;
+  unit: string;
+  quantityOnHand: number;
+  minQuantity: number;
+  costSyp: number | null;
+  isLow: boolean;
+};
+
+export type MaterialUsageDto = {
+  id: string;
+  materialId: string;
+  quantityUsed: number;
+  patientId: string | null;
+  appointmentId: string | null;
+  createdAt: Date;
+};
+
+const MATERIAL_SELECT = {
+  id: true,
+  name: true,
+  unit: true,
+  quantityOnHand: true,
+  minQuantity: true,
+  costSyp: true,
+} as const;
+
+// حد التنبيه: الكمية وصلت الحد الأدنى أو نزلت تحته — نقية للاختبار المباشر.
+export function isLowStock(
+  quantityOnHand: number,
+  minQuantity: number,
+): boolean {
+  return quantityOnHand <= minQuantity;
+}
+
+function toMaterialDto(row: {
+  id: string;
+  name: string;
+  unit: string;
+  quantityOnHand: unknown;
+  minQuantity: unknown;
+  costSyp: number | null;
+}): MaterialDto {
+  const quantityOnHand = Number(row.quantityOnHand);
+  const minQuantity = Number(row.minQuantity);
+  return {
+    id: row.id,
+    name: row.name,
+    unit: row.unit,
+    quantityOnHand,
+    minQuantity,
+    costSyp: row.costSyp,
+    isLow: isLowStock(quantityOnHand, minQuantity),
+  };
+}
+
+// كميات المخزون أعداد عشرية بحد منزلتين (Decimal(12,2)) — لا سالب ولا كمية بلا معنى.
+function parseQuantity(value: unknown, error: string): number | string {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return error;
+  }
+  const rounded = Math.round(value * 100) / 100;
+  if (rounded <= 0) {
+    return error;
+  }
+  return rounded;
+}
+
+export type CreateMaterialInput = {
+  name: string;
+  unit: string;
+  minQuantity: number;
+  costSyp?: number;
+};
+
+export function parseCreateMaterial(
+  body: unknown,
+): { ok: true; value: CreateMaterialInput } | { ok: false; error: string } {
+  if (typeof body !== "object" || body === null) {
+    return { ok: false, error: "طلب غير صالح" };
+  }
+  const b = body as Record<string, unknown>;
+
+  const name = typeof b.name === "string" ? b.name.trim() : "";
+  if (name.length < 2 || name.length > 100) {
+    return { ok: false, error: "اسم المادة يجب أن يكون بين 2 و100 حرف" };
+  }
+
+  const unit = typeof b.unit === "string" ? b.unit.trim() : "";
+  if (unit.length < 1 || unit.length > 30) {
+    return { ok: false, error: "وحدة القياس مطلوبة (حتى 30 حرفاً)" };
+  }
+
+  const minQuantity =
+    typeof b.minQuantity === "number" && b.minQuantity >= 0
+      ? Math.round(b.minQuantity * 100) / 100
+      : NaN;
+  if (!Number.isFinite(minQuantity)) {
+    return { ok: false, error: "حد التنبيه يجب أن يكون رقماً غير سالب" };
+  }
+
+  let costSyp: number | undefined;
+  if (b.costSyp !== undefined && b.costSyp !== null) {
+    if (
+      typeof b.costSyp !== "number" ||
+      !Number.isInteger(b.costSyp) ||
+      b.costSyp < 0
+    ) {
+      return { ok: false, error: "سعر المادة يجب أن يكون رقماً صحيحاً غير سالب" };
+    }
+    costSyp = b.costSyp;
+  }
+
+  return { ok: true, value: { name, unit, minQuantity, costSyp } };
+}
+
+export type UpdateMaterialInput = {
+  name?: string;
+  unit?: string;
+  minQuantity?: number;
+  costSyp?: number | null;
+};
+
+export function parseUpdateMaterial(
+  body: unknown,
+): { ok: true; value: UpdateMaterialInput } | { ok: false; error: string } {
+  if (typeof body !== "object" || body === null) {
+    return { ok: false, error: "طلب غير صالح" };
+  }
+  const b = body as Record<string, unknown>;
+
+  const value: UpdateMaterialInput = {};
+
+  if (b.name !== undefined) {
+    const name = typeof b.name === "string" ? b.name.trim() : "";
+    if (name.length < 2 || name.length > 100) {
+      return { ok: false, error: "اسم المادة يجب أن يكون بين 2 و100 حرف" };
+    }
+    value.name = name;
+  }
+
+  if (b.unit !== undefined) {
+    const unit = typeof b.unit === "string" ? b.unit.trim() : "";
+    if (unit.length < 1 || unit.length > 30) {
+      return { ok: false, error: "وحدة القياس مطلوبة (حتى 30 حرفاً)" };
+    }
+    value.unit = unit;
+  }
+
+  if (b.minQuantity !== undefined) {
+    const minQuantity =
+      typeof b.minQuantity === "number" && b.minQuantity >= 0
+        ? Math.round(b.minQuantity * 100) / 100
+        : NaN;
+    if (!Number.isFinite(minQuantity)) {
+      return { ok: false, error: "حد التنبيه يجب أن يكون رقماً غير سالب" };
+    }
+    value.minQuantity = minQuantity;
+  }
+
+  if (b.costSyp !== undefined) {
+    if (b.costSyp === null) {
+      value.costSyp = null;
+    } else if (
+      typeof b.costSyp === "number" &&
+      Number.isInteger(b.costSyp) &&
+      b.costSyp >= 0
+    ) {
+      value.costSyp = b.costSyp;
+    } else {
+      return { ok: false, error: "سعر المادة يجب أن يكون رقماً صحيحاً غير سالب" };
+    }
+  }
+
+  return { ok: true, value };
+}
+
+export function parseSupplyInput(
+  body: unknown,
+): { ok: true; value: { quantity: number } } | { ok: false; error: string } {
+  if (typeof body !== "object" || body === null) {
+    return { ok: false, error: "طلب غير صالح" };
+  }
+  const quantity = parseQuantity(
+    (body as Record<string, unknown>).quantity,
+    "الكمية الموردة يجب أن تكون رقماً موجباً",
+  );
+  if (typeof quantity === "string") {
+    return { ok: false, error: quantity };
+  }
+  return { ok: true, value: { quantity } };
+}
+
+export type UsageInput = {
+  materialId: string;
+  quantityUsed: number;
+  patientId?: string;
+  appointmentId?: string;
+};
+
+export function parseUsageInput(
+  body: unknown,
+):
+  | { ok: true; value: Omit<UsageInput, "materialId"> }
+  | { ok: false; error: string } {
+  if (typeof body !== "object" || body === null) {
+    return { ok: false, error: "طلب غير صالح" };
+  }
+  const b = body as Record<string, unknown>;
+
+  const quantityUsed = parseQuantity(
+    b.quantityUsed,
+    "الكمية المستعملة يجب أن تكون رقماً موجباً",
+  );
+  if (typeof quantityUsed === "string") {
+    return { ok: false, error: quantityUsed };
+  }
+
+  const patientId =
+    typeof b.patientId === "string" && b.patientId.length > 0
+      ? b.patientId
+      : undefined;
+  const appointmentId =
+    typeof b.appointmentId === "string" && b.appointmentId.length > 0
+      ? b.appointmentId
+      : undefined;
+
+  return { ok: true, value: { quantityUsed, patientId, appointmentId } };
+}
+
+export async function listMaterials(
+  ctx: TenantContext,
+): Promise<MaterialDto[]> {
+  const db = clinicScope(ctx.clinicId);
+  const rows = await db.material.findMany({
+    orderBy: { name: "asc" },
+    take: 200,
+    select: MATERIAL_SELECT,
+  });
+  return rows.map(toMaterialDto);
+}
+
+// المواد التي وصلت حد التنبيه أو تحته — تظهر بارزة في شاشة المخزون وبلوحة الطبيب.
+export async function lowStockMaterials(
+  ctx: TenantContext,
+): Promise<MaterialDto[]> {
+  const db = clinicScope(ctx.clinicId);
+  const rows = await db.material.findMany({
+    where: { quantityOnHand: { lte: db.material.fields.minQuantity } },
+    orderBy: { name: "asc" },
+    select: MATERIAL_SELECT,
+  });
+  return rows.map(toMaterialDto);
+}
+
+export async function getMaterial(
+  ctx: TenantContext,
+  materialId: string,
+): Promise<MaterialDto | null> {
+  const db = clinicScope(ctx.clinicId);
+  const row = await db.material.findUnique({
+    where: { id: materialId },
+    select: MATERIAL_SELECT,
+  });
+  return row ? toMaterialDto(row) : null;
+}
+
+export async function createMaterial(
+  ctx: TenantContext,
+  input: CreateMaterialInput,
+): Promise<MaterialDto> {
+  const db = clinicScope(ctx.clinicId);
+  const row = await db.material.create({
+    data: {
+      clinicId: ctx.clinicId,
+      name: input.name,
+      unit: input.unit,
+      minQuantity: input.minQuantity,
+      costSyp: input.costSyp,
+      quantityOnHand: 0,
+    },
+    select: MATERIAL_SELECT,
+  });
+  return toMaterialDto(row);
+}
+
+export async function updateMaterial(
+  ctx: TenantContext,
+  materialId: string,
+  input: UpdateMaterialInput,
+): Promise<MaterialDto | null> {
+  const db = clinicScope(ctx.clinicId);
+  const existing = await db.material.findUnique({
+    where: { id: materialId },
+    select: { id: true },
+  });
+  if (!existing) return null;
+
+  // تعديل الهوية والحدود فقط — الكمية تتغير بالتوريد والاستعمال حصراً.
+  const row = await db.material.update({
+    where: { id: materialId },
+    data: {
+      name: input.name,
+      unit: input.unit,
+      minQuantity: input.minQuantity,
+      costSyp: input.costSyp,
+    },
+    select: MATERIAL_SELECT,
+  });
+  return toMaterialDto(row);
+}
+
+// توريد كمية — زيادة صافية على الرصيد الحالي.
+export async function supplyMaterial(
+  ctx: TenantContext,
+  materialId: string,
+  quantity: number,
+): Promise<MaterialDto | null> {
+  const db = clinicScope(ctx.clinicId);
+  const existing = await db.material.findUnique({
+    where: { id: materialId },
+    select: { id: true },
+  });
+  if (!existing) return null;
+
+  const row = await db.material.update({
+    where: { id: materialId },
+    data: { quantityOnHand: { increment: quantity } },
+    select: MATERIAL_SELECT,
+  });
+  return toMaterialDto(row);
+}
+
+export type UsageResult =
+  | { ok: true; usage: MaterialUsageDto; material: MaterialDto }
+  | { ok: false; reason: "NOT_FOUND" }
+  | { ok: false; reason: "PATIENT_NOT_FOUND" }
+  | { ok: false; reason: "INSUFFICIENT_STOCK"; available: number };
+
+// خصم استعمال مادة — ذريّ: الخصم الشرطي (لا يمر لو كان سيرجع الرصيد سالباً)
+// وقيود الاستعمال داخل معاملة واحدة، فلا يُخصم دون تسجيل ولا يُسجَّل دون خصم.
+// الخصم الشرطي داخل قاعدة البيانات نفسها يمنع السالب حتى بتزامن طلبات متوازية.
+export async function recordMaterialUsage(
+  ctx: TenantContext,
+  input: UsageInput,
+): Promise<UsageResult> {
+  const db = clinicScope(ctx.clinicId);
+
+  return db.$transaction(async (tx) => {
+    const material = await tx.material.findUnique({
+      where: { id: input.materialId },
+      select: MATERIAL_SELECT,
+    });
+    if (!material) {
+      return { ok: false, reason: "NOT_FOUND" } as UsageResult;
+    }
+
+    if (input.patientId) {
+      const patient = await tx.patient.findUnique({
+        where: { id: input.patientId },
+        select: { id: true },
+      });
+      if (!patient) {
+        return { ok: false, reason: "PATIENT_NOT_FOUND" } as UsageResult;
+      }
+    }
+
+    // تحديث شرطي: count=0 يعني أن الرصيد الحالي لا يكفي — يُرفض الخصم.
+    const decremented = await tx.material.updateMany({
+      where: {
+        id: input.materialId,
+        quantityOnHand: { gte: input.quantityUsed },
+      },
+      data: { quantityOnHand: { decrement: input.quantityUsed } },
+    });
+    if (decremented.count === 0) {
+      return {
+        ok: false,
+        reason: "INSUFFICIENT_STOCK",
+        available: Number(material.quantityOnHand),
+      } as UsageResult;
+    }
+
+    const usage = await tx.materialUsage.create({
+      data: {
+        clinicId: ctx.clinicId,
+        materialId: input.materialId,
+        quantityUsed: input.quantityUsed,
+        patientId: input.patientId,
+        appointmentId: input.appointmentId,
+        recordedById: ctx.userId,
+      },
+      select: {
+        id: true,
+        materialId: true,
+        quantityUsed: true,
+        patientId: true,
+        appointmentId: true,
+        createdAt: true,
+      },
+    });
+
+    return {
+      ok: true,
+      usage: { ...usage, quantityUsed: Number(usage.quantityUsed) },
+      material: toMaterialDto({
+        ...material,
+        quantityOnHand: Number(material.quantityOnHand) - input.quantityUsed,
+      }),
+    } as UsageResult;
+  });
+}
+
+export type UsageLogEntryDto = MaterialUsageDto & { materialName: string };
+
+export async function listMaterialUsages(
+  ctx: TenantContext,
+  materialId: string,
+): Promise<UsageLogEntryDto[] | null> {
+  const db = clinicScope(ctx.clinicId);
+  const material = await db.material.findUnique({
+    where: { id: materialId },
+    select: { id: true },
+  });
+  if (!material) return null;
+
+  const rows = await db.materialUsage.findMany({
+    where: { materialId },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+    select: {
+      id: true,
+      materialId: true,
+      quantityUsed: true,
+      patientId: true,
+      appointmentId: true,
+      createdAt: true,
+      material: { select: { name: true } },
+    },
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    materialId: row.materialId,
+    quantityUsed: Number(row.quantityUsed),
+    patientId: row.patientId,
+    appointmentId: row.appointmentId,
+    createdAt: row.createdAt,
+    materialName: row.material.name,
+  }));
+}

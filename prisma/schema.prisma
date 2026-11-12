@@ -138,6 +138,7 @@ model Patient {
   toothFindings      ToothFinding[]
   treatmentPlanItems TreatmentPlanItem[]
   ledgerEntries      LedgerEntry[]
+  materialUsages     MaterialUsage[]
 
   @@index([clinicId, name])
   @@index([clinicId, phone])
@@ -296,6 +297,7 @@ model MaterialUsage {
   clinicId        String
   materialId      String
   quantityUsed    Decimal  @db.Decimal(12, 2)
+  patientId       String?
   treatmentItemId String?
   appointmentId   String?
   recordedById    String
@@ -303,6 +305,7 @@ model MaterialUsage {
 
   clinic      Clinic       @relation(fields: [clinicId], references: [id])
   material    Material     @relation(fields: [materialId], references: [id])
+  patient     Patient?     @relation(fields: [patientId], references: [id])
   appointment Appointment? @relation(fields: [appointmentId], references: [id])
   recordedBy  User         @relation("MaterialUsageRecorder", fields: [recordedById], references: [id])
 
