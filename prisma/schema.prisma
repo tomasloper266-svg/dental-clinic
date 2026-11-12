@@ -77,6 +77,7 @@ model Clinic {
   patients             Patient[]
   appointments         Appointment[]
   waitlistEntries      WaitlistEntry[]
+  appointmentStatusChanges AppointmentStatusChange[]
   toothFindings        ToothFinding[]
   treatmentPlanItems   TreatmentPlanItem[]
   ledgerEntries        LedgerEntry[]
@@ -100,6 +101,7 @@ model User {
   recordedFindings      ToothFinding[]  @relation("FindingRecorder")
   createdLedgerEntries  LedgerEntry[]   @relation("LedgerEntryCreator")
   recordedMaterialUsage MaterialUsage[] @relation("MaterialUsageRecorder")
+  appointmentStatusChanges AppointmentStatusChange[] @relation("AppointmentStatusChanger")
 
   @@unique([clinicId, phone])
   @@index([clinicId])
@@ -158,9 +160,28 @@ model Appointment {
   clinic         Clinic          @relation(fields: [clinicId], references: [id])
   patient        Patient         @relation(fields: [patientId], references: [id])
   materialUsages MaterialUsage[]
+  statusChanges  AppointmentStatusChange[]
 
   @@index([clinicId, startsAt])
   @@index([clinicId, patientId, startsAt])
+}
+
+// سجل تغيّر حالة الموعد — من الحالة إلى الحالة، ومَن غيّر ومتى.
+// إلحاقي فقط: لا تعديل ولا حذف من طبقة الخدمة.
+model AppointmentStatusChange {
+  id            String            @id @default(cuid())
+  clinicId      String
+  appointmentId String
+  fromStatus    AppointmentStatus
+  toStatus      AppointmentStatus
+  changedById   String
+  createdAt     DateTime          @default(now())
+
+  clinic      Clinic      @relation(fields: [clinicId], references: [id])
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  changedBy   User        @relation("AppointmentStatusChanger", fields: [changedById], references: [id])
+
+  @@index([clinicId, appointmentId, createdAt])
 }
 
 model WaitlistEntry {

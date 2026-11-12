@@ -2,8 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import BookingForm from "@/components/BookingForm";
-import { formatDayLabel, formatTime, STATUS_META } from "@/lib/appointment-ui";
+import {
+  formatDayLabel,
+  formatTime,
+  STATUS_LABEL,
+  STATUS_META,
+} from "@/lib/appointment-ui";
 import { addDays, toDateInputValue } from "@/lib/dates";
+import { ALLOWED_TRANSITIONS } from "@/lib/services/appointment-state";
 import type { AppointmentStatus } from "@/lib/services/appointments";
 
 // لوحة الجدول اليومي/الأسبوعي — موبايل-أولاً، تنقّل بين الأيام والأسابيع،
@@ -124,7 +130,11 @@ export default function AppointmentsBoard({
             لا مواعيد في هذه الفترة — استخدم زر الحجز لإضافة موعد.
           </div>
         ) : (
-          <AppointmentsList view={view} appointments={state.appointments} />
+          <AppointmentsList
+            view={view}
+            appointments={state.appointments}
+            onMoved={() => refresh(dateValue, view)}
+          />
         ))}
     </div>
   );
@@ -146,9 +156,11 @@ function AppointmentsSkeleton() {
 function AppointmentsList({
   view,
   appointments,
+  onMoved,
 }: {
   view: "day" | "week";
   appointments: AppointmentJson[];
+  onMoved: () => void;
 }) {
   const byDay = new Map<string, AppointmentJson[]>();
   for (const a of appointments) {
@@ -165,7 +177,7 @@ function AppointmentsList({
               {formatDayLabel(new Date(`${day}T00:00:00`))}
             </h3>
             {items.map((a) => (
-              <AppointmentCard key={a.id} appointment={a} />
+              <AppointmentCard key={a.id} appointment={a} onMoved={onMoved} />
             ))}
           </section>
         ))}
@@ -176,13 +188,19 @@ function AppointmentsList({
   return (
     <div className="flex flex-col gap-2">
       {appointments.map((a) => (
-        <AppointmentCard key={a.id} appointment={a} />
+        <AppointmentCard key={a.id} appointment={a} onMoved={onMoved} />
       ))}
     </div>
   );
 }
 
-function AppointmentCard({ appointment: a }: { appointment: AppointmentJson }) {
+function AppointmentCard({
+  appointment: a,
+  onMoved,
+}: {
+  appointment: AppointmentJson;
+  onMoved: () => void;
+}) {
   const meta = STATUS_META[a.status];
   return (
     <article
@@ -202,6 +220,65 @@ function AppointmentCard({ appointment: a }: { appointment: AppointmentJson }) {
         </span>
       </div>
       {a.note && <p className="mt-2 text-xs opacity-80">{a.note}</p>}
+      <StatusActions appointment={a} onMoved={onMoved} />
     </article>
+  );
+}
+
+function StatusActions({
+  appointment: a,
+  onMoved,
+}: {
+  appointment: AppointmentJson;
+  onMoved: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const nexts = ALLOWED_TRANSITIONS[a.status];
+  if (nexts.length === 0 && !error) return null;
+
+  async function move(to: AppointmentStatus) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/appointments/${a.id}/status`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status: to }),
+      });
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string };
+        setError(data.error ?? "تعذر تغيير الحالة");
+        return;
+      }
+      onMoved();
+    } catch {
+      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-2 border-t border-black/5 pt-2">
+      {error && (
+        <p role="alert" className="mb-1 text-[11px] text-red-700">
+          {error}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-1">
+        {nexts.map((to) => (
+          <button
+            key={to}
+            type="button"
+            disabled={busy}
+            onClick={() => move(to)}
+            className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-gray-700 disabled:opacity-50"
+          >
+            {STATUS_LABEL(to)}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
