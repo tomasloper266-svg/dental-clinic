@@ -26,6 +26,9 @@ import type { FindingDto } from "@/lib/services/findings";
 type Props = {
   patientId: string;
   initialFindings: FindingDto[];
+  // الاختيار محكوم من الأب (OdontogramWorkbench) ليشاركه قسم خطة العلاج.
+  selectedTooth: number | null;
+  onSelectTooth: (fdi: number | null) => void;
 };
 
 function formatDateAr(iso: string): string {
@@ -35,9 +38,13 @@ function formatDateAr(iso: string): string {
   }).format(new Date(iso));
 }
 
-export default function OdontogramBoard({ patientId, initialFindings }: Props) {
+export default function OdontogramBoard({
+  patientId,
+  initialFindings,
+  selectedTooth,
+  onSelectTooth,
+}: Props) {
   const [findings, setFindings] = useState<FindingDto[]>(initialFindings);
-  const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
   const [chosenStatus, setChosenStatus] = useState<string | null>(null);
   const [chosenKind, setChosenKind] = useState<"EXISTING" | "DIAGNOSIS">(
     "EXISTING",
@@ -49,7 +56,7 @@ export default function OdontogramBoard({ patientId, initialFindings }: Props) {
   const latest = useMemo(() => latestFindingByTooth(findings), [findings]);
 
   function selectTooth(cell: ToothCell) {
-    setSelectedTooth(cell.fdi);
+    onSelectTooth(cell.fdi);
     setError(null);
     setNote("");
     const current = latest.get(cell.fdi);
@@ -90,7 +97,7 @@ export default function OdontogramBoard({ patientId, initialFindings }: Props) {
     }
   }
 
-  const selected = selectedTooth !== null ? selectedTooth : null;
+  const selected = selectedTooth;
   const history = selected !== null ? findingsForTooth(findings, selected) : [];
   const selectedLatest = selected !== null ? latest.get(selected) : undefined;
 
@@ -167,7 +174,7 @@ export default function OdontogramBoard({ patientId, initialFindings }: Props) {
             </h3>
             <button
               type="button"
-              onClick={() => setSelectedTooth(null)}
+              onClick={() => onSelectTooth(null)}
               className="text-xs text-gray-400 hover:text-gray-600"
             >
               إغلاق

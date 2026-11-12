@@ -4,10 +4,11 @@ import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
 import { tenantContextFromSession } from "@/lib/tenant/context";
 import { getPatient } from "@/lib/services/patients";
 import { listFindings } from "@/lib/services/findings";
-import OdontogramBoard from "@/components/odontogram/OdontogramBoard";
+import { listPlan } from "@/lib/services/treatment-plan";
+import OdontogramWorkbench from "@/components/odontogram/OdontogramWorkbench";
 
-// صفحة أودوغرام مريض — قراءة أولية عبر الخدمات المحصورة بالعيادة من الجلسة،
-// والتفاعل يحدث عبر واجهات /api/patients/[patientId]/findings.
+// صفحة أودوغرام مريض وخطة علاجه — قراءة أولية عبر الخدمات المحصورة بالعيادة
+// من الجلسة، والتفاعل عبر واجهات /api/patients/[patientId]/findings و/treatment-plan.
 export default async function OdontogramPage({
   params,
 }: {
@@ -23,7 +24,10 @@ export default async function OdontogramPage({
   const patient = await getPatient(ctx, patientId);
   if (!patient) notFound();
 
-  const findings = await listFindings(ctx, patientId);
+  const [findings, planItems] = await Promise.all([
+    listFindings(ctx, patientId),
+    listPlan(ctx, patientId),
+  ]);
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-3xl px-4 py-6">
@@ -35,7 +39,11 @@ export default async function OdontogramPage({
           المشاهدات المسجلة تُحفظ كسجل زمني ولا تُستبدل بخطة العلاج.
         </p>
       </header>
-      <OdontogramBoard patientId={patientId} initialFindings={findings} />
+      <OdontogramWorkbench
+        patientId={patientId}
+        initialFindings={findings}
+        initialPlan={planItems}
+      />
     </main>
   );
 }
