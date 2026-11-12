@@ -24,6 +24,8 @@ type Props = {
   patientId: string;
   initialItems: PlanItemDto[];
   preselectedTooth: number | null;
+  /** اختياري — يجعل رقم السن زراً ينقل المستخدم إلى تبويب الأودوغرام في ملف المريض */
+  onFocusTooth?: (fdi: number) => void;
 };
 
 const STATUS_META: Record<
@@ -56,6 +58,7 @@ export default function TreatmentPlanSection({
   patientId,
   initialItems,
   preselectedTooth,
+  onFocusTooth,
 }: Props) {
   const router = useRouter();
   const [items, setItems] = useState<PlanItemDto[]>(initialItems);
@@ -359,9 +362,20 @@ export default function TreatmentPlanSection({
                       </div>
                     ) : (
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="border-ink-200 bg-ink-50 text-ink-800 numeric rounded-field border px-2 py-0.5 text-xs font-bold">
-                          {item.toothFdi}
-                        </span>
+                        {onFocusTooth ? (
+                          <button
+                            type="button"
+                            onClick={() => onFocusTooth(item.toothFdi)}
+                            title="عرض السن على الأودوغرام"
+                            className="border-ink-200 bg-ink-50 text-ink-800 numeric hover:border-primary-300 hover:bg-primary-50 hover:text-primary-800 rounded-field border px-2 py-0.5 text-xs font-bold transition-colors focus-visible:outline-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2"
+                          >
+                            {item.toothFdi}
+                          </button>
+                        ) : (
+                          <span className="border-ink-200 bg-ink-50 text-ink-800 numeric rounded-field border px-2 py-0.5 text-xs font-bold">
+                            {item.toothFdi}
+                          </span>
+                        )}
                         <span className="text-ink-900 text-sm font-semibold">
                           {item.procedure}
                         </span>
