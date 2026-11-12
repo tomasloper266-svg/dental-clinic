@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Copy, MessageCircle } from "lucide-react";
 import { buildWhatsAppUrl } from "@/lib/reminders/whatsapp";
+import { MessagePreview } from "@/components/instructions/MessagePreview";
 
 // لوحة إرسال التعليمات — تُفتح تلقائياً عند اكتمال علاج (TREATMENT_DONE):
-// تجلب القوالب المطابقة لإجراء العلاج ورقم هاتف المريض، ولكل قالب زر واتساب
-// (رابط wa.me مقبّد بنص التعليمات) وزر نسخ نصي. كل إرسال يُسجَّل في تاريخ
-// المريض عبر POST على /api/patients/[patientId]/instructions.
+// تجلب القوالب المطابقة لإجراء العلاج ورقم هاتف المريض، ولكل قالب
+// معاينة حقيقية للرسالة كما ستُرسل (نفس النص المرمَّز في رابط wa.me)
+// وزر واتساب وزر نسخ. كل إرسال يُسجَّل في تاريخ المريض عبر POST
+// على /api/patients/[patientId]/instructions. منطق الإرسال والتسجيل
+// لا يُلمس — هذه إعادة عرض فقط.
 
 type TemplateJson = { id: string; procedure: string; body: string };
 
@@ -20,6 +24,7 @@ type PanelState =
 export default function InstructionSendPanel({ patientId, procedure }: Props) {
   const [state, setState] = useState<PanelState>({ kind: "loading" });
   const [recorded, setRecorded] = useState<string[]>([]);
+  const [copyError, setCopyError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,72 +93,91 @@ export default function InstructionSendPanel({ patientId, procedure }: Props) {
   }
 
   async function copyText(template: TemplateJson) {
-    await navigator.clipboard.writeText(template.body);
-    void recordSend(template, "TEXT");
+    try {
+      await navigator.clipboard.writeText(template.body);
+      setCopyError(false);
+      void recordSend(template, "TEXT");
+    } catch {
+      setCopyError(true);
+    }
   }
 
   if (state.kind === "loading") {
     return (
-      <div
-        className="mt-2 h-16 animate-pulse rounded-lg border border-teal-100 bg-teal-50"
-        aria-busy="true"
-      />
+      <div aria-busy="true" className="mt-2 flex flex-col gap-2">
+        {[0, 1].map((i) => (
+          <div
+            key={i}
+            className="h-24 animate-pulse rounded-panel bg-surface-sunken"
+          />
+        ))}
+      </div>
     );
   }
 
   if (state.kind === "error") {
     return (
-      <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
+      <div
+        role="alert"
+        className="mt-2 rounded-panel border border-danger-300 bg-danger-50 px-3 py-2 text-xs text-danger-700"
+      >
         تعذر تحميل قوالب التعليمات لهذا الإجراء.
-      </p>
+      </div>
     );
   }
 
   if (state.templates.length === 0) {
     return (
-      <p className="mt-2 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
+      <div className="mt-2 rounded-panel border border-warm-200 bg-surface-sunken px-3 py-2 text-xs text-warm-600">
         لا توجد قوالب تعليمات مطابقة لإجراء «{procedure}» — أضف قالباً من صفحة
-        قوالب التعليمات.
-      </p>
+        تعليمات ما بعد العلاج.
+      </div>
     );
   }
 
   return (
-    <div className="mt-2 rounded-lg border border-teal-200 bg-teal-50 p-2">
-      <p className="mb-1 text-xs font-semibold text-teal-800">
-        تعليمات ما بعد «{procedure}» — اختر طريقة الإرسال:
+    <div className="mt-2 flex flex-col gap-2">
+      <p className="text-xs font-medium text-warm-600">
+        تعليمات ما بعد «{procedure}» — راجع الرسالة كما ستُرسل ثم اختر طريقة
+        الإرسال:
       </p>
-      <ul className="space-y-1.5">
-        {state.templates.map((t) => (
-          <li key={t.id} className="rounded-lg bg-white p-2">
-            <p className="text-[11px] leading-5 whitespace-pre-line text-gray-700">
-              {t.body}
-            </p>
-            <div className="mt-1 flex gap-1.5">
-              {state.phone ? (
-                <button
-                  type="button"
-                  onClick={() => sendWhatsApp(t)}
-                  className="rounded-lg bg-green-600 px-3 py-1 text-[11px] font-bold text-white"
-                >
-                  {recorded.includes(t.id) ? "أُرسل ✓ واتساب" : "إرسال واتساب"}
-                </button>
-              ) : (
-                <span className="text-[11px] text-amber-700">
-                  لا رقم هاتف للمريض — استخدم النسخ النصي
-                </span>
-              )}
+      {state.templates.map((t) => (
+        <div
+          key={t.id}
+          className="rounded-panel border border-warm-200 bg-surface-raised p-3"
+        >
+          <MessagePreview body={t.body} phone={state.phone} />
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {state.phone ? (
               <button
                 type="button"
-                onClick={() => copyText(t)}
-                className="rounded-lg border border-gray-300 px-3 py-1 text-[11px] text-gray-700"
+                onClick={() => sendWhatsApp(t)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-success-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-success-700"
               >
-                {recorded.includes(t.id) ? "نُسخ ✓" : "نسخ النص"}
+                <MessageCircle size={13} aria-hidden />
+                {recorded.includes(t.id) ? "أُرسل واتساب ✓" : "إرسال واتساب"}
               </button>
-            </div>
-          </li>
-        ))}
-      </ul>
+            ) : (
+              <span className="text-xs text-warning-700">
+                لا رقم هاتف للمريض — استخدم النسخ النصي
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => void copyText(t)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-warm-300 px-3 py-1.5 text-xs font-medium text-warm-700 hover:bg-surface-hover"
+            >
+              <Copy size={13} aria-hidden />
+              {recorded.includes(t.id) ? "نُسخ ✓" : "نسخ النص"}
+            </button>
+            {copyError && (
+              <span role="alert" className="text-xs text-danger-600">
+                تعذر النسخ — انسخ النص يدوياً من المعاينة
+              </span>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
