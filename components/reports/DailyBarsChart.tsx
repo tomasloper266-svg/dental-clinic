@@ -35,7 +35,8 @@ export default function DailyBarsChart({ series }: { series: SeriesPoint[] }) {
     value > 0 ? Math.max(2, (value / max) * plotH) : 0;
 
   const gridValues = [max, max / 2, 0];
-  // تسمية يوم واحدة كل بضعة أيام حتى لا تتزاحم المحور
+  // تسمية يوم واحدة كل بضعة أيام حتى لا تتزاحم المحور — التباعد يُحتسب
+  // من أحدث يوم حتى تُوسم نهاية السلسلة دائماً دون تسميتين متجاورتين.
   const labelEvery = Math.ceil(series.length / 7);
 
   return (
@@ -92,7 +93,8 @@ export default function DailyBarsChart({ series }: { series: SeriesPoint[] }) {
           const x = slotX(index);
           const collectedH = barH(point.collectedSyp);
           const expensesH = barH(point.expensesSyp);
-          const showLabel = index % labelEvery === 0 || index === series.length - 1;
+          const showLabel =
+            (series.length - 1 - index) % labelEvery === 0;
           return (
             <g key={point.date}>
               <title>
