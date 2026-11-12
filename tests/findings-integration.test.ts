@@ -338,7 +338,8 @@ describeDb("مشاهدات الأسنان وخطة العلاج — integration"
       ),
       routeParams({ patientId: patientAId, itemId: items[0].id }),
     );
-    expect(foreignEdit.status).toBe(409);
+    // العزل: البند غير مرئي لعيادة ب عبر clinicScope — نفس سلوك مرضى 404.
+    expect(foreignEdit.status).toBe(404);
     const unchanged = await prisma.treatmentPlanItem.findUniqueOrThrow({
       where: { id: items[0].id },
     });
