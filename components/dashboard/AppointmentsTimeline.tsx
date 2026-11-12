@@ -3,7 +3,6 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/components/ui/cn";
 import { STATUS_META, formatTime } from "@/lib/appointment-ui";
 import type { AppointmentDto } from "@/lib/services/appointments";
-
 // خط زمني لمواعيد اليوم — صف لكل موعد بألوان الحالة المعتمدة عبر النظام
 // (STATUS_META) مع تسمية نصية صريحة حتى لا يعتمد التمييز على اللون وحده.
 // كل موعد يفتح ملف مريضه. على الموبايل تتحول الأعمدة إلى بطاقات مكدسة.
@@ -87,12 +86,12 @@ export function AppointmentsTimeline({
   );
 }
 
-// نقطة/شريط لوني لكل حالة — بيانات العرض نفسها الموجودة في STATUS_META.
+// الشريط اللوني لكل حالة — نفس بيانات العرض في STATUS_META (نقطة النبرة).
 const statusBarTone: Record<AppointmentDto["status"], string> = {
-  SCHEDULED: "bg-blue-400",
-  CONFIRMED: "bg-teal-500",
-  IN_TREATMENT: "bg-warning-500",
-  COMPLETED: "bg-warm-400",
-  CANCELLED: "bg-danger-500",
-  NO_SHOW: "bg-purple-400",
+  SCHEDULED: STATUS_META.SCHEDULED.dot,
+  CONFIRMED: STATUS_META.CONFIRMED.dot,
+  IN_TREATMENT: STATUS_META.IN_TREATMENT.dot,
+  COMPLETED: STATUS_META.COMPLETED.dot,
+  CANCELLED: STATUS_META.CANCELLED.dot,
+  NO_SHOW: STATUS_META.NO_SHOW.dot,
 };

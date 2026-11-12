@@ -1,6 +1,12 @@
 import { cn } from "./cn";
 
-export type BadgeTone = "neutral" | "success" | "warning" | "danger" | "info";
+export type BadgeTone =
+  | "neutral"
+  | "success"
+  | "warning"
+  | "danger"
+  | "info"
+  | "plum";
 
 type BadgeProps = React.HTMLAttributes<HTMLSpanElement> & {
   tone?: BadgeTone;
@@ -12,7 +18,11 @@ const toneClasses: Record<BadgeTone, string> = {
   warning: "bg-warning-50 text-warning-900 border-warning-300",
   danger: "bg-danger-50 text-danger-700 border-danger-300",
   info: "bg-surface-sunken text-ink-800 border-ink-600/20",
+  plum: "bg-plum-50 text-plum-700 border-plum-200",
 };
+
+/** أصناف نبرة الشارة — تُعاد استخدامها في بيانات عرض الحالات لتوحيد الألوان */
+export const badgeToneClasses = toneClasses;
 
 /** شارة حالة ثابتة الألوان عبر النظام كله */
 export function Badge({ tone = "neutral", className, ...rest }: BadgeProps) {
@@ -39,7 +49,11 @@ const dotToneClasses: Record<BadgeTone, string> = {
   warning: "bg-warning-500",
   danger: "bg-danger-500",
   info: "bg-ink-600",
+  plum: "bg-plum-500",
 };
+
+/** النقطة اللونية الصلبة لكل نبرة — للسطور والنقاط المصغرة في التقويم */
+export const badgeDotToneClasses = dotToneClasses;
 
 export function StatusPill({
   tone = "neutral",

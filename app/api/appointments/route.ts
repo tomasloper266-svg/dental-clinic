@@ -5,7 +5,7 @@ import {
   listAppointments,
   parseCreateAppointment,
 } from "@/lib/services/appointments";
-import { dayRange, weekRange } from "@/lib/dates";
+import { dayRange, monthRange, weekRange } from "@/lib/dates";
 
 export async function GET(req: NextRequest) {
   const ctx = await requireTenant(req);
@@ -15,7 +15,8 @@ export async function GET(req: NextRequest) {
 
   const params = req.nextUrl.searchParams;
   const date = params.get("date");
-  const view = params.get("view") === "week" ? "week" : "day";
+  const viewParam = params.get("view");
+  const view = viewParam === "week" || viewParam === "month" ? viewParam : "day";
 
   let from: Date;
   let to: Date;
@@ -24,10 +25,20 @@ export async function GET(req: NextRequest) {
     if (Number.isNaN(parsed.getTime())) {
       return NextResponse.json({ error: "تاريخ غير صالح" }, { status: 400 });
     }
-    [from, to] = view === "week" ? weekRange(parsed) : dayRange(parsed);
+    [from, to] =
+      view === "week"
+        ? weekRange(parsed)
+        : view === "month"
+          ? monthRange(parsed)
+          : dayRange(parsed);
   } else {
     const now = new Date();
-    [from, to] = view === "week" ? weekRange(now) : dayRange(now);
+    [from, to] =
+      view === "week"
+        ? weekRange(now)
+        : view === "month"
+          ? monthRange(now)
+          : dayRange(now);
   }
 
   const appointments = await listAppointments(ctx, from, to);

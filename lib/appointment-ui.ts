@@ -1,37 +1,70 @@
 import type { AppointmentStatus } from "@/lib/services/appointments";
+import {
+  badgeDotToneClasses,
+  badgeToneClasses,
+  type BadgeTone,
+} from "@/components/ui/Badge";
 
-// بيانات عرض حالات الموعد — تسمية عربية + ألوان Tailwind. كل حالة تحمل
-// تسمية نصية صريحة حتى لا يعتمد التمييز على اللون وحده.
+// بيانات عرض حالات الموعد — تسمية عربية + ألوان tokens موحّدة عبر النظام كله
+// (لوحة المواعيد، خط الزمن، ملف المريض، التذكيرات). كل حالة تحمل تسمية نصية
+// صريحة حتى لا يعتمد التمييز على اللون وحده.
 
-export const STATUS_META: Record<
-  AppointmentStatus,
-  { label: string; chip: string }
-> = {
-  SCHEDULED: {
-    label: "محجوز",
-    chip: "bg-blue-50 text-blue-800 border-blue-200",
-  },
-  CONFIRMED: {
-    label: "مؤكد",
-    chip: "bg-teal-50 text-teal-800 border-teal-200",
-  },
-  IN_TREATMENT: {
-    label: "قيد العلاج",
-    chip: "bg-amber-50 text-amber-800 border-amber-200",
-  },
-  COMPLETED: {
-    label: "مكتمل",
-    chip: "bg-gray-50 text-gray-600 border-gray-200",
-  },
-  CANCELLED: {
-    label: "ملغى",
-    chip: "bg-red-50 text-red-700 border-red-200",
-  },
-  NO_SHOW: {
-    label: "لم يحضر",
-    chip: "bg-purple-50 text-purple-800 border-purple-200",
-  },
+/** نبرة كل حالة — المصدر الوحيد لترتيب الألوان الدلالية في كل العروض */
+const STATUS_TONES: Record<AppointmentStatus, BadgeTone> = {
+  SCHEDULED: "info",
+  CONFIRMED: "success",
+  IN_TREATMENT: "warning",
+  COMPLETED: "neutral",
+  CANCELLED: "danger",
+  NO_SHOW: "plum",
 };
+
+const STATUS_LABELS: Record<AppointmentStatus, string> = {
+  SCHEDULED: "محجوز",
+  CONFIRMED: "مؤكد",
+  IN_TREATMENT: "قيد العلاج",
+  COMPLETED: "مكتمل",
+  CANCELLED: "ملغى",
+  NO_SHOW: "لم يحضر",
+};
+
+/** أصناف بلوك التقويم لكل نبرة — خلفية هادئة وحدّ ولون نص قابل للقراءة */
+const BLOCK_CLASSES: Record<BadgeTone, string> = {
+  neutral: "border-warm-200 bg-surface-sunken text-warm-600",
+  success: "border-primary-200 bg-primary-50 text-primary-800",
+  warning: "border-warning-300 bg-warning-50 text-warning-900",
+  danger: "border-danger-300 bg-danger-50 text-danger-700",
+  info: "border-ink-200 bg-ink-50 text-ink-800",
+  plum: "border-plum-200 bg-plum-50 text-plum-700",
+};
+
+export type StatusVisual = {
+  label: string;
+  tone: BadgeTone;
+  /** أصناف الشارة الدائرية — نفس أصناف Badge */
+  chip: string;
+  /** نقطة/شريط لوني صلب — للنقاط المصغرة في التقويم والسطور */
+  dot: string;
+  /** أصناف بلوك التقويم — خلفية وحدّ ونص */
+  block: string;
+};
+
+export const STATUS_META: Record<AppointmentStatus, StatusVisual> =
+  Object.fromEntries(
+    (Object.keys(STATUS_TONES) as AppointmentStatus[]).map((status) => {
+      const tone = STATUS_TONES[status];
+      return [
+        status,
+        {
+          label: STATUS_LABELS[status],
+          tone,
+          chip: badgeToneClasses[tone],
+          dot: badgeDotToneClasses[tone],
+          block: BLOCK_CLASSES[tone],
+        },
+      ];
+    }),
+  ) as Record<AppointmentStatus, StatusVisual>;
 
 // تسميات عربية للحالات تُستخدم في قوائم الانتقالات ورسائل الخطأ.
 export const STATUS_LABEL = (status: AppointmentStatus): string =>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { PatientOption } from "@/components/BookingForm";
+import { PatientOption } from "@/lib/use-patient-search";
 import { formatTime } from "@/lib/appointment-ui";
 import type { WaitlistStatus } from "@/lib/services/waitlist";
 

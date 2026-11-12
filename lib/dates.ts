@@ -24,6 +24,15 @@ export function weekRange(date: Date): [Date, Date] {
   return [weekStart, new Date(weekStart.getTime() + 7 * DAY_MS)];
 }
 
+// أول الشهر حتى أول الشهر التالي — بتوقيت UTC مثل بقية حدود الأيام.
+export function monthRange(date: Date): [Date, Date] {
+  const start = dayStart(date);
+  return [
+    new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1)),
+    new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1)),
+  ];
+}
+
 // إزاحة التاريخ بحدود يوم ثابتة — للتنقل بين الأيام والأسابيع.
 export function addDays(date: Date, days: number): Date {
   return new Date(date.getTime() + days * DAY_MS);
