@@ -34,7 +34,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { token, expiresAt } = await createSession(user.userId);
+  const rememberMe = (body as Record<string, unknown>).rememberMe === true;
+  const { token, expiresAt } = await createSession(user.userId, rememberMe);
   // تنظيف كسول للجلسات المنتهية — بلا مهمة مجدولة.
   purgeExpiredSessions().catch((err) =>
     console.error("[login] session purge failed:", err),

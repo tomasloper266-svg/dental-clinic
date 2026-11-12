@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseSignup } from "@/lib/auth/signup";
 import { createClinicWithOwner } from "@/lib/auth/create-clinic";
+import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/session";
 
 export async function POST(req: NextRequest) {
   let body: unknown;
@@ -16,8 +17,22 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const clinicId = await createClinicWithOwner(parsed.value);
-    return NextResponse.json({ clinicId }, { status: 201 });
+    const created = await createClinicWithOwner(parsed.value);
+    // الجلسة الأولى تُفتح فوراً — الإعداد يبدأ دون إعادة تسجيل دخول.
+    const res = NextResponse.json(
+      {
+        clinicId: created.clinicId,
+        // رمز الاسترداد يُعرض مرة واحدة فقط — لا نسخة ثانية على الخادم.
+        recoveryCode: created.recoveryCode,
+      },
+      { status: 201 },
+    );
+    res.cookies.set(
+      SESSION_COOKIE,
+      created.session.token,
+      sessionCookieOptions(created.session.expiresAt),
+    );
+    return res;
   } catch (err) {
     // خطأ غير متوقع (اتصال قاعدة بيانات، قيد، ...) — يُسجل ولا يُكتم.
     console.error("[signup] failed to create clinic:", err);
