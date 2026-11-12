@@ -49,7 +49,10 @@ const segmentLabels: Record<string, string> = {
 
 /** تسمية عربية لقطعة مسار — دالة نقية تُستخدم في الـ breadcrumbs */
 export function segmentLabel(segment: string): string {
-  return segmentLabels[segment] ?? segment;
+  const known = segmentLabels[segment];
+  if (known) return known;
+  // معرّفات السجلات (cuid) طويلة — تُعرض «ملف المريض» بدل المعرّف الخام
+  return segment.length > 20 ? "ملف المريض" : segment;
 }
 
 export type Crumb = { href: string; label: string };

@@ -193,3 +193,40 @@ export async function listAppointments(
       })),
     );
 }
+
+// مواعيد مريض واحد فقط — قراءة عرضية لملف المريض، بنفس نمط listAppointments
+// والحصر بالعيادة عبر clinicScope. تنازلياً زمنياً (الأحدث أولًا) بحد أعلى.
+export async function listPatientAppointments(
+  ctx: TenantContext,
+  patientId: string,
+  take = 50,
+): Promise<AppointmentDto[]> {
+  const db = clinicScope(ctx.clinicId);
+  return db.appointment
+    .findMany({
+      where: { patientId },
+      orderBy: { startsAt: "desc" },
+      take,
+      select: {
+        id: true,
+        patientId: true,
+        startsAt: true,
+        durationMin: true,
+        status: true,
+        reason: true,
+        note: true,
+      },
+    })
+    .then((rows) =>
+      rows.map((a) => ({
+        id: a.id,
+        patientId: a.patientId,
+        patientName: "",
+        startsAt: a.startsAt,
+        durationMin: a.durationMin,
+        status: a.status,
+        reason: a.reason,
+        note: a.note,
+      })),
+    );
+}
