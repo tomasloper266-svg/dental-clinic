@@ -3,13 +3,16 @@ import { redirect } from "next/navigation";
 import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
 import { tenantContextFromSession } from "@/lib/tenant/context";
 import { getPatient } from "@/lib/services/patients";
+import { listFindings } from "@/lib/services/findings";
+import { listPlan } from "@/lib/services/treatment-plan";
 import { PatientPicker } from "@/components/patients/PatientPicker";
+import OdontogramWorkbench from "@/components/odontogram/OdontogramWorkbench";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { ToothIcon } from "@/components/shell/icons/ToothIcon";
 
 /**
- * مخطط الأسنان المستقل — منتقي مريض أعلى ومسرح الرسم تحته.
- * الموجة 1: الهيكل والمنتقي فقط؛ لوحة الرسم التشريحي تُبنى في الموجة 2.
+ * مخطط الأسنان المستقل — منتقي مريض أعلى والرسم التشريحي الكامل تحته.
+ * نفس مكوّنات ملف المريض (مصدر واحد، تجربتان): الرسم بالعرض الكامل
+ * والحفظ إلحاقي عبر مسارات findings وtreatment-plan القائمة.
  */
 export default async function ChartPage({
   searchParams,
@@ -24,6 +27,12 @@ export default async function ChartPage({
   const ctx = tenantContextFromSession(session);
   const { patient: patientId } = await searchParams;
   const patient = patientId ? await getPatient(ctx, patientId) : null;
+  const [findings, planItems] = patient
+    ? await Promise.all([
+        listFindings(ctx, patient.id),
+        listPlan(ctx, patient.id),
+      ])
+    : [[], []];
 
   return (
     <div className="w-full px-4 py-6">
@@ -38,24 +47,20 @@ export default async function ChartPage({
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
         <PatientPicker basePath="/chart" selectedPatientId={patient?.id} />
-        <div className="grid min-h-80 place-items-center rounded-panel border border-dashed border-warm-300 bg-surface-raised/60">
-          {patient ? (
-            <div className="flex flex-col items-center gap-3 p-8 text-center">
-              <ToothIcon size={40} className="text-primary-400" />
-              <p className="text-sm font-semibold text-ink-900">
-                مساحة الرسم التشريحي — {patient.name}
-              </p>
-              <p className="max-w-sm text-xs text-steel-500">
-                لوحة الأودوغرام التفاعلية تُبنى في الموجة التالية وتحلّ محل
-                هذه المساحة — سجل السن وتفاصيله تُقرأ من قيود المريض الحالية.
-              </p>
-            </div>
-          ) : (
-            <p className="p-8 text-sm text-steel-500">
-              اختر مريضاً من القائمة لبدء العمل على مخطط أسنانه.
+        {patient ? (
+          <OdontogramWorkbench
+            patientId={patient.id}
+            initialFindings={findings}
+            initialPlan={planItems}
+          />
+        ) : (
+          <div className="rounded-panel border-warm-300 bg-surface-raised/60 grid min-h-80 place-items-center border border-dashed">
+            <p className="text-steel-500 p-8 text-sm">
+              اختر مريضاً من القائمة لبدء العمل على مخطط أسنانه — الرسم التشريحي
+              يعرض الأسنان الـ32 بأشكالها وحالاتها المسجلة.
             </p>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
