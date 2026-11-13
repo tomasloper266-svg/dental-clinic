@@ -33,6 +33,8 @@ export type ReminderDto = {
   reason: string | null;
   whatsappUrl: string | null;
   message: string;
+  /** هل سُجّل إرسال تذكير هذا الموعد سابقاً */
+  sent: boolean;
 };
 
 // الملغى و«لم يحضر» لا يستحقان تذكيراً — بقية الحالات تظهر في قائمة الغد.
@@ -73,6 +75,17 @@ export async function listTomorrowReminders(
   const clinicName = doctor?.clinic.name ?? "";
   const doctorName = doctor?.name ?? "";
 
+  // سطور الإرسال السابقة تُجلب بدفعة واحدة — الحالة تبقى بين الجلسات من القاعدة.
+  const appointmentIds = appointments.map((a) => a.id);
+  const sentRows =
+    appointmentIds.length > 0
+      ? await db.appointmentReminder.findMany({
+          where: { appointmentId: { in: appointmentIds } },
+          select: { appointmentId: true },
+        })
+      : [];
+  const sentIds = new Set(sentRows.map((s) => s.appointmentId));
+
   return appointments.map((a) => {
     const message = buildReminderMessage({
       patientName: a.patient.name,
@@ -95,6 +108,43 @@ export async function listTomorrowReminders(
         ? buildWhatsAppUrl(a.patient.phone, message)
         : null,
       message,
+      sent: sentIds.has(a.id),
     };
   });
+}
+
+export type MarkReminderSentResult =
+  | { ok: true; sentAt: Date }
+  | { ok: false; code: "NOT_FOUND" };
+
+// تسجيل إرسال تذكير موعد — إلحاقي وعديم الأثر عند التكرار (idempotent):
+// سطر واحد لكل موعد بفضل القيد المركّب clinicId+appointmentId. الموعد يُتحقق
+// منه بنطاق العيادة أولاً — معرف الموعد من الطلب ادعاء لا حقيقة.
+export async function markReminderSent(
+  ctx: TenantContext,
+  appointmentId: string,
+): Promise<MarkReminderSentResult> {
+  const db = clinicScope(ctx.clinicId);
+
+  const appointment = await db.appointment.findFirst({
+    where: { id: appointmentId },
+    select: { id: true },
+  });
+  if (!appointment) {
+    return { ok: false, code: "NOT_FOUND" };
+  }
+
+  const existing = await db.appointmentReminder.findFirst({
+    where: { appointmentId },
+    select: { sentAt: true },
+  });
+  if (existing) {
+    return { ok: true, sentAt: existing.sentAt };
+  }
+
+  const created = await db.appointmentReminder.create({
+    data: { clinicId: ctx.clinicId, appointmentId, sentById: ctx.userId },
+    select: { sentAt: true },
+  });
+  return { ok: true, sentAt: created.sentAt };
 }

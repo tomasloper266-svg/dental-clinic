@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { tenantContextFromSession } from "@/lib/tenant/context";
 import type { TenantContext } from "@/lib/tenant/context";
-import { listTomorrowReminders } from "@/lib/services/reminders";
+import { listTomorrowReminders, markReminderSent } from "@/lib/services/reminders";
 import {
   createTemplate,
   deleteTemplate,
@@ -266,6 +266,119 @@ describeDb("قوالب التعليمات وتسجيل الإرسال — integr
     const history = await listInstructionSends(ctx, otherPatient.id);
     expect(history).toHaveLength(0);
 
+    await prisma.patient.delete({ where: { id: otherPatient.id } });
+    await prisma.clinic.delete({ where: { id: otherClinic.id } });
+  });
+});
+
+describeDb("تتبع حالة إرسال تذكير الغد — integration", () => {
+  let trackClinicId = "";
+  let trackUserId = "";
+  let trackPatientId = "";
+  let trackCtx: TenantContext;
+
+  beforeAll(async () => {
+    const clinic = await prisma.clinic.create({
+      data: { name: "عيادة تتبع تذكير (اختبار)" },
+    });
+    trackClinicId = clinic.id;
+    const user = await prisma.user.create({
+      data: {
+        clinicId: trackClinicId,
+        name: "د. رامي",
+        phone: "0911111113",
+        passwordHash: await hashPassword("track-pass-1"),
+        role: "DENTIST",
+      },
+    });
+    trackUserId = user.id;
+    const patient = await prisma.patient.create({
+      data: { clinicId: trackClinicId, name: "مريض تتبع", phone: "0966-666-666" },
+    });
+    trackPatientId = patient.id;
+    trackCtx = tenantContextFromSession({
+      userId: trackUserId,
+      clinicId: trackClinicId,
+      name: user.name,
+      role: "DENTIST",
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.appointmentReminder.deleteMany({ where: { clinicId: trackClinicId } });
+    await prisma.appointment.deleteMany({ where: { clinicId: trackClinicId } });
+    await prisma.patient.deleteMany({ where: { clinicId: trackClinicId } });
+    await prisma.user.deleteMany({ where: { clinicId: trackClinicId } });
+    await prisma.clinic.deleteMany({ where: { id: trackClinicId } });
+  });
+
+  it("التسجيل يجعل القائمة تعلم «أُرسل» ويبقى بين الجلسات — والتكرار بلا أثر", async () => {
+    const a1 = await prisma.appointment.create({
+      data: {
+        clinicId: trackClinicId,
+        patientId: trackPatientId,
+        startsAt: at(9, 0),
+        durationMin: 30,
+        status: "SCHEDULED",
+      },
+    });
+    const a2 = await prisma.appointment.create({
+      data: {
+        clinicId: trackClinicId,
+        patientId: trackPatientId,
+        startsAt: at(10, 0),
+        durationMin: 30,
+        status: "SCHEDULED",
+      },
+    });
+
+    // قبل التسجيل: كل شيء غير مُرسل
+    const before = await listTomorrowReminders(trackCtx, NOW);
+    expect(before.find((r) => r.appointmentId === a1.id)?.sent).toBe(false);
+    expect(before.find((r) => r.appointmentId === a2.id)?.sent).toBe(false);
+
+    const first = await markReminderSent(trackCtx, a1.id);
+    expect(first.ok).toBe(true);
+
+    // التكرار عديم الأثر — سطر واحد فقط في السجل
+    const again = await markReminderSent(trackCtx, a1.id);
+    expect(again.ok).toBe(true);
+    if (first.ok && again.ok) {
+      expect(again.sentAt.getTime()).toBe(first.sentAt.getTime());
+    }
+    expect(
+      await prisma.appointmentReminder.count({
+        where: { clinicId: trackClinicId },
+      }),
+    ).toBe(1);
+
+    // القائمة بعد التسجيل: الأول أُرسل والثاني بقي «متبقياً»
+    const after = await listTomorrowReminders(trackCtx, NOW);
+    expect(after.find((r) => r.appointmentId === a1.id)?.sent).toBe(true);
+    expect(after.find((r) => r.appointmentId === a2.id)?.sent).toBe(false);
+  });
+
+  it("موعد عيادة أخرى لا يُسجَّل — العزل عبر نطاق العيادة", async () => {
+    const otherClinic = await prisma.clinic.create({
+      data: { name: "عيادة تتبع أخرى" },
+    });
+    const otherPatient = await prisma.patient.create({
+      data: { clinicId: otherClinic.id, name: "مريض تتبع أخرى" },
+    });
+    const otherAppointment = await prisma.appointment.create({
+      data: {
+        clinicId: otherClinic.id,
+        patientId: otherPatient.id,
+        startsAt: at(11, 0),
+        durationMin: 30,
+        status: "SCHEDULED",
+      },
+    });
+
+    const result = await markReminderSent(trackCtx, otherAppointment.id);
+    expect(result.ok).toBe(false);
+
+    await prisma.appointment.delete({ where: { id: otherAppointment.id } });
     await prisma.patient.delete({ where: { id: otherPatient.id } });
     await prisma.clinic.delete({ where: { id: otherClinic.id } });
   });

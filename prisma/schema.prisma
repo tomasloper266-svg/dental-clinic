@@ -111,6 +111,7 @@ model Clinic {
   materialUsages       MaterialUsage[]
   instructionTemplates InstructionTemplate[]
   instructionSends     InstructionSend[]
+  appointmentReminders AppointmentReminder[]
 }
 
 model User {
@@ -136,6 +137,7 @@ model User {
   recordedMaterialUsage MaterialUsage[] @relation("MaterialUsageRecorder")
   appointmentStatusChanges AppointmentStatusChange[] @relation("AppointmentStatusChanger")
   sentInstructions      InstructionSend[] @relation("InstructionSender")
+  sentReminders         AppointmentReminder[] @relation("ReminderSender")
 
   @@unique([clinicId, phone])
   @@index([clinicId])
@@ -228,9 +230,28 @@ model Appointment {
   patient        Patient         @relation(fields: [patientId], references: [id])
   materialUsages MaterialUsage[]
   statusChanges  AppointmentStatusChange[]
+  reminders      AppointmentReminder[]
 
   @@index([clinicId, startsAt])
   @@index([clinicId, patientId, startsAt])
+}
+
+// سجل إرسال تذكير واتساب لموعد — سطر واحد لكل موعد أُرسل بضغطة. سطر الإرسال
+// إلحاقي (لا يُعدَّل ولا يُحذف من طبقة الخدمة) والقيد المركّب يمنع التسجيل المزدوج
+// ويجعل الصفحة تتذكر ما أُرسل بين الجلسات.
+model AppointmentReminder {
+  id            String   @id @default(cuid())
+  clinicId      String
+  appointmentId String
+  sentById      String
+  sentAt        DateTime @default(now())
+
+  clinic      Clinic      @relation(fields: [clinicId], references: [id])
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  sentBy      User        @relation("ReminderSender", fields: [sentById], references: [id])
+
+  @@unique([clinicId, appointmentId])
+  @@index([clinicId, sentAt])
 }
 
 // سجل تغيّر حالة الموعد — من الحالة إلى الحالة، ومَن غيّر ومتى.
