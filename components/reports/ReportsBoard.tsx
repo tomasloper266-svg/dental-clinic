@@ -14,7 +14,8 @@ import {
 } from "lucide-react";
 import type { ExpenseCategory } from "@/lib/reports-view";
 import { EXPENSE_CATEGORIES } from "@/lib/reports-view";
-import { formatSyp } from "@/lib/utils";
+import { formatDualFromSyp } from "@/lib/currency";
+import { DualAmount } from "@/components/ui/DualAmount";
 import { toDateInputValue } from "@/lib/dates";
 import {
   EXPENSE_CATEGORY_LABELS,
@@ -83,8 +84,10 @@ const expenseDateFmt = new Intl.DateTimeFormat("ar-SY-u-nu-latn", {
 
 export default function ReportsBoard({
   initialDate,
+  usdRate,
 }: {
   initialDate: string;
+  usdRate: number;
 }) {
   const { toast } = useToast();
   const now = new Date();
@@ -303,23 +306,23 @@ export default function ReportsBoard({
       ) : (
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
-            value={formatSyp(report.collectedSyp)}
+            value={formatDualFromSyp(report.collectedSyp, usdRate)}
             label="التحصيل"
             icon={DollarSign}
           />
           <StatCard
-            value={formatSyp(report.expensesSyp)}
+            value={formatDualFromSyp(report.expensesSyp, usdRate)}
             label="المصاريف"
             icon={ReceiptText}
           />
           <StatCard
-            value={formatSyp(report.refundsSyp)}
+            value={formatDualFromSyp(report.refundsSyp, usdRate)}
             label="الاستردادات"
             icon={TriangleAlert}
             tone="danger"
           />
           <StatCard
-            value={formatSyp(report.netSyp)}
+            value={formatDualFromSyp(report.netSyp, usdRate)}
             label="صافي الفترة"
             icon={Wallet}
             tone={report.netSyp >= 0 ? "primary" : "danger"}
@@ -344,7 +347,7 @@ export default function ReportsBoard({
                 className="h-40 animate-pulse rounded-field bg-surface-sunken"
               />
             ) : (
-              <DailyBarsChart series={series} />
+              <DailyBarsChart series={series} usdRate={usdRate} />
             )}
           </CardBody>
         </Card>
@@ -384,7 +387,7 @@ export default function ReportsBoard({
                         {expenseCategoryLabel(c.category)}
                       </span>
                       <span className="numeric text-warm-600">
-                        {formatSyp(c.totalSyp)}
+                        {formatDualFromSyp(c.totalSyp, usdRate)}
                       </span>
                     </div>
                     <div className="h-2 w-full overflow-hidden rounded-full bg-surface-sunken">
@@ -392,7 +395,7 @@ export default function ReportsBoard({
                         className="h-full rounded-full bg-primary-500"
                         style={{ width: `${(c.totalSyp / categoryMax) * 100}%` }}
                         role="img"
-                        aria-label={`${expenseCategoryLabel(c.category)}: ${formatSyp(c.totalSyp)}`}
+                        aria-label={`${expenseCategoryLabel(c.category)}: ${formatDualFromSyp(c.totalSyp, usdRate)}`}
                       />
                     </div>
                   </li>
@@ -432,8 +435,8 @@ export default function ReportsBoard({
                   <TD className="max-w-64 text-xs text-warm-600">
                     {e.note ?? "—"}
                   </TD>
-                  <TD className="numeric text-end font-medium text-ink-900">
-                    {formatSyp(e.amountSyp)}
+                  <TD>
+                    <DualAmount syp={e.amountSyp} usdRate={usdRate} />
                   </TD>
                 </TRow>
               ))}

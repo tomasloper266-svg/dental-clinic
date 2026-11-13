@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import type { MaterialDto } from "@/lib/services/inventory";
 import { usePatientSearch, type PatientOption } from "@/lib/use-patient-search";
-import { formatSyp } from "@/lib/utils";
+import { DualAmount } from "@/components/ui/DualAmount";
 import {
   MATERIAL_STATUS_LABELS,
   healthyCount,
@@ -50,7 +50,7 @@ type QuantitySubmit = (quantity: number) => Promise<boolean>;
 type UsageSubmit = (quantity: number, patientId?: string) => Promise<boolean>;
 type EditSubmit = (body: Record<string, unknown>) => Promise<boolean>;
 
-export default function InventoryBoard() {
+export default function InventoryBoard({ usdRate }: { usdRate: number }) {
   const { toast } = useToast();
   const [materials, setMaterials] = useState<MaterialDto[] | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -286,8 +286,12 @@ export default function InventoryBoard() {
                             minQuantity={m.minQuantity}
                           />
                         </TD>
-                        <TD className="numeric text-end text-warm-600">
-                          {m.costSyp !== null ? formatSyp(m.costSyp) : "—"}
+                        <TD>
+                          {m.costSyp !== null ? (
+                            <DualAmount syp={m.costSyp} usdRate={usdRate} />
+                          ) : (
+                            <span className="text-warm-300">—</span>
+                          )}
                         </TD>
                         <TD>
                           <MaterialActions

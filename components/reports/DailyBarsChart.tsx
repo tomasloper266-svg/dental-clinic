@@ -1,6 +1,7 @@
 "use client";
 
 import { formatShortSyp, seriesMax } from "@/lib/reports-view";
+import { formatDualFromSyp } from "@/lib/currency";
 
 // رسم بياني يومي (تحصيل مقابل مصاريف) — SVG خالص بلا أي مكتبة خارجية:
 // الحجم صغير والتحكم الكامل بالاتجاه RTL (الأقدم إلى اليمين والأحدث
@@ -22,7 +23,13 @@ const tooltipFmt = new Intl.DateTimeFormat("ar-SY-u-nu-latn", {
   month: "long",
 });
 
-export default function DailyBarsChart({ series }: { series: SeriesPoint[] }) {
+export default function DailyBarsChart({
+  series,
+  usdRate,
+}: {
+  series: SeriesPoint[];
+  usdRate: number;
+}) {
   const max = seriesMax(series);
   const plotW = WIDTH - PAD.left - PAD.right;
   const plotH = HEIGHT - PAD.top - PAD.bottom;
@@ -99,8 +106,8 @@ export default function DailyBarsChart({ series }: { series: SeriesPoint[] }) {
             <g key={point.date}>
               <title>
                 {`${tooltipFmt.format(new Date(`${point.date}T00:00:00Z`))} — ` +
-                  `تحصيل: ${point.collectedSyp.toLocaleString("ar-SY-u-nu-latn")} ل.س، ` +
-                  `مصاريف: ${point.expensesSyp.toLocaleString("ar-SY-u-nu-latn")} ل.س`}
+                  `تحصيل: ${formatDualFromSyp(point.collectedSyp, usdRate)}، ` +
+                  `مصاريف: ${formatDualFromSyp(point.expensesSyp, usdRate)}`}
               </title>
               {collectedH > 0 && (
                 <rect
