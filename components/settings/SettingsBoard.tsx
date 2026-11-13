@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Building2, RefreshCw, Stethoscope } from "lucide-react";
+import { DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Field";
@@ -20,6 +21,7 @@ import {
 type Overview = SecurityOverview & {
   name: string;
   clinicName: string;
+  usdRate: number;
 };
 
 // ─── بطاقة بيانات موحّدة: حقل واحد للحفظ عبر PATCH الحساب ───────────────────
@@ -101,6 +103,84 @@ function SingleFieldCard({
   );
 }
 
+// ─── بطاقة سعر الصرف: حقل رقمي وظيفي — التنسيق الكامل للإعدادات لاحقاً ──────
+
+function UsdRateCard({
+  usdRate,
+  onSaved,
+}: {
+  usdRate: number;
+  onSaved: (patch: Record<string, number>) => Promise<string | null>;
+}) {
+  const [draft, setDraft] = useState(String(usdRate));
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const parsed = Number(draft);
+  const dirty = draft.trim() !== String(usdRate);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      setError("سعر الصرف يجب أن يكون رقماً موجباً");
+      return;
+    }
+    setError(null);
+    setSaving(true);
+    const failure = await onSaved({ usdRate: parsed });
+    if (failure) setError(failure);
+    setSaving(false);
+  }
+
+  return (
+    <form onSubmit={onSubmit} aria-label="سعر صرف الدولار">
+      <Card>
+        <CardBody className="flex flex-col gap-4">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-ink-900">
+            <DollarSign size={18} className="text-primary-700" aria-hidden />
+            سعر صرف الدولار
+          </h2>
+          <p className="text-sm text-warm-600">
+            يُستخدم لعرض المبالغ بالعملتين معاً — الدولار والليرة السورية.
+          </p>
+          <Field
+            label="ليرة سورية لكل دولار"
+            htmlFor="set-usd-rate"
+            hint="مثال: 15000"
+          >
+            <Input
+              id="set-usd-rate"
+              required
+              inputMode="decimal"
+              min="1"
+              type="number"
+              step="any"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+            />
+          </Field>
+          {error && (
+            <p
+              role="alert"
+              className="rounded-field border border-danger-100 bg-danger-50 px-3 py-2.5 text-sm text-danger-700"
+            >
+              {error}
+            </p>
+          )}
+          <div className="flex items-center gap-3">
+            <Button type="submit" loading={saving} disabled={!dirty}>
+              حفظ
+            </Button>
+            {!dirty && !saving && (
+              <span className="text-xs text-warm-500">لا تغييرات لحفظها</span>
+            )}
+          </div>
+        </CardBody>
+      </Card>
+    </form>
+  );
+}
+
 // ─── اللوحة ─────────────────────────────────────────────────────────────────
 
 export default function SettingsBoard() {
@@ -130,7 +210,7 @@ export default function SettingsBoard() {
   }, [load]);
 
   // حفظ حقل واحد عبر PATCH — يعيد رسالة الخطأ أو null عند النجاح.
-  async function saveProfile(patch: Record<string, string>): Promise<string | null> {
+  async function saveProfile(patch: Record<string, string | number>): Promise<string | null> {
     try {
       const res = await fetch("/api/account", {
         method: "PATCH",
@@ -199,6 +279,7 @@ export default function SettingsBoard() {
           value={overview.name}
           onSaved={saveProfile}
         />
+        <UsdRateCard usdRate={overview.usdRate} onSaved={saveProfile} />
       </div>
 
       <section aria-labelledby="security-heading" className="space-y-4">

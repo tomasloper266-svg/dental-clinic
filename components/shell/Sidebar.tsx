@@ -3,7 +3,7 @@
 import { PanelRightClose, PanelRightOpen, Wallet } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { formatSyp } from "@/lib/utils";
+import { formatDualFromSyp, DEFAULT_USD_RATE } from "@/lib/currency";
 import LogoutButton from "@/components/LogoutButton";
 import { cn } from "@/components/ui/cn";
 import { navGroups, homeNav, type BadgeKey, type NavGroup } from "./nav-items";
@@ -15,6 +15,8 @@ type SidebarProps = {
   badges: Record<BadgeKey, number>;
   /** المستحقات غير المسددة عبر المرضى — بطاقة التنبيه المثبتة أسفل الشريط */
   outstandingDuesSyp?: number;
+  /** سعر صرف الدولار — لعرض العملة المزدوجة في بطاقة التنبيه */
+  usdRate?: number;
 };
 
 const SYSTEM_NAME = "عيادات الأسنان";
@@ -46,13 +48,20 @@ function NavEntry({
       aria-current={active ? "page" : undefined}
       title={collapsed ? label : undefined}
       className={cn(
-        "relative flex items-center gap-3 px-3 py-2 text-sm transition-colors",
+        "relative flex items-center gap-3 px-3.5 py-2.5 text-sm transition-colors",
         active
-          ? "rounded-full bg-primary-600 font-semibold text-white shadow-xs"
-          : "rounded-full text-primary-50/80 hover:bg-white/10 hover:text-white",
+          ? "rounded-xl bg-primary-600 font-semibold text-white shadow-xs"
+          : "rounded-xl text-primary-50/80 hover:bg-white/10 hover:text-white",
         collapsed && "justify-center px-0",
       )}
     >
+      {/* شريط جانبي نشئ على شكل المرجع — يبرز من الحبة النشطة فقط */}
+      {active && (
+        <span
+          aria-hidden
+          className="absolute -start-3 top-1/2 h-[22px] w-[3px] -translate-y-1/2 rounded-full bg-gradient-to-b from-primary-300 to-primary-500"
+        />
+      )}
       <Icon size={20} className="shrink-0" aria-hidden />
       {!collapsed && <span className="flex-1 truncate">{label}</span>}
       {!collapsed && count !== undefined && count > 0 && (
@@ -88,13 +97,12 @@ function NavSection({
     <li className="mt-1">
       {!collapsed ? (
         <>
-          <div
-            role="presentation"
-            className="mx-3 mb-2 h-px bg-white/10"
-            aria-hidden
-          />
-          <p className="px-3 pb-1 text-[10px] font-semibold tracking-wide text-primary-100/60">
-            {group.label}
+          <p className="flex items-center gap-2.5 px-3 pb-1 text-[10px] font-bold tracking-wide text-primary-100/60">
+            <span>{group.label}</span>
+            <span
+              aria-hidden
+              className="h-px flex-1 bg-gradient-to-l from-primary-300/50 to-transparent"
+            />
           </p>
         </>
       ) : (
@@ -126,7 +134,15 @@ function NavSection({
  * بطاقة التنبيه المثبتة أسفل الشريط — تملق حمراء شفافة بأيقونة وقيمة،
  * للمستحقات غير المسددة مع رابط إلى الدفتر المالي. تُخفى بلا مستحقات.
  */
-function DuesAlertCard({ dues, collapsed }: { dues: number; collapsed: boolean }) {
+function DuesAlertCard({
+  dues,
+  usdRate,
+  collapsed,
+}: {
+  dues: number;
+  usdRate: number;
+  collapsed: boolean;
+}) {
   if (collapsed || dues <= 0) return null;
   return (
     <Link
@@ -141,7 +157,7 @@ function DuesAlertCard({ dues, collapsed }: { dues: number; collapsed: boolean }
         مستحقات غير مسددة
       </p>
       <p className="numeric mt-1 text-sm font-bold text-white">
-        {formatSyp(dues)}
+        {formatDualFromSyp(dues, usdRate)}
       </p>
     </Link>
   );
@@ -154,6 +170,7 @@ export function Sidebar({
   userName,
   badges,
   outstandingDuesSyp = 0,
+  usdRate = DEFAULT_USD_RATE,
 }: SidebarProps) {
   const pathname = usePathname() ?? "/dashboard";
   const ToggleIcon = collapsed ? PanelRightOpen : PanelRightClose;
@@ -173,13 +190,13 @@ export function Sidebar({
       >
         <span
           aria-hidden
-          className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-500 text-lg font-bold text-white shadow-xs"
+          className="grid size-12 shrink-0 place-items-center rounded-[14px] bg-primary-500 font-display text-xl font-bold text-white shadow-xs"
         >
           س
         </span>
         {!collapsed && (
           <span className="min-w-0">
-            <span className="block truncate text-sm font-semibold text-white">
+            <span className="block truncate font-display text-lg font-normal text-white">
               {SYSTEM_NAME}
             </span>
             <span className="block truncate text-[11px] text-primary-100/60">
@@ -218,7 +235,11 @@ export function Sidebar({
           collapsed && "items-center",
         )}
       >
-        <DuesAlertCard dues={outstandingDuesSyp} collapsed={collapsed} />
+        <DuesAlertCard
+          dues={outstandingDuesSyp}
+          usdRate={usdRate}
+          collapsed={collapsed}
+        />
         {!collapsed && (
           <span className="truncate text-xs text-primary-100/70">
             {userName}

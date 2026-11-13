@@ -15,7 +15,7 @@ export default function Home() {
         >
           <ToothIcon size={30} />
         </span>
-        <h1 className="text-3xl font-bold text-ink-900 sm:text-4xl">
+        <h1 className="font-display text-3xl font-normal text-ink-900 sm:text-4xl">
           نظام إدارة عيادات الأسنان
         </h1>
         <p className="mt-1 max-w-md text-lg text-steel-600">

@@ -14,6 +14,8 @@ import {
   greetingForDate,
 } from "@/lib/dashboard-view";
 import { outstandingDuesSyp } from "@/lib/finance-view";
+import { getClinicUsdRate } from "@/lib/services/account";
+import { formatDualFromSyp } from "@/lib/currency";
 import { formatDayLabel } from "@/lib/appointment-ui";
 import { formatSyp } from "@/lib/utils";
 import { CalendarDays, Coins, Users, Wallet } from "lucide-react";
@@ -49,6 +51,7 @@ export default async function DashboardPage() {
     patients,
     series,
     clinicEntries,
+    usdRate,
   ] = await Promise.all([
     getDailyReport(ctx, now),
     listAppointments(ctx, fetchWindowStart, fetchWindowEnd),
@@ -56,6 +59,7 @@ export default async function DashboardPage() {
     listPatients(ctx),
     getDailySeries(ctx, now, 7),
     listClinicLedgerEntries(ctx),
+    getClinicUsdRate(ctx),
   ]);
 
   const todaysAppointments = appointmentsWithin(
@@ -88,12 +92,12 @@ export default async function DashboardPage() {
           icon={CalendarDays}
         />
         <StatCard
-          value={formatSyp(weekCollectedSyp)}
+          value={formatDualFromSyp(weekCollectedSyp, usdRate)}
           label="إجمالي المدخول (7 أيام)"
           icon={Coins}
         />
         <StatCard
-          value={formatSyp(duesSyp)}
+          value={formatDualFromSyp(duesSyp, usdRate)}
           label="مستحقات غير مسددة"
           icon={Wallet}
           tone="danger"

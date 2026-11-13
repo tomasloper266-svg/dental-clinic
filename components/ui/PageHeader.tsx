@@ -10,8 +10,7 @@ type PageHeaderProps = {
 };
 
 /**
- * فاصل رفيع بعرض المحتوى مع معيّن صغير في المنتصف — تحت ترويسة كل صفحة
- * على شكل المرجع البنيوي.
+ * فاصل رفيع بعرض المحتوى مع معيّن متوهج في المنتصف — على شكل المرجع.
  */
 export function HeaderDivider({ className }: { className?: string }) {
   return (
@@ -19,17 +18,23 @@ export function HeaderDivider({ className }: { className?: string }) {
       role="presentation"
       className={cn("mt-4 flex items-center gap-2", className)}
     >
-      <span aria-hidden className="h-px flex-1 bg-warm-200" />
       <span
         aria-hidden
-        className="size-1.5 rotate-45 rounded-[1px] bg-warm-300"
+        className="h-px flex-1 bg-gradient-to-l from-warm-300/60 to-transparent"
       />
-      <span aria-hidden className="h-px flex-1 bg-warm-200" />
+      <span
+        aria-hidden
+        className="size-2 rotate-45 rounded-[1px] bg-primary-500 shadow-[0_0_10px_var(--color-primary-300)]"
+      />
+      <span
+        aria-hidden
+        className="h-px flex-1 bg-gradient-to-r from-warm-300/60 to-transparent"
+      />
     </div>
   );
 }
 
-/** ترويسة صفحة موحّدة: عنوان كبير بخط عناوين بارز + سطر باهت + إجراءات + فاصل بمعيّن */
+/** ترويسة صفحة موحّدة: عنوان كبير بخط الرقعة المزخرف + سطر باهت + إجراءات + فاصل بمعيّن */
 export function PageHeader({
   title,
   description,
@@ -40,9 +45,11 @@ export function PageHeader({
     <header className={cn("mb-5", className)}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-ink-900">{title}</h1>
+          <h1 className="font-display text-[25px] font-normal leading-[1.45] text-ink-900">
+            {title}
+          </h1>
           {description && (
-            <p className="mt-1 text-xs text-warm-500">{description}</p>
+            <p className="mt-1 text-[12.5px] text-warm-500">{description}</p>
           )}
         </div>
         {actions && (

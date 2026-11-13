@@ -98,6 +98,10 @@ model Clinic {
   name      String
   createdAt DateTime @default(now())
 
+  // سعر صرف الدولار بالليرة السورية — أساس عرض العملة المزدوجة ($ + ل.س).
+  // قيمة موجبة يتجاوز الصفر، تُعدَّل من إعدادات العيادة فقط.
+  usdRate   Float    @default(15000)
+
   users                User[]
   patients             Patient[]
   appointments         Appointment[]

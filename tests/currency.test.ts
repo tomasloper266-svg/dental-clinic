@@ -1,0 +1,64 @@
+import { describe, expect, it } from "vitest";
+import {
+  DEFAULT_USD_RATE,
+  formatDualFromSyp,
+  formatSypAmount,
+  formatUsd,
+  sypToUsd,
+} from "@/lib/currency";
+
+describe("formatUsd", () => {
+  it("يعرض عدداً صحيحاً بلا كسور", () => {
+    expect(formatUsd(50)).toBe("$50");
+  });
+
+  it("يحافظ على كسورتين كحد أقصى ويحذف الأصفار الزائدة", () => {
+    expect(formatUsd(36.67)).toBe("$36.67");
+    expect(formatUsd(36.5)).toBe("$36.5");
+    expect(formatUsd(36.004)).toBe("$36");
+  });
+
+  it("يفصل الآلاف بفواصل لاتينية", () => {
+    expect(formatUsd(1250)).toBe("$1,250");
+  });
+});
+
+describe("formatSypAmount", () => {
+  it("يقرّب لأقرب ليرة ويفصل الآلاف", () => {
+    expect(formatSypAmount(750000)).toBe("750,000 ل.س");
+    expect(formatSypAmount(1234.6)).toBe("1,235 ل.س");
+  });
+});
+
+describe("sypToUsd", () => {
+  it("يقسم على سعر الصرف", () => {
+    expect(sypToUsd(750000, DEFAULT_USD_RATE)).toBeCloseTo(50);
+  });
+
+  it("يرفض سعراً غير موجب — عقد صارم لا امتصاص صامت", () => {
+    expect(() => sypToUsd(750000, 0)).toThrow(RangeError);
+    expect(() => sypToUsd(750000, -5)).toThrow(RangeError);
+    expect(() => sypToUsd(750000, Number.NaN)).toThrow(RangeError);
+  });
+});
+
+describe("formatDualFromSyp", () => {
+  it("يعرض العملتين معاً على شكل المرجع", () => {
+    expect(formatDualFromSyp(750000, DEFAULT_USD_RATE)).toBe(
+      "$50 (750,000 ل.س)",
+    );
+  });
+
+  it("يقرّب الدولار لكسرتين ويبقي الليرة صحيحة", () => {
+    expect(formatDualFromSyp(550000, DEFAULT_USD_RATE)).toBe(
+      "$36.67 (550,000 ل.س)",
+    );
+  });
+
+  it("يتعامل مع الصفر والمبالغ السالبة بوضوح", () => {
+    expect(formatDualFromSyp(0, DEFAULT_USD_RATE)).toBe("$0 (0 ل.س)");
+    expect(formatDualFromSyp(-15000, DEFAULT_USD_RATE)).toBe(
+      "$-1 (-15,000 ل.س)",
+    );
+  });
+});

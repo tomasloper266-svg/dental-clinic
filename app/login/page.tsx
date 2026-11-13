@@ -47,7 +47,7 @@ export default function LoginPage() {
   return (
     <AuthShell>
       <section aria-labelledby="login-title">
-        <h1 id="login-title" className="text-2xl font-bold text-ink-900">
+        <h1 id="login-title" className="font-display text-[25px] font-normal leading-[1.45] text-ink-900">
           تسجيل الدخول
         </h1>
         <p className="mt-2 text-sm text-warm-600">
