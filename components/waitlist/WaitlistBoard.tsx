@@ -6,20 +6,36 @@ import {
   ChevronLeft,
   ChevronRight,
   Hourglass,
+  SearchX,
   UserPlus,
 } from "lucide-react";
 import { addDays, toDateInputValue } from "@/lib/dates";
 import { formatDayLabel, formatTime } from "@/lib/appointment-ui";
 import {
   WAITLIST_STATUS_META,
+  WAITLIST_STATUS_ORDER,
+  filterWaitlistEntries,
   stripPercent,
   suggestEntriesForGap,
+  type WaitlistStatusFilter,
 } from "@/lib/waitlist-view";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { StatusPill } from "@/components/ui/Badge";
-import { Table, THead, TRow, TH, TD } from "@/components/ui/Table";
+import { Badge, StatusPill } from "@/components/ui/Badge";
+import { EntityCell } from "@/components/ui/EntityCell";
+import { PillAction } from "@/components/ui/TableActions";
+import {
+  Card,
+  CardBody,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/Card";
+import {
+  FilterPills,
+  PanelToolbar,
+  SearchInput,
+} from "@/components/ui/Toolbar";
 import WaitlistEntryForm from "./WaitlistEntryForm";
 import BookGapModal, {
   type GapJson,
@@ -50,6 +66,8 @@ export default function WaitlistBoard({ initialDate }: { initialDate: string }) 
   const [busy, setBusy] = useState<BusyBlock[] | null>(null);
   const [adding, setAdding] = useState(false);
   const [bookingGap, setBookingGap] = useState<GapJson | null>(null);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<WaitlistStatusFilter>("all");
 
   const refreshEntries = useCallback(async () => {
     setEntriesError(null);
@@ -115,6 +133,12 @@ export default function WaitlistBoard({ initialDate }: { initialDate: string }) 
     [entries],
   );
 
+  /** المرضى المعروضون بعد البحث والتصفية — النقاء في lib/waitlist-view. */
+  const visibleEntries = useMemo(
+    () => (entries ? filterWaitlistEntries(entries, query, statusFilter) : []),
+    [entries, query, statusFilter],
+  );
+
   const windowMs =
     gapsState.kind === "loaded"
       ? Date.parse(gapsState.windowEnd) - Date.parse(gapsState.windowStart)
@@ -134,230 +158,264 @@ export default function WaitlistBoard({ initialDate }: { initialDate: string }) 
       />
 
       <div className="mt-5 grid gap-6 lg:grid-cols-5">
-        {/* قائمة المرضى المنتظرين */}
+        {/* قائمة المرضى المنتظرين — بطاقة محتوى بشريط بحث وتصفية */}
         <section className="lg:col-span-2" aria-label="المرضى في قائمة الانتظار">
-          <h2 className="text-sm font-semibold text-ink-900">
-            المرضى المنتظرون
-            {entries && entries.length > 0 && (
-              <span className="numeric ms-2 text-xs text-warm-500">
-                {entries.length}
-              </span>
-            )}
-          </h2>
+          <Card>
+            <CardHeader className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle>
+                المرضى المنتظرون
+                {entries && entries.length > 0 && (
+                  <span className="numeric ms-2 text-xs font-normal text-warm-500">
+                    {entries.length}
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
 
-          {entriesError ? (
-            <div
-              role="alert"
-              className="mt-3 flex flex-col items-start gap-2 rounded-panel border border-danger-300 bg-danger-50 px-4 py-4"
-            >
-              <p className="text-xs font-medium text-danger-700">{entriesError}</p>
-              <Button variant="secondary" size="sm" onClick={() => void refreshEntries()}>
-                إعادة المحاولة
-              </Button>
-            </div>
-          ) : entries === null ? (
-            <EntriesSkeleton />
-          ) : entries.length === 0 ? (
-            <EmptyState
-              icon={Hourglass}
-              className="mt-3"
-              title="لا أحد في الانتظار"
-              description="أضف مريضاً طالب موعداً وسيظهر هنا مع فترته المفضلة وأولويته."
-              action={
-                <Button size="sm" onClick={() => setAdding(true)}>
-                  <UserPlus size={14} aria-hidden />
-                  إضافة مريض للانتظار
-                </Button>
-              }
-            />
-          ) : (
-            <>
-              {/* جدول الشاشات المتوسطة فأعلى */}
-              <Table className="mt-3 hidden md:table">
-                <THead>
-                  <TRow>
-                    <TH>المريض</TH>
-                    <TH>الفترة المفضلة</TH>
-                    <TH className="w-16">أولوية</TH>
-                    <TH>الحالة</TH>
-                  </TRow>
-                </THead>
-                <tbody>
-                  {entries.map((e) => (
-                    <TRow key={e.id}>
-                      <TD>
-                        <p className="font-medium text-ink-900">{e.patientName}</p>
-                        {e.note && (
-                          <p className="mt-0.5 max-w-52 truncate text-xs text-warm-500">
-                            {e.note}
-                          </p>
-                        )}
-                      </TD>
-                      <TD className="text-warm-700">{e.preferredWindow}</TD>
-                      <TD>
-                        {e.priority > 0 ? (
-                          <span className="numeric text-warm-700">{e.priority}</span>
-                        ) : (
-                          <span className="text-xs text-warm-400">—</span>
-                        )}
-                      </TD>
-                      <TD>
-                        <StatusPill tone={WAITLIST_STATUS_META[e.status].tone}>
-                          {WAITLIST_STATUS_META[e.status].label}
-                        </StatusPill>
-                      </TD>
-                    </TRow>
-                  ))}
-                </tbody>
-              </Table>
-
-              {/* بطاقات الموبايل */}
-              <div className="mt-3 flex flex-col gap-2 md:hidden">
-                {entries.map((e) => (
-                  <article
-                    key={e.id}
-                    className="rounded-panel border border-warm-200 bg-surface-raised p-3 text-sm"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-medium text-ink-900">{e.patientName}</p>
-                      <StatusPill tone={WAITLIST_STATUS_META[e.status].tone}>
-                        {WAITLIST_STATUS_META[e.status].label}
-                      </StatusPill>
-                    </div>
-                    <p className="mt-0.5 text-xs text-warm-600">
-                      {e.preferredWindow}
-                      {e.priority > 0 ? ` · أولوية ${e.priority}` : ""}
-                    </p>
-                    {e.note && (
-                      <p className="mt-1 text-xs text-warm-500">{e.note}</p>
-                    )}
-                  </article>
-                ))}
-              </div>
-            </>
-          )}
-        </section>
-
-        {/* فجوات اليوم */}
-        <section className="lg:col-span-3" aria-label="فجوات جدول اليوم">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-ink-900">فجوات جدول اليوم</h2>
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() =>
-                  setDateValue((d) =>
-                    toDateInputValue(addDays(new Date(`${d}T00:00:00`), -1)),
-                  )
-                }
-                aria-label="اليوم السابق"
-              >
-                <ChevronRight size={16} aria-hidden />
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setDateValue(toDateInputValue(new Date()))}
-              >
-                اليوم
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() =>
-                  setDateValue((d) =>
-                    toDateInputValue(addDays(new Date(`${d}T00:00:00`), 1)),
-                  )
-                }
-                aria-label="اليوم التالي"
-              >
-                <ChevronLeft size={16} aria-hidden />
-              </Button>
-              <span className="min-w-40 text-xs font-semibold text-ink-900">
-                {formatDayLabel(new Date(`${dateValue}T00:00:00`))}
-              </span>
-            </div>
-          </div>
-
-          {gapsState.kind === "error" ? (
-            <div
-              role="alert"
-              className="mt-3 flex flex-col items-start gap-2 rounded-panel border border-danger-300 bg-danger-50 px-4 py-4"
-            >
-              <p className="text-xs font-medium text-danger-700">
-                تعذر تحميل الفجوات — تحقق من الاتصال ثم أعد المحاولة.
-              </p>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => void refreshGaps(dateValue)}
-              >
-                إعادة المحاولة
-              </Button>
-            </div>
-          ) : gapsState.kind === "loading" ? (
-            <GapsSkeleton />
-          ) : (
-            <>
-              {/* شريط نهار الطبيب — انشغال وفجوات */}
-              <DayStrip
-                windowStart={gapsState.windowStart}
-                windowEnd={gapsState.windowEnd}
-                windowMs={windowMs}
-                busy={busy ?? []}
-                gaps={gapsState.gaps}
+            <PanelToolbar className="border-b border-warm-200 px-5">
+              <SearchInput
+                value={query}
+                onChange={setQuery}
+                placeholder="بحث بالاسم أو الملاحظة…"
+                aria-label="بحث في قائمة الانتظار"
               />
+              <FilterPills
+                ariaLabel="تصفية بحالة الانتظار"
+                value={statusFilter}
+                onChange={setStatusFilter}
+                options={[
+                  { value: "all", label: "الكل" },
+                  ...WAITLIST_STATUS_ORDER.map((status) => ({
+                    value: status,
+                    label: WAITLIST_STATUS_META[status].label,
+                  })),
+                ]}
+              />
+            </PanelToolbar>
 
-              {gapsState.gaps.length === 0 ? (
+            <div className="p-5">
+              {entriesError ? (
+                <div
+                  role="alert"
+                  className="flex flex-col items-start gap-2 rounded-panel border border-danger-300 bg-danger-50 px-4 py-4"
+                >
+                  <p className="text-xs font-medium text-danger-700">{entriesError}</p>
+                  <Button variant="secondary" size="sm" onClick={() => void refreshEntries()}>
+                    إعادة المحاولة
+                  </Button>
+                </div>
+              ) : entries === null ? (
+                <EntriesSkeleton />
+              ) : entries.length === 0 ? (
                 <EmptyState
-                  icon={CalendarDays}
-                  className="mt-3"
-                  title="لا فجوات شاغرة هذا اليوم"
-                  description="كل فترات ساعات العمل محجوزة — إلغاء أي موعد يفتح فجوة تُقترح هنا تلقائياً، أو جرّب يوماً آخر."
+                  icon={Hourglass}
+                  title="لا أحد في الانتظار"
+                  description="أضف مريضاً طالب موعداً وسيظهر هنا مع فترته المفضلة وأولويته."
+                  action={
+                    <Button size="sm" onClick={() => setAdding(true)}>
+                      <UserPlus size={14} aria-hidden />
+                      إضافة مريض للانتظار
+                    </Button>
+                  }
+                />
+              ) : visibleEntries.length === 0 ? (
+                <EmptyState
+                  icon={SearchX}
+                  title="لا نتائج مطابقة"
+                  description="لا مريض يطابق نص البحث أو التصفية الحالية — جرّب كلمة أخرى أو أعد التصفية إلى الكل."
                 />
               ) : (
-                <ul className="mt-3 flex flex-col gap-2">
-                  {gapsState.gaps.map((gap) => (
-                    <li
-                      key={gap.start}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-warm-200 bg-surface-raised px-4 py-3"
-                    >
-                      <div>
-                        <p className="text-sm font-medium text-ink-900">
-                          <span className="numeric">
-                            {formatTime(gap.start)} — {formatTime(gap.end)}
-                          </span>
-                        </p>
-                        <p className="mt-0.5 text-xs text-warm-500">
-                          فجوة شاغرة لمدة <span className="numeric">{gap.durationMin}</span> دقيقة
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        {waiting.slice(0, 2).map((e) => (
-                          <StatusPill key={e.id} tone="warning">
-                            اقتراح: {e.patientName}
+                <>
+                  {/* صفوف كيان بالأفاتار — الشاشات المتوسطة فأعلى */}
+                  <ul className="hidden flex-col divide-y divide-warm-100 md:flex">
+                    {visibleEntries.map((e) => (
+                      <li
+                        key={e.id}
+                        className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                      >
+                        <EntityCell
+                          name={e.patientName}
+                          subtitle={e.note ?? e.preferredWindow}
+                          className="min-w-0"
+                        />
+                        <span className="flex shrink-0 items-center gap-2">
+                          {e.preferredWindow && e.note && (
+                            <span className="numeric hidden text-xs text-warm-500 lg:inline">
+                              {e.preferredWindow}
+                            </span>
+                          )}
+                          {e.priority > 0 ? (
+                            <Badge tone="warning">
+                              أولوية <span className="numeric">{e.priority}</span>
+                            </Badge>
+                          ) : (
+                            <Badge tone="neutral">عادية</Badge>
+                          )}
+                          <StatusPill tone={WAITLIST_STATUS_META[e.status].tone}>
+                            {WAITLIST_STATUS_META[e.status].label}
                           </StatusPill>
-                        ))}
-                        <Button
-                          size="sm"
-                          disabled={waiting.length === 0}
-                          title={
-                            waiting.length === 0
-                              ? "لا مرضى في قائمة الانتظار"
-                              : undefined
-                          }
-                          onClick={() => setBookingGap(gap)}
-                        >
-                          حجز في الفجوة
-                        </Button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* بطاقات الموبايل */}
+                  <ul className="flex flex-col gap-2 md:hidden">
+                    {visibleEntries.map((e) => (
+                      <li
+                        key={e.id}
+                        className="rounded-panel border border-warm-200 bg-surface-raised p-3 text-sm"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <EntityCell
+                            name={e.patientName}
+                            subtitle={e.preferredWindow}
+                            className="min-w-0"
+                          />
+                          <StatusPill tone={WAITLIST_STATUS_META[e.status].tone}>
+                            {WAITLIST_STATUS_META[e.status].label}
+                          </StatusPill>
+                        </div>
+                        {e.priority > 0 && (
+                          <Badge tone="warning" className="mt-2">
+                            أولوية <span className="numeric">{e.priority}</span>
+                          </Badge>
+                        )}
+                        {e.note && (
+                          <p className="mt-1 text-xs text-warm-500">{e.note}</p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </>
               )}
-            </>
-          )}
+            </div>
+          </Card>
+        </section>
+
+        {/* فجوات اليوم — بطاقة محتوى بترويسة وتنقل يوم */}
+        <section className="lg:col-span-3" aria-label="فجوات جدول اليوم">
+          <Card>
+            <CardHeader className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle>فجوات جدول اليوم</CardTitle>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() =>
+                    setDateValue((d) =>
+                      toDateInputValue(addDays(new Date(`${d}T00:00:00`), -1)),
+                    )
+                  }
+                  aria-label="اليوم السابق"
+                >
+                  <ChevronRight size={16} aria-hidden />
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setDateValue(toDateInputValue(new Date()))}
+                >
+                  اليوم
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() =>
+                    setDateValue((d) =>
+                      toDateInputValue(addDays(new Date(`${d}T00:00:00`), 1)),
+                    )
+                  }
+                  aria-label="اليوم التالي"
+                >
+                  <ChevronLeft size={16} aria-hidden />
+                </Button>
+                <span className="min-w-40 text-xs font-semibold text-ink-900">
+                  {formatDayLabel(new Date(`${dateValue}T00:00:00`))}
+                </span>
+              </div>
+            </CardHeader>
+
+            <CardBody>
+              {gapsState.kind === "error" ? (
+                <div
+                  role="alert"
+                  className="flex flex-col items-start gap-2 rounded-panel border border-danger-300 bg-danger-50 px-4 py-4"
+                >
+                  <p className="text-xs font-medium text-danger-700">
+                    تعذر تحميل الفجوات — تحقق من الاتصال ثم أعد المحاولة.
+                  </p>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => void refreshGaps(dateValue)}
+                  >
+                    إعادة المحاولة
+                  </Button>
+                </div>
+              ) : gapsState.kind === "loading" ? (
+                <GapsSkeleton />
+              ) : (
+                <>
+                  {/* شريط نهار الطبيب — انشغال وفجوات */}
+                  <DayStrip
+                    windowStart={gapsState.windowStart}
+                    windowEnd={gapsState.windowEnd}
+                    windowMs={windowMs}
+                    busy={busy ?? []}
+                    gaps={gapsState.gaps}
+                  />
+
+                  {gapsState.gaps.length === 0 ? (
+                    <EmptyState
+                      icon={CalendarDays}
+                      className="mt-3"
+                      title="لا فجوات شاغرة هذا اليوم"
+                      description="كل فترات ساعات العمل محجوزة — إلغاء أي موعد يفتح فجوة تُقترح هنا تلقائياً، أو جرّب يوماً آخر."
+                    />
+                  ) : (
+                    <ul className="mt-3 flex flex-col gap-2">
+                      {gapsState.gaps.map((gap) => (
+                        <li
+                          key={gap.start}
+                          className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-warm-200 bg-surface-raised px-4 py-3"
+                        >
+                          <div>
+                            <p className="text-sm font-medium text-ink-900">
+                              <span className="numeric">
+                                {formatTime(gap.start)} — {formatTime(gap.end)}
+                              </span>
+                            </p>
+                            <p className="mt-0.5 text-xs text-warm-500">
+                              فجوة شاغرة لمدة <span className="numeric">{gap.durationMin}</span> دقيقة
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            {waiting.slice(0, 2).map((e) => (
+                              <StatusPill key={e.id} tone="warning">
+                                اقتراح: {e.patientName}
+                              </StatusPill>
+                            ))}
+                            <PillAction
+                              onClick={() => setBookingGap(gap)}
+                              disabled={waiting.length === 0}
+                              title={
+                                waiting.length === 0
+                                  ? "لا مرضى في قائمة الانتظار"
+                                  : undefined
+                              }
+                            >
+                              حجز في الفجوة
+                            </PillAction>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+            </CardBody>
+          </Card>
         </section>
       </div>
 

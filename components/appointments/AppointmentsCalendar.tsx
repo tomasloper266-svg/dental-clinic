@@ -6,6 +6,7 @@ import {
   CalendarPlus,
   ChevronLeft,
   ChevronRight,
+  Plus,
 } from "lucide-react";
 import { APPOINTMENT_STATUSES } from "@/lib/appointment-state";
 import {
@@ -18,6 +19,7 @@ import {
   WEEKDAY_HEADERS,
   addMonths,
   groupByDay,
+  groupByStartHour,
   hourToTimeInput,
   minutesFromMidnightUtc,
   monthGrid,
@@ -29,6 +31,8 @@ import {
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { EntityCell } from "@/components/ui/EntityCell";
+import { StatusPill } from "@/components/ui/Badge";
 import { cn } from "@/components/ui/cn";
 import BookingModal from "./BookingModal";
 import {
@@ -118,12 +122,15 @@ export default function AppointmentsCalendar({
         title="المواعيد"
         description="جدول العيادة اليومي والأسبوعي والشهري — انقر فجوة فارغة في يوم العرض لحجز موعد عليها."
         actions={
-          <Button onClick={() => openBooking()}>
-            <CalendarPlus size={16} aria-hidden />
-            حجز موعد جديد
+          <Button shape="pill" onClick={() => openBooking()}>
+            <Plus size={16} aria-hidden />
+            موعد جديد
           </Button>
         }
       />
+
+      {/* صف بطاقات أيام الأسبوع — النشط بإطار بلون الهوية، والنقر ينقل إليه */}
+      <WeekStrip dateValue={dateValue} onSelect={setDateValue} />
 
       {/* شريط الأدوات: مبدّل العرض + التنقل + التسمية */}
       <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -281,6 +288,60 @@ export default function AppointmentsCalendar({
   );
 }
 
+/* ---------- صف بطاقات أيام الأسبوع ---------- */
+
+function WeekStrip({
+  dateValue,
+  onSelect,
+}: {
+  dateValue: string;
+  onSelect: (day: string) => void;
+}) {
+  const days = useMemo(() => weekDays(dateValue), [dateValue]);
+  const today = toDateInputValue(new Date());
+
+  return (
+    <div
+      role="group"
+      aria-label="أيام الأسبوع"
+      className="mt-5 grid grid-cols-4 gap-2 sm:grid-cols-7"
+    >
+      {days.map((day, i) => {
+        const active = day === dateValue;
+        const isToday = day === today;
+        return (
+          <button
+            key={day}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onSelect(day)}
+            className={cn(
+              "flex flex-col items-center gap-0.5 rounded-panel border bg-surface-raised px-1 py-2.5 transition-colors",
+              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
+              active
+                ? "border-primary-600 ring-1 ring-primary-600"
+                : "border-warm-200 hover:bg-surface-hover active:bg-surface-sunken",
+            )}
+          >
+            <span className="text-[11px] text-warm-500">{WEEKDAY_HEADERS[i]}</span>
+            <span
+              className={cn(
+                "numeric text-lg font-bold",
+                active ? "text-primary-800" : isToday ? "text-primary-700" : "text-ink-900",
+              )}
+            >
+              {day.slice(8)}
+            </span>
+            <span aria-hidden className="text-[11px] text-warm-300">
+              —
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ---------- الشبكة الزمنية المشتركة ---------- */
 
 function useGrid(appointments: AppointmentJson[]) {
@@ -356,6 +417,11 @@ function AppointmentBlock({
 
 /* ---------- عرض اليوم ---------- */
 
+/**
+ * شبكة الفتحات الزمنية على شكل المرجع: صف لكل ساعة، بمربع وقت مستدير بلون
+ * باهت، وبطاقة موعد بأفاتار المريض واسمه وملاحظته الفرعية وشارة حالته،
+ * والساعات الخالية فجوات بنص هادئ قابلة للنقر لفتح الحجز عليها.
+ */
 function DayTimeline({
   date,
   appointments,
@@ -367,47 +433,86 @@ function DayTimeline({
   onSelect: (a: AppointmentJson) => void;
   onSlotClick: (time: string) => void;
 }) {
-  const { window_, hours, totalMin } = useGrid(appointments);
+  const { hours } = useGrid(appointments);
+  const byHour = useMemo(() => groupByStartHour(appointments), [appointments]);
 
   return (
     <div className="overflow-hidden rounded-panel border border-warm-200 bg-surface-raised">
-      <div className="flex">
-        {/* عمود الساعات */}
-        <div className="w-14 shrink-0 border-e border-warm-200">
-          {hours.map((h) => (
-            <div
-              key={h}
-              style={{ height: `${HOUR_ROW_HEIGHT_REM}rem` }}
-              className="numeric -translate-y-2 pt-0.5 text-end text-[11px] text-warm-400"
+      {hours.map((h) => {
+        const items = byHour.get(h) ?? [];
+        return (
+          <div
+            key={h}
+            className="flex gap-3 border-b border-warm-100 p-3 last:border-b-0"
+          >
+            {/* مربع الوقت المستدير الباهت */}
+            <span
+              aria-hidden
+              className="numeric grid h-9 w-14 shrink-0 place-items-center rounded-field bg-primary-500/10 text-xs font-bold text-primary-800"
             >
-              <span className="me-1">{hourLabel(date, h)}</span>
-            </div>
-          ))}
-        </div>
+              {hourLabel(date, h)}
+            </span>
 
-        {/* عمود اليوم — صفوف ساعات قابلة للنقر للحجز، وبلوكات الموعد فوقها */}
-        <div className="relative flex-1">
-          {hours.map((h) => (
-            <button
-              key={h}
-              type="button"
-              onClick={() => onSlotClick(hourToTimeInput(h))}
-              aria-label={`حجز موعد عند ${hourLabel(date, h)}`}
-              style={{ height: `${HOUR_ROW_HEIGHT_REM}rem` }}
-              className="block w-full border-b border-warm-100 transition-colors last:border-b-0 hover:bg-surface-hover"
-            />
-          ))}
-          {appointments.map((a) => (
-            <AppointmentBlock
-              key={a.id}
-              appointment={a}
-              style={blockStyle(a, window_, totalMin)}
-              onSelect={onSelect}
-            />
-          ))}
-        </div>
-      </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-2">
+              {items.length > 0 ? (
+                items.map((a) => (
+                  <SlotCard key={a.id} appointment={a} onSelect={onSelect} />
+                ))
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onSlotClick(hourToTimeInput(h))}
+                  aria-label={`حجز موعد عند ${hourLabel(date, h)}`}
+                  className={cn(
+                    "rounded-field border border-dashed border-warm-200 px-3 py-2 text-start text-xs text-warm-400 transition-colors",
+                    "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
+                    "hover:bg-surface-hover hover:text-warm-500",
+                  )}
+                >
+                  — فاضٍ — انقر لإضافة موعد
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
+  );
+}
+
+/** بطاقة موعد الفتحة — أفاتار + اسم + ملاحظة فرعية + شارة الحالة، والنقر يفتح التفاصيل. */
+function SlotCard({
+  appointment,
+  onSelect,
+}: {
+  appointment: AppointmentJson;
+  onSelect: (a: AppointmentJson) => void;
+}) {
+  const meta = STATUS_META[appointment.status];
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(appointment)}
+      title={`${appointment.patientName} · ${meta.label}`}
+      className={cn(
+        "flex w-full items-center gap-3 rounded-panel border px-3 py-2 text-start transition-colors",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
+        meta.block,
+        "hover:opacity-90",
+      )}
+    >
+      <EntityCell
+        name={appointment.patientName}
+        subtitle={appointment.reason}
+        className="min-w-0 flex-1"
+      />
+      <span className="numeric shrink-0 text-xs font-semibold">
+        {formatTime(appointment.startsAt)}
+      </span>
+      <StatusPill tone={meta.tone} className="shrink-0">
+        {meta.label}
+      </StatusPill>
+    </button>
   );
 }
 

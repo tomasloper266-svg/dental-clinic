@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { pageWrapClass } from "@/lib/page-width";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
 import { tenantContextFromSession } from "@/lib/tenant/context";
@@ -8,6 +9,13 @@ import { listPlan } from "@/lib/services/treatment-plan";
 import { PatientPicker } from "@/components/patients/PatientPicker";
 import OdontogramWorkbench from "@/components/odontogram/OdontogramWorkbench";
 import { PageHeader } from "@/components/ui/PageHeader";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardBody,
+} from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { isValidToothFdi } from "@/lib/odontogram/fdi";
 
 /**
@@ -39,7 +47,7 @@ export default async function ChartPage({
     : [[], []];
 
   return (
-    <div className="w-full px-4 py-6">
+    <div className={pageWrapClass("full")}>
       <PageHeader
         title="مخطط الأسنان"
         description={
@@ -56,18 +64,28 @@ export default async function ChartPage({
           className="min-w-0"
         />
         {patient ? (
-          <OdontogramWorkbench
-            patientId={patient.id}
-            initialFindings={findings}
-            initialPlan={planItems}
-            initialTooth={initialTooth}
-          />
+          <Card>
+            <CardHeader className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle>مخطط المريض {patient.name}</CardTitle>
+              <p className="numeric text-xs text-warm-500">
+                {findings.length} قيد مسجّل · {planItems.length} بند خطة
+              </p>
+            </CardHeader>
+            <CardBody>
+              <OdontogramWorkbench
+                patientId={patient.id}
+                initialFindings={findings}
+                initialPlan={planItems}
+                initialTooth={initialTooth}
+              />
+            </CardBody>
+          </Card>
         ) : (
-          <div className="rounded-panel border-warm-300 bg-surface-raised/60 grid min-h-80 place-items-center border border-dashed">
-            <p className="text-steel-500 p-8 text-sm">
-              اختر مريضاً من القائمة لبدء العمل على مخطط أسنانه — الرسم التشريحي
-              يعرض الأسنان الـ32 بأشكالها وحالاتها المسجلة.
-            </p>
+          <div className="border-warm-300 bg-surface-raised/60 grid min-h-80 place-items-center rounded-panel border border-dashed">
+            <EmptyState
+              title="اختر مريضاً للبدء"
+              description="اختر مريضاً من القائمة لبدء العمل على مخطط أسنانه — الرسم التشريحي يعرض الأسنان الـ32 بأشكالها وحالاتها المسجلة."
+            />
           </div>
         )}
       </div>

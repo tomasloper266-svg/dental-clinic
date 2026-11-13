@@ -305,6 +305,7 @@ export default function PlansBoard({ patientId, initialItems }: Props) {
                           {item.status === "PROPOSED" && (
                             <Button
                               variant="secondary"
+                              shape="pill"
                               onClick={() => setStatus(item.id, "ACCEPTED")}
                               disabled={busy}
                               size="sm"
@@ -315,6 +316,7 @@ export default function PlansBoard({ patientId, initialItems }: Props) {
                           {item.status === "ACCEPTED" && (
                             <Button
                               variant="ghost"
+                              shape="pill"
                               onClick={() => setStatus(item.id, "PROPOSED")}
                               disabled={busy}
                               size="sm"
@@ -323,6 +325,7 @@ export default function PlansBoard({ patientId, initialItems }: Props) {
                             </Button>
                           )}
                           <Button
+                            shape="pill"
                             onClick={() =>
                               setStartingId(
                                 startingId === item.id ? null : item.id,

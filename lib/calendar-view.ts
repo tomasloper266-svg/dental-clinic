@@ -147,3 +147,18 @@ export function groupByDay<T extends { startsAt: string }>(
   }
   return byDay;
 }
+
+/**
+ * تجميع مواعيد اليوم حسب ساعة بدايتها — لشبكة الفتحات الزمنية في عرض اليوم:
+ * كل صف ساعة يعرض مواعيده الناشئة فيه، والساعات بلا مواعيد فجوات فارغة.
+ */
+export function groupByStartHour<T extends { startsAt: string }>(
+  items: T[],
+): Map<number, T[]> {
+  const byHour = new Map<number, T[]>();
+  for (const item of items) {
+    const hour = Math.floor(minutesFromMidnightUtc(item.startsAt) / 60);
+    byHour.set(hour, [...(byHour.get(hour) ?? []), item]);
+  }
+  return byHour;
+}

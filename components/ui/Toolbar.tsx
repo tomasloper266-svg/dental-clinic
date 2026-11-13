@@ -1,7 +1,10 @@
 import { ArrowUpDown, Download, Search } from "lucide-react";
 import { cn } from "./cn";
 
-type SearchInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
+type SearchInputProps = Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  "onChange" | "value"
+> & {
   /** قيمة نص البحث */
   value: string;
   /** معالج تغيير النص */

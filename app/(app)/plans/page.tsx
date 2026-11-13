@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { pageWrapClass } from "@/lib/page-width";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
 import { tenantContextFromSession } from "@/lib/tenant/context";
@@ -7,6 +8,7 @@ import { listPlan } from "@/lib/services/treatment-plan";
 import { PatientPicker } from "@/components/patients/PatientPicker";
 import PlansBoard from "@/components/odontogram/PlansBoard";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 /**
  * خطط العلاج على مستوى العيادة — منتقي مريض أعلى ولوحة بنود خطة المريض
@@ -31,7 +33,7 @@ export default async function PlansPage({
   const planItems = patient ? await listPlan(ctx, patient.id) : [];
 
   return (
-    <div className="w-full px-4 py-6">
+    <div className={pageWrapClass("full")}>
       <PageHeader
         title="خطط العلاج"
         description={
@@ -47,10 +49,10 @@ export default async function PlansPage({
           <PlansBoard patientId={patient.id} initialItems={planItems} />
         ) : (
           <div className="border-warm-300 bg-surface-raised/60 grid min-h-80 place-items-center rounded-panel border border-dashed">
-            <p className="text-steel-500 p-8 text-sm">
-              اختر مريضاً من القائمة لعرض بنود خطته على اللوحة — الأعمدة بحسب
-              الحالة: مخطط، مقبول، منفَّذ.
-            </p>
+            <EmptyState
+              title="اختر مريضاً لعرض خطته"
+              description="اختر مريضاً من القائمة لعرض بنود خطته على اللوحة — الأعمدة بحسب الحالة: مخطط، مقبول، منفَّذ."
+            />
           </div>
         )}
       </div>

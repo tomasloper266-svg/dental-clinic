@@ -3,16 +3,28 @@ import type { LucideIcon } from "lucide-react";
 import { cn } from "./cn";
 
 type PillActionProps = {
-  /** وجه الحبة — solid ممتلئة بلون الهوية، success حبة التسديد الناجحة */
-  variant?: "solid" | "success";
+  /** وجه الحبة — solid ممتلئة بلون الهوية، outline محددة الحد، success حبة التسديد الناجحة */
+  variant?: "solid" | "outline" | "success";
   href?: string;
   onClick?: () => void;
+  /** تعطيل الحبة أثناء انتظار العملية */
+  disabled?: boolean;
+  /** تلميح اختياري — يظهر عند التمرير (مثل سبب تعطيل الحبة) */
+  title?: string;
+  /** لروابط خارجية (واتساب) — تُمرّر إلى الرابط كما هي */
+  target?: string;
+  rel?: string;
   children: React.ReactNode;
   className?: string;
 };
 
-const pillVariantClasses: Record<NonNullable<PillActionProps["variant"]>, string> = {
+const pillVariantClasses: Record<
+  NonNullable<PillActionProps["variant"]>,
+  string
+> = {
   solid: "bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800",
+  outline:
+    "border border-warm-300 bg-surface-raised text-warm-700 hover:bg-surface-hover active:bg-surface-sunken",
   success:
     "bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800",
 };
@@ -20,24 +32,49 @@ const pillVariantClasses: Record<NonNullable<PillActionProps["variant"]>, string
 const pillBase =
   "inline-flex h-7 items-center gap-1 rounded-full px-3 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500";
 
-/** حبة إجراء الجداول — رابط أو زر؛ ممتلئة (عرض/الملف) أو ناجحة (تسديد) */
+/**
+ * حبة إجراء الجداول — رابط أو زر؛ ممتلئة (عرض/الملف) أو محددة الحد (سجل)
+ * أو ناجحة (تسديد).
+ */
 export function PillAction({
   variant = "solid",
   href,
   onClick,
+  disabled,
+  title,
+  target,
+  rel,
   children,
   className,
 }: PillActionProps) {
-  const classes = cn(pillBase, pillVariantClasses[variant], className);
+  const classes = cn(
+    pillBase,
+    pillVariantClasses[variant],
+    disabled && "pointer-events-none opacity-50",
+    className,
+  );
   if (href) {
     return (
-      <Link href={href} className={classes} onClick={onClick}>
+      <Link
+        href={href}
+        onClick={onClick}
+        title={title}
+        target={target}
+        rel={rel}
+        className={classes}
+      >
         {children}
       </Link>
     );
   }
   return (
-    <button type="button" className={classes} onClick={onClick}>
+    <button
+      type="button"
+      className={classes}
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+    >
       {children}
     </button>
   );
@@ -51,6 +88,8 @@ type IconActionProps = {
   onClick?: () => void;
   /** نبرة الخطر لأخطر إجراء (الحذف) */
   tone?: "neutral" | "danger";
+  /** تعطيل الزر أثناء انتظار عملية على الصف */
+  disabled?: boolean;
   className?: string;
 };
 
@@ -68,11 +107,13 @@ export function IconAction({
   href,
   onClick,
   tone = "neutral",
+  disabled,
   className,
 }: IconActionProps) {
   const classes = cn(
     "inline-grid size-7 place-items-center rounded-field border bg-surface-raised transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
     iconActionClasses[tone],
+    disabled && "pointer-events-none opacity-50",
     className,
   );
   if (href) {
@@ -88,6 +129,7 @@ export function IconAction({
       aria-label={label}
       title={label}
       onClick={onClick}
+      disabled={disabled}
       className={classes}
     >
       <Icon size={14} aria-hidden />
