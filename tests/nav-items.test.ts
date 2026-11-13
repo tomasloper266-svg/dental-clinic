@@ -33,6 +33,20 @@ describe("تجميع الأقسام", () => {
     ]);
   });
 
+  it("المجموعة المالية: الفواتير والمدفوعات ثم المستحقات ثم التقارير", () => {
+    const financial = navGroups.find((g) => g.key === "financial");
+    expect(financial?.items.map((i) => i.href)).toEqual([
+      "/finance",
+      "/dues",
+      "/reports",
+    ]);
+    expect(financial?.items.map((i) => i.label)).toEqual([
+      "الفواتير والمدفوعات",
+      "المستحقات",
+      "التقارير",
+    ]);
+  });
+
   it("الإعدادات في المجموعة الإدارية — بلا تكرار خارجها", () => {
     const admin = navGroups.find((g) => g.key === "admin");
     expect(admin?.items.map((i) => i.href)).toContain("/settings");

@@ -32,6 +32,34 @@ export type LinkedLedgerEntry = LedgerEntryDto & {
   planItem: Pick<PlanItemDto, "id" | "toothFdi" | "procedure"> | null;
 };
 
+export type PatientLedgerSummary = {
+  /** إجمالي قيود الرسوم (CHARGE) */
+  chargesSyp: number;
+  /** المسدد من الرسوم = الرسوم − الرصيد الجاري الموجب */
+  paidSyp: number;
+  balanceSyp: number;
+};
+
+/**
+ * نقي — ملخص مالي مختصر لملف المريض (بطاقة إحصاء الرأس): الرسوم المجمعة،
+ * والمسدد منها بعد رصيد جاري موجب، والرصيد كما ورد من الخدمة. بلا I/O.
+ */
+export function summarizePatientLedger(
+  entries: ReadonlyArray<Pick<LedgerEntryDto, "type" | "amountSyp">>,
+  balanceSyp: number,
+): PatientLedgerSummary {
+  let chargesSyp = 0;
+  for (const entry of entries) {
+    if (entry.type === "CHARGE") chargesSyp += entry.amountSyp;
+  }
+  const remainingSyp = Math.max(balanceSyp, 0);
+  return {
+    chargesSyp,
+    paidSyp: chargesSyp - remainingSyp,
+    balanceSyp,
+  };
+}
+
 function entryTime(entry: LedgerEntryDto): number {
   return entry.createdAt instanceof Date
     ? entry.createdAt.getTime()

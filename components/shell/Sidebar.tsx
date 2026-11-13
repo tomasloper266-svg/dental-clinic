@@ -132,7 +132,7 @@ function NavSection({
 
 /**
  * بطاقة التنبيه المثبتة أسفل الشريط — تملق حمراء شفافة بأيقونة وقيمة،
- * للمستحقات غير المسددة مع رابط إلى الدفتر المالي. تُخفى بلا مستحقات.
+ * للمستحقات غير المسددة مع رابط إلى صفحة المستحقات. تُخفى بلا مستحقات.
  */
 function DuesAlertCard({
   dues,
@@ -146,7 +146,7 @@ function DuesAlertCard({
   if (collapsed || dues <= 0) return null;
   return (
     <Link
-      href="/finance"
+      href="/dues"
       className={cn(
         "block rounded-field border border-danger-300/40 bg-danger-500/10 px-3 py-2.5 transition-colors hover:bg-danger-500/20",
         "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger-300",

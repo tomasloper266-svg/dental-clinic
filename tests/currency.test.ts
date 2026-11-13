@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_USD_RATE,
+  dualFromSypParts,
   formatDualFromSyp,
   formatSypAmount,
   formatUsd,
@@ -60,5 +61,18 @@ describe("formatDualFromSyp", () => {
     expect(formatDualFromSyp(-15000, DEFAULT_USD_RATE)).toBe(
       "$-1 (-15,000 ل.س)",
     );
+  });
+});
+
+describe("dualFromSypParts", () => {
+  it("يعطي العملتين كجزأين منفصلين بنفس معادلة العرض المزدوج", () => {
+    expect(dualFromSypParts(750000, DEFAULT_USD_RATE)).toEqual({
+      usd: "$50",
+      syp: "750,000 ل.س",
+    });
+  });
+
+  it("يرفض سعراً غير موجب — العقد نفسه", () => {
+    expect(() => dualFromSypParts(750000, 0)).toThrow(RangeError);
   });
 });

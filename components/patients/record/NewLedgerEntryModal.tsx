@@ -30,6 +30,10 @@ type Props = {
   onClose: () => void;
   patientId: string;
   planItems: PlanItemDto[];
+  /** نوع القيد المعبّأ عند الفتح — لتسديد دفعة جاهزة من رأس الملف */
+  initialType?: LedgerEntryType;
+  /** قيمة المبلغ المعبّأة عند الفتح — عادةً المستحق المتبقي */
+  initialAmountSyp?: number;
 };
 
 export default function NewLedgerEntryModal({
@@ -37,26 +41,28 @@ export default function NewLedgerEntryModal({
   onClose,
   patientId,
   planItems,
+  initialType = "CHARGE",
+  initialAmountSyp,
 }: Props) {
   const router = useRouter();
   const { toast } = useToast();
-  const [type, setType] = useState<LedgerEntryType>("CHARGE");
+  const [type, setType] = useState<LedgerEntryType>(initialType);
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [treatmentItemId, setTreatmentItemId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // نافذة جديدة بذكريات سابقة — إعادة ضبط عند كل فتح.
+  // نافذة جديدة بذكريات سابقة — إعادة ضبط عند كل فتح على القيم المطلوبة.
   useEffect(() => {
     if (open) {
-      setType("CHARGE");
-      setAmount("");
+      setType(initialType);
+      setAmount(initialAmountSyp !== undefined ? String(initialAmountSyp) : "");
       setNote("");
       setTreatmentItemId("");
       setError(null);
     }
-  }, [open]);
+  }, [open, initialType, initialAmountSyp]);
 
   async function submit() {
     const amountSyp = Number(amount);

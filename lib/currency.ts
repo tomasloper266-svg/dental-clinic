@@ -51,3 +51,15 @@ export function formatDualFromSyp(syp: number, rate: number): string {
   assertRate(rate);
   return `${formatUsd(syp / rate)} (${formatSypAmount(syp)})`;
 }
+
+/**
+ * المبلغ بالعملتين كجزأين منفصلين — للعرض بسطرين (دولار بارز وليرة صغيرة)
+ * في خلايا الجداول وبطاقات الإحصاء. نفس معادلة formatDualFromSyp.
+ */
+export function dualFromSypParts(
+  syp: number,
+  rate: number,
+): { usd: string; syp: string } {
+  assertRate(rate);
+  return { usd: formatUsd(syp / rate), syp: formatSypAmount(syp) };
+}

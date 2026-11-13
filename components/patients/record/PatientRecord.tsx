@@ -20,6 +20,7 @@ import type { AppointmentDto } from "@/lib/services/appointments";
 import type { LedgerEntryDto } from "@/lib/services/ledger";
 import { ageFromBirthYear } from "@/lib/patients-view";
 import { parseMedicalNotes } from "@/lib/medical-notes";
+import { summarizePatientLedger } from "@/lib/ledger-view";
 import { splitAppointments } from "@/lib/patient-profile";
 import OdontogramBoard from "@/components/odontogram/OdontogramBoard";
 import TreatmentPlanSection from "@/components/odontogram/TreatmentPlanSection";
@@ -30,6 +31,7 @@ import LedgerTab from "./LedgerTab";
 import NewAppointmentModal from "./NewAppointmentModal";
 import NewLedgerEntryModal from "./NewLedgerEntryModal";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { DualAmount } from "@/components/ui/DualAmount";
 import { cn } from "@/components/ui/cn";
 
 // ملف المريض المتكامل — وحدة عمل سريرية بخمسة تبويبات: نظرة عامة، مخطط
@@ -80,6 +82,8 @@ type Props = {
   appointments: AppointmentDto[];
   ledgerEntries: LedgerEntryDto[];
   ledgerBalance: number;
+  /** سعر صرف الدولار من إعدادات العيادة — لعرض العملة المزدوجة */
+  usdRate: number;
 };
 
 export default function PatientRecord({
@@ -89,15 +93,30 @@ export default function PatientRecord({
   appointments,
   ledgerEntries,
   ledgerBalance,
+  usdRate,
 }: Props) {
   const [tab, setTab] = useState<RecordTab>("overview");
   // اختيار السن مشترك بين تبويبَي الأودوغرام والخطة (ورابط الدفتر السني).
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
+  // زرّا «قيد جديد» و«تسديد دفعة» يفتحان النافذة نفسها بإعدادين مختلفين.
   const [apptOpen, setApptOpen] = useState(false);
   const [ledgerOpen, setLedgerOpen] = useState(false);
+  const [ledgerPreset, setLedgerPreset] = useState<"blank" | "settle">("blank");
 
   const { upcoming } = splitAppointments(appointments, new Date());
   const notes = parseMedicalNotes(patient.medicalNotes);
+  const summary = summarizePatientLedger(ledgerEntries, ledgerBalance);
+  const dueSyp = Math.max(ledgerBalance, 0);
+
+  function openLedgerBlank() {
+    setLedgerPreset("blank");
+    setLedgerOpen(true);
+  }
+
+  function openLedgerSettle() {
+    setLedgerPreset("settle");
+    setLedgerOpen(true);
+  }
 
   function focusTooth(fdi: number) {
     setSelectedTooth(fdi);
@@ -162,7 +181,7 @@ export default function PatientRecord({
             </button>
             <button
               type="button"
-              onClick={() => setLedgerOpen(true)}
+              onClick={openLedgerBlank}
               className={cn(
                 actionButtonClass,
                 "border-primary-200 bg-primary-50 text-primary-800 hover:bg-primary-100 focus-visible:outline-primary-500",
@@ -171,9 +190,71 @@ export default function PatientRecord({
               <Plus size={16} aria-hidden />
               قيد جديد
             </button>
+            {dueSyp > 0 && (
+              <button
+                type="button"
+                onClick={openLedgerSettle}
+                className={cn(
+                  actionButtonClass,
+                  "bg-primary-600 text-white hover:bg-primary-700 focus-visible:outline-primary-500",
+                )}
+              >
+                <Wallet size={16} aria-hidden />
+                تسديد دفعة
+              </button>
+            )}
             </div>
           }
         />
+
+        {/* بطاقة الرأس المالية — بنية المرجع: شارات الحساسية والأمراض يميناً
+            وإحصاء الفواتير/المسدد/الرصيد يساراً، بالعملتين معاً */}
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-panel border border-warm-200 bg-surface-raised px-5 py-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {notes.allergies && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-danger-300 bg-danger-50 px-2.5 py-1 text-[11px] font-medium text-danger-700">
+                <TriangleAlert size={12} aria-hidden />
+                حساسية
+              </span>
+            )}
+            {notes.conditions && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-warning-300 bg-warning-50 px-2.5 py-1 text-[11px] font-medium text-warning-700">
+                <Stethoscope size={12} aria-hidden />
+                أمراض مزمنة
+              </span>
+            )}
+            {!notes.allergies && !notes.conditions && (
+              <span className="text-xs text-warm-400">لا تنبيهات طبية</span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-end gap-6">
+            <div>
+              <p className="text-warm-500 text-[11px] font-medium">
+                إجمالي الفواتير
+              </p>
+              <DualAmount syp={summary.chargesSyp} usdRate={usdRate} />
+            </div>
+            <div>
+              <p className="text-primary-700 text-[11px] font-medium">المسدد</p>
+              <DualAmount syp={summary.paidSyp} usdRate={usdRate} />
+            </div>
+            <div>
+              <p
+                className={cn(
+                  "text-[11px] font-medium",
+                  dueSyp > 0 ? "text-danger-600" : "text-warm-500",
+                )}
+              >
+                الرصيد المستحق
+              </p>
+              <DualAmount
+                syp={summary.balanceSyp}
+                usdRate={usdRate}
+                tone={dueSyp > 0 ? "danger" : "default"}
+              />
+            </div>
+          </div>
+        </div>
 
         {/* بانر الحساسية — دائم الظهور أعلى الملف إن وُجدت */}
         {notes.allergies && (
@@ -338,6 +419,8 @@ export default function PatientRecord({
         onClose={() => setLedgerOpen(false)}
         patientId={patient.id}
         planItems={planItems}
+        initialType={ledgerPreset === "settle" ? "PAYMENT" : "CHARGE"}
+        initialAmountSyp={ledgerPreset === "settle" ? dueSyp : undefined}
       />
     </div>
   );

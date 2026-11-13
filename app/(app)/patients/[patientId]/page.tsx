@@ -7,6 +7,7 @@ import { listFindings } from "@/lib/services/findings";
 import { listPlan } from "@/lib/services/treatment-plan";
 import { listPatientAppointments } from "@/lib/services/appointments";
 import { listLedgerEntries } from "@/lib/services/ledger";
+import { getClinicUsdRate } from "@/lib/services/account";
 import PatientRecord from "@/components/patients/record/PatientRecord";
 
 // ملف المريض المتكامل — وحدة عمل سريرية بخمسة تبويبات (نظرة عامة، مخطط
@@ -30,11 +31,12 @@ export default async function PatientProfilePage({
   const patient = await getPatient(ctx, patientId);
   if (!patient) notFound();
 
-  const [findings, planItems, appointments, ledger] = await Promise.all([
+  const [findings, planItems, appointments, ledger, usdRate] = await Promise.all([
     listFindings(ctx, patientId),
     listPlan(ctx, patientId),
     listPatientAppointments(ctx, patientId),
     listLedgerEntries(ctx, patientId),
+    getClinicUsdRate(ctx),
   ]);
 
   return (
@@ -45,6 +47,7 @@ export default async function PatientProfilePage({
       appointments={appointments}
       ledgerEntries={ledger.entries}
       ledgerBalance={ledger.balance}
+      usdRate={usdRate}
     />
   );
 }

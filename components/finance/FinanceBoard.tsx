@@ -6,6 +6,7 @@ import type { LedgerEntryType } from "@/lib/services/ledger";
 import { formatDateCell } from "@/lib/dates";
 import { formatDayLabel } from "@/lib/appointment-ui";
 import { formatSyp } from "@/lib/utils";
+import { formatDualFromSyp } from "@/lib/currency";
 import { usePatientSearch, type PatientOption } from "@/lib/use-patient-search";
 import { toCsv, withUtf8Bom } from "@/lib/csv";
 import {
@@ -13,6 +14,7 @@ import {
   LEDGER_SETTLEMENT_META,
   LEDGER_TYPE_META,
   buildLedgerRows,
+  chargeSettlementSplit,
   filterBySettlement,
   searchLedgerRows,
   summarizeLedger,
@@ -31,6 +33,7 @@ import {
 } from "@/components/ui/Toolbar";
 import { EntityCell } from "@/components/ui/EntityCell";
 import { PillAction } from "@/components/ui/TableActions";
+import { DualAmount } from "@/components/ui/DualAmount";
 import { Table, THead, TRow, TH, TD } from "@/components/ui/Table";
 import { StatusPill } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
@@ -39,12 +42,13 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/components/ui/cn";
 
-// الدفتر المالي — الهيكل المرجعي: ترويسة كبيرة بحبة «قيد جديد»، ثم بطاقة
-// محتوى واحدة تجمع شريط الأدوات (بحث، حبوب حالة السداد، تصدير CSV)، وثلاث
-// بطاقات إحصاء، وجدول القيود بأفاتار المريض ومبالغه الملونة وشارة حالة
-// السداد النقطية وإجراءَي عرض/تسديد. القيد غير قابل للتعديل أو الحذف —
-// التصحيح بقيد عكسي. حالة السداد تصنيف عرض مشتق من الرصيد الجاري لكل
-// مريض، بلا أي تغيير في الحساب المالي للخدمة.
+// الفواتير والمدفوعات — بنية المرجع حرفياً: ترويسة كبيرة بحبة «قيد جديد»،
+// ثم بطاقة محتوى واحدة تجمع شريط الأدوات (بحث، حبوب حالة السداد، تصدير CSV)،
+// وبطاقات الإحصاء، وجدول القيود بأفاتار المريض وأعمدة الإجمالي/المسدد/
+// المتبقي وشارة حالة السداد وإجراءَي عرض/تسديد. كل المبالغ بالعملتين معاً
+// عبر lib/currency.ts بسعر الصرف من الإعدادات. القيد غير قابل للتعديل أو
+// الحذف — التصحيح بقيد عكسي. حالة السداد تصنيف عرض مشتق من الرصيد الجاري
+// لكل مريض، بلا أي تغيير في الحساب المالي للخدمة.
 
 type ClinicEntryJson = {
   id: string;
@@ -96,7 +100,7 @@ function downloadCsv(filename: string, csv: string) {
   URL.revokeObjectURL(url);
 }
 
-export default function FinanceBoard() {
+export default function FinanceBoard({ usdRate }: { usdRate: number }) {
   const { toast } = useToast();
   const [entries, setEntries] = useState<ClinicEntryJson[] | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -296,7 +300,7 @@ export default function FinanceBoard() {
   return (
     <>
       <PageHeader
-        title="الدفتر المالي"
+        title="الفواتير والمدفوعات"
         description={formatDayLabel(new Date())}
         actions={
           <Button shape="pill" onClick={openCreate}>
@@ -354,20 +358,25 @@ export default function FinanceBoard() {
             </div>
           </PanelToolbar>
 
-          {/* بطاقات الإحصاء الثلاث — كل الأرقام من القيود نفسها */}
-          <div className="grid gap-3 px-5 pt-4 sm:grid-cols-3">
+          {/* بطاقات الإحصاء — كل الأرقام من القيود نفسها وبالعملتين معاً */}
+          <div className="grid gap-3 px-5 pt-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
-              value={formatSyp(summary.chargesSyp)}
+              value={String(entries?.length ?? 0)}
+              label="عدد القيود"
+              icon={BookOpen}
+            />
+            <StatCard
+              value={formatDualFromSyp(summary.chargesSyp, usdRate)}
               label="إجمالي الرسوم المُصدرة"
               icon={ReceiptText}
             />
             <StatCard
-              value={formatSyp(summary.paymentsSyp)}
+              value={formatDualFromSyp(summary.paymentsSyp, usdRate)}
               label="إجمالي المدخول (الدفعات)"
               icon={Coins}
             />
             <StatCard
-              value={formatSyp(duesSyp)}
+              value={formatDualFromSyp(duesSyp, usdRate)}
               label="المستحقات غير المسددة"
               icon={Wallet}
               tone="danger"
@@ -427,8 +436,9 @@ export default function FinanceBoard() {
                       <TH>المريض</TH>
                       <TH className="hidden lg:table-cell">النوع</TH>
                       <TH className="hidden xl:table-cell">البيان</TH>
-                      <TH className="text-end">المبلغ</TH>
-                      <TH className="hidden md:table-cell text-end">الرصيد الجاري</TH>
+                      <TH className="text-end">الإجمالي</TH>
+                      <TH className="text-end">المسدد</TH>
+                      <TH className="text-end">المتبقي</TH>
                       <TH>الحالة</TH>
                       <TH>
                         <span className="sr-only">إجراءات</span>
@@ -436,69 +446,89 @@ export default function FinanceBoard() {
                     </TRow>
                   </THead>
                   <tbody>
-                    {rows.map(({ entry, balance, patientBalanceAfter, settlement }) => (
-                      <TRow key={entry.id}>
-                        <TD className="numeric whitespace-nowrap text-xs text-warm-600">
-                          {formatDateCell(entry.createdAt)}
-                        </TD>
-                        <TD>
-                          <EntityCell
-                            name={entry.patientName}
-                            subtitle={entry.patientPhone ?? undefined}
-                          />
-                        </TD>
-                        <TD className="hidden lg:table-cell">
-                          <StatusPill tone={LEDGER_TYPE_META[entry.type].tone}>
-                            {LEDGER_TYPE_META[entry.type].label}
-                          </StatusPill>
-                        </TD>
-                        <TD className="hidden max-w-64 truncate text-xs text-warm-600 xl:table-cell">
-                          {entry.note ?? "—"}
-                        </TD>
-                        <TD
-                          className={cn(
-                            "numeric text-end font-medium",
-                            LEDGER_AMOUNT_CLASSES[entry.type],
-                          )}
-                        >
-                          {formatSyp(entry.amountSyp)}
-                        </TD>
-                        <TD className="numeric hidden text-end text-warm-700 md:table-cell">
-                          {formatSyp(balance)}
-                        </TD>
-                        <TD>
-                          {settlement === null ? (
-                            <span className="text-xs text-warm-400">—</span>
-                          ) : (
-                            <StatusPill
-                              tone={LEDGER_SETTLEMENT_META[settlement].tone}
-                            >
-                              {LEDGER_SETTLEMENT_META[settlement].label}
+                    {rows.map(({ entry, patientBalanceAfter, settlement }) => {
+                      const split =
+                        entry.type === "CHARGE"
+                          ? chargeSettlementSplit(patientBalanceAfter, entry.amountSyp)
+                          : null;
+                      return (
+                        <TRow key={entry.id}>
+                          <TD className="numeric whitespace-nowrap text-xs text-warm-600">
+                            {formatDateCell(entry.createdAt)}
+                          </TD>
+                          <TD>
+                            <EntityCell
+                              name={entry.patientName}
+                              subtitle={entry.patientPhone ?? undefined}
+                            />
+                          </TD>
+                          <TD className="hidden lg:table-cell">
+                            <StatusPill tone={LEDGER_TYPE_META[entry.type].tone}>
+                              {LEDGER_TYPE_META[entry.type].label}
                             </StatusPill>
-                          )}
-                        </TD>
-                        <TD>
-                          <div className="flex items-center justify-end gap-1.5">
-                            <PillAction href={`/patients/${entry.patientId}`}>
-                              عرض
-                            </PillAction>
-                            <PillAction
-                              variant="success"
-                              onClick={() =>
-                                openSettle({ entry, patientBalanceAfter })
-                              }
-                              className={
-                                settlement === "settled"
-                                  ? "pointer-events-none opacity-50"
-                                  : undefined
-                              }
-                            >
-                              تسديد
-                            </PillAction>
-                          </div>
-                        </TD>
-                      </TRow>
-                    ))}
+                          </TD>
+                          <TD className="hidden max-w-64 truncate text-xs text-warm-600 xl:table-cell">
+                            {entry.note ?? "—"}
+                          </TD>
+                          <TD className="text-end">
+                            <DualAmount
+                              syp={entry.amountSyp}
+                              usdRate={usdRate}
+                              valueClassName={LEDGER_AMOUNT_CLASSES[entry.type]}
+                            />
+                          </TD>
+                          <TD className="text-end">
+                            {split ? (
+                              <DualAmount syp={split.paidSyp} usdRate={usdRate} />
+                            ) : (
+                              <span className="text-xs text-warm-400">—</span>
+                            )}
+                          </TD>
+                          <TD className="text-end">
+                            {split ? (
+                              <DualAmount
+                                syp={split.remainingSyp}
+                                usdRate={usdRate}
+                                tone={split.remainingSyp > 0 ? "danger" : "default"}
+                              />
+                            ) : (
+                              <span className="text-xs text-warm-400">—</span>
+                            )}
+                          </TD>
+                          <TD>
+                            {settlement === null ? (
+                              <span className="text-xs text-warm-400">—</span>
+                            ) : (
+                              <StatusPill
+                                tone={LEDGER_SETTLEMENT_META[settlement].tone}
+                              >
+                                {LEDGER_SETTLEMENT_META[settlement].label}
+                              </StatusPill>
+                            )}
+                          </TD>
+                          <TD>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <PillAction href={`/patients/${entry.patientId}`}>
+                                عرض
+                              </PillAction>
+                              <PillAction
+                                variant="success"
+                                onClick={() =>
+                                  openSettle({ entry, patientBalanceAfter })
+                                }
+                                className={
+                                  settlement === "settled"
+                                    ? "pointer-events-none opacity-50"
+                                    : undefined
+                                }
+                              >
+                                تسديد
+                              </PillAction>
+                            </div>
+                          </TD>
+                        </TRow>
+                      );
+                    })}
                   </tbody>
                 </Table>
 
@@ -521,14 +551,14 @@ export default function FinanceBoard() {
                               name={entry.patientName}
                               subtitle={entry.patientPhone ?? undefined}
                             />
-                            <span
-                              className={cn(
-                                "numeric text-sm font-semibold",
+                            <DualAmount
+                              syp={entry.amountSyp}
+                              usdRate={usdRate}
+                              valueClassName={cn(
+                                "text-sm",
                                 LEDGER_AMOUNT_CLASSES[entry.type],
                               )}
-                            >
-                              {formatSyp(entry.amountSyp)}
-                            </span>
+                            />
                           </div>
                           {entry.note && (
                             <p className="text-xs text-warm-500">{entry.note}</p>
@@ -685,7 +715,7 @@ export default function FinanceBoard() {
             htmlFor="entry-amount"
             hint={
               finalAmount !== null
-                ? `سيُسجَّل بالدفتر: ${formatSyp(finalAmount)}`
+                ? `سيُسجَّل بالدفتر: ${formatDualFromSyp(finalAmount, usdRate)}`
                 : type === "PAYMENT"
                   ? "تُسجَّل الدفعة بقيمة سالبة تخفض رصيد المريض"
                   : undefined

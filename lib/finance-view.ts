@@ -159,6 +159,20 @@ export function settlementOfCharge(
 }
 
 /**
+ * نقي — تقسيم قيد رسوم إلى المسدد والمتبقي من رصيد المريض بعده مباشرة:
+ * المتبقي = max(الرصيد بعده، 0) والمسدد = قيمة القيد − المتبقي. أساس عمودَي
+ * «المسدد/المتبقي» في جدول الفواتير بصف المرجع.
+ */
+export function chargeSettlementSplit(
+  balanceAfter: number,
+  amountSyp: number,
+): { paidSyp: number; remainingSyp: number } {
+  // المتبقي من هذا القيد تحديداً لا يتجاوز قيمته — الدفعات الأقدم غطت ما سبقه.
+  const remainingSyp = Math.min(Math.max(balanceAfter, 0), amountSyp);
+  return { paidSyp: amountSyp - remainingSyp, remainingSyp };
+}
+
+/**
  * نقي — الرصيد الجاري بعد كل قيد، محسوباً لكل مريض على حدة بترتيبها
  * الزمني التصاعدي. يعيد خريطة من معرّف القيد إلى رصيد مريضه بعده.
  */
