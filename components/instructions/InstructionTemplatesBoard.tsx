@@ -1,10 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ClipboardList, Pencil, Plus, RotateCw, Trash2 } from "lucide-react";
+import { filterTemplates, templateExcerpt } from "@/lib/templates-view";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
-import { Card, CardBody } from "@/components/ui/Card";
+import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/Card";
+import { PanelToolbar, SearchInput } from "@/components/ui/Toolbar";
+import { EntityCell } from "@/components/ui/EntityCell";
+import { IconAction, PillAction } from "@/components/ui/TableActions";
 import { StatusPill } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/appointments/ConfirmDialog";
@@ -142,6 +146,13 @@ export default function InstructionTemplatesBoard() {
   const selected =
     templates?.find((t) => t.id === selectedId) ?? templates?.[0] ?? null;
 
+  // تصفية البحث نقية على القوالب المحمّلة حصراً
+  const [search, setSearch] = useState("");
+  const filtered = useMemo(
+    () => (templates ? filterTemplates(templates, search) : null),
+    [templates, search],
+  );
+
   return (
     <>
       <PageHeader
@@ -192,60 +203,66 @@ export default function InstructionTemplatesBoard() {
           />
         </div>
       ) : selected ? (
-        <div className="mt-5 grid items-start gap-4 xl:grid-cols-[240px_minmax(0,1fr)]">
-          {/* فهرس القوالب جانباً — شرائط أفقية على الشاشات الضيقة */}
-          <aside
-            role="tablist"
-            aria-label="فهرس القوالب"
-            className="border-warm-200 flex gap-2 overflow-x-auto pb-1 xl:flex-col xl:overflow-visible xl:border-s xl:pb-0 xl:ps-4"
-          >
-            {templates.map((t) => {
-              const active = t.id === selected.id;
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => setSelectedId(t.id)}
-                  className={cn(
-                    "shrink-0 rounded-field border px-3 py-2 text-start text-sm font-medium transition-colors",
-                    active
-                      ? "border-primary-600 bg-primary-600 shadow-xs text-white"
-                      : "border-warm-200 bg-surface-raised text-ink-900 hover:bg-surface-hover",
-                  )}
-                >
-                  {t.procedure}
-                </button>
-              );
-            })}
-          </aside>
+        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+          {/* بطاقة المحتوى — شريط أدوات بحث + شبكة بطاقات القوالب */}
+          <Card>
+            <CardHeader>
+              <CardTitle>قوالب التعليمات</CardTitle>
+            </CardHeader>
+            <PanelToolbar className="border-b border-warm-200">
+              <SearchInput
+                value={search}
+                onChange={setSearch}
+                placeholder="ابحث في القوالب…"
+                aria-label="بحث في قوالب التعليمات"
+              />
+              <span className="numeric text-xs text-warm-500">
+                {filtered?.length ?? 0} قالب
+              </span>
+            </PanelToolbar>
+            <CardBody className="pt-0">
+              {filtered?.length === 0 ? (
+                <EmptyState
+                  icon={ClipboardList}
+                  title="لا قوالب مطابقة"
+                  description="عدّل كلمات البحث لتوسيع القائمة."
+                  action={
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setSearch("")}
+                    >
+                      مسح البحث
+                    </Button>
+                  }
+                />
+              ) : (
+                <ul className="grid gap-2 sm:grid-cols-2">
+                  {filtered?.map((t) => {
+                    const active = t.id === selected.id;
+                    return (
+                      <li key={t.id}>
+                        <TemplateCard
+                          template={t}
+                          selected={active}
+                          busy={busy}
+                          onSelect={() => setSelectedId(t.id)}
+                          onEdit={() => setEditing(t)}
+                          onRemove={() => setRemoving(t)}
+                        />
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </CardBody>
+          </Card>
 
           {/* معاينة القالب المختار — حية دائماً */}
           <Card>
             <CardBody className="flex flex-col gap-3 py-4">
               <div className="flex items-center justify-between gap-2">
                 <StatusPill tone="success">{selected.procedure}</StatusPill>
-                <div className="flex gap-1">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setEditing(selected)}
-                    disabled={busy}
-                  >
-                    <Pencil size={13} aria-hidden />
-                    تعديل
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setRemoving(selected)}
-                    disabled={busy}
-                  >
-                    <Trash2 size={13} aria-hidden />
-                    حذف
-                  </Button>
-                </div>
               </div>
               <MessagePreview body={selected.body} />
             </CardBody>
@@ -301,6 +318,56 @@ export default function InstructionTemplatesBoard() {
         }}
       />
     </>
+  );
+}
+
+/** بطاقة قالب — أفاتار بالإجراء وسطر معاينة باهت، وحبوب عرض مع أيقوني تعديل وحذف */
+function TemplateCard({
+  template,
+  selected,
+  busy,
+  onSelect,
+  onEdit,
+  onRemove,
+}: {
+  template: TemplateJson;
+  selected: boolean;
+  busy: boolean;
+  onSelect: () => void;
+  onEdit: () => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex h-full flex-col gap-3 rounded-panel border bg-surface-raised p-3.5 transition-colors",
+        selected
+          ? "border-primary-600"
+          : "border-warm-200 hover:bg-surface-hover",
+      )}
+    >
+      <EntityCell
+        name={template.procedure}
+        subtitle={templateExcerpt(template.body)}
+      />
+      <div className="mt-auto flex items-center gap-1.5">
+        <PillAction variant={selected ? "solid" : "outline"} onClick={onSelect}>
+          عرض
+        </PillAction>
+        <IconAction
+          icon={Pencil}
+          label={`تعديل قالب ${template.procedure}`}
+          onClick={onEdit}
+        />
+        <IconAction
+          icon={Trash2}
+          label={`حذف قالب ${template.procedure}`}
+          tone="danger"
+          disabled={busy}
+          onClick={onRemove}
+        />
+      </div>
+    </div>
   );
 }
 

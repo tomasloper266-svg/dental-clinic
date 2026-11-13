@@ -1,25 +1,38 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BarChart3, ChevronLeft, ChevronRight, Plus, RotateCw } from "lucide-react";
+import {
+  BarChart3,
+  ChevronLeft,
+  ChevronRight,
+  DollarSign,
+  Plus,
+  ReceiptText,
+  RotateCw,
+  TriangleAlert,
+  Wallet,
+} from "lucide-react";
 import type { ExpenseCategory } from "@/lib/reports-view";
 import { EXPENSE_CATEGORIES } from "@/lib/reports-view";
 import { formatSyp } from "@/lib/utils";
 import { toDateInputValue } from "@/lib/dates";
 import {
   EXPENSE_CATEGORY_LABELS,
+  EXPENSE_CATEGORY_TONES,
   expenseCategoryLabel,
   summarizeExpensesByCategory,
 } from "@/lib/reports-view";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/Card";
+import { StatCard } from "@/components/ui/StatCard";
+import { FilterPills } from "@/components/ui/Toolbar";
 import { Table, THead, TRow, TH, TD } from "@/components/ui/Table";
+import { StatusPill } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { Field, Input, Select, Textarea } from "@/components/ui/Field";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
-import { cn } from "@/components/ui/cn";
 import DailyBarsChart from "./DailyBarsChart";
 
 // لوحة التقارير — تقرير الفترة (يومي أو شهري) من واجهة التقارير نفسها،
@@ -208,30 +221,16 @@ export default function ReportsBoard({
       />
 
       {/* مبدّل الفترة */}
-      <div className="mt-5 flex flex-wrap items-center gap-2">
-        <div className="flex rounded-field border border-warm-300 bg-surface-raised p-0.5">
-          {(
-            [
-              ["day", "تقرير يوم"],
-              ["month", "تقرير شهر"],
-            ] as [Mode, string][]
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setMode(key)}
-              aria-pressed={mode === key}
-              className={cn(
-                "rounded-[6px] px-3 py-1.5 text-xs font-medium transition-colors",
-                mode === key
-                  ? "bg-primary-600 text-white"
-                  : "text-warm-600 hover:bg-surface-hover",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterPills
+          ariaLabel="نوع التقرير"
+          value={mode}
+          onChange={setMode}
+          options={[
+            { value: "day", label: "تقرير يوم" },
+            { value: "month", label: "تقرير شهر" },
+          ]}
+        />
 
         {mode === "day" ? (
           <Input
@@ -303,43 +302,28 @@ export default function ReportsBoard({
         </div>
       ) : (
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardBody className="py-4">
-              <p className="text-xs text-warm-500">التحصيل</p>
-              <p className="numeric mt-1 text-lg font-semibold text-primary-700">
-                {formatSyp(report.collectedSyp)}
-              </p>
-            </CardBody>
-          </Card>
-          <Card>
-            <CardBody className="py-4">
-              <p className="text-xs text-warm-500">المصاريف</p>
-              <p className="numeric mt-1 text-lg font-semibold text-ink-900">
-                {formatSyp(report.expensesSyp)}
-              </p>
-            </CardBody>
-          </Card>
-          <Card>
-            <CardBody className="py-4">
-              <p className="text-xs text-warm-500">الاستردادات</p>
-              <p className="numeric mt-1 text-lg font-semibold text-danger-700">
-                {formatSyp(report.refundsSyp)}
-              </p>
-            </CardBody>
-          </Card>
-          <Card>
-            <CardBody className="py-4">
-              <p className="text-xs text-warm-500">صافي الفترة</p>
-              <p
-                className={cn(
-                  "numeric mt-1 text-lg font-semibold",
-                  report.netSyp >= 0 ? "text-ink-900" : "text-danger-700",
-                )}
-              >
-                {formatSyp(report.netSyp)}
-              </p>
-            </CardBody>
-          </Card>
+          <StatCard
+            value={formatSyp(report.collectedSyp)}
+            label="التحصيل"
+            icon={DollarSign}
+          />
+          <StatCard
+            value={formatSyp(report.expensesSyp)}
+            label="المصاريف"
+            icon={ReceiptText}
+          />
+          <StatCard
+            value={formatSyp(report.refundsSyp)}
+            label="الاستردادات"
+            icon={TriangleAlert}
+            tone="danger"
+          />
+          <StatCard
+            value={formatSyp(report.netSyp)}
+            label="صافي الفترة"
+            icon={Wallet}
+            tone={report.netSyp >= 0 ? "primary" : "danger"}
+          />
         </div>
       )}
 
@@ -441,9 +425,9 @@ export default function ReportsBoard({
                     {expenseDateFmt.format(new Date(e.spentAt))}
                   </TD>
                   <TD>
-                    <span className="rounded-full border border-warm-200 bg-surface-sunken px-2 py-0.5 text-[11px] text-warm-700">
+                    <StatusPill tone={EXPENSE_CATEGORY_TONES[e.category] ?? "neutral"}>
                       {expenseCategoryLabel(e.category)}
-                    </span>
+                    </StatusPill>
                   </TD>
                   <TD className="max-w-64 text-xs text-warm-600">
                     {e.note ?? "—"}

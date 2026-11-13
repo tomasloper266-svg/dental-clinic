@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Building2, RefreshCw, Stethoscope } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Card, CardBody } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Field";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
@@ -60,42 +61,42 @@ function SingleFieldCard({
   }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="rounded-panel bg-surface-raised p-6 ring-1 ring-warm-200"
-      aria-label={title}
-    >
-      <h2 className="flex items-center gap-2 text-base font-semibold text-ink-900">
-        {icon}
-        {title}
-      </h2>
-      <p className="mt-2 text-sm text-warm-600">{description}</p>
-      <div className="mt-5">
-        <Field label={fieldLabel} htmlFor={inputId} hint={fieldHint}>
-          <Input
-            id={inputId}
-            required
-            minLength={2}
-            maxLength={100}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-          />
-        </Field>
-      </div>
-      {error && (
-        <p
-          role="alert"
-          className="mt-4 rounded-field border border-danger-100 bg-danger-50 px-3 py-2.5 text-sm text-danger-700"
-        >
-          {error}
-        </p>
-      )}
-      <div className="mt-5 flex items-center gap-3">
-        <Button type="submit" loading={saving} disabled={!dirty}>
-          حفظ
-        </Button>
-        {!dirty && !saving && <span className="text-xs text-warm-500">لا تغييرات لحفظها</span>}
-      </div>
+    <form onSubmit={onSubmit} aria-label={title}>
+      <Card>
+        <CardBody className="flex flex-col gap-4">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-ink-900">
+            {icon}
+            {title}
+          </h2>
+          <p className="text-sm text-warm-600">{description}</p>
+          <Field label={fieldLabel} htmlFor={inputId} hint={fieldHint}>
+            <Input
+              id={inputId}
+              required
+              minLength={2}
+              maxLength={100}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+            />
+          </Field>
+          {error && (
+            <p
+              role="alert"
+              className="rounded-field border border-danger-100 bg-danger-50 px-3 py-2.5 text-sm text-danger-700"
+            >
+              {error}
+            </p>
+          )}
+          <div className="flex items-center gap-3">
+            <Button type="submit" loading={saving} disabled={!dirty}>
+              حفظ
+            </Button>
+            {!dirty && !saving && (
+              <span className="text-xs text-warm-500">لا تغييرات لحفظها</span>
+            )}
+          </div>
+        </CardBody>
+      </Card>
     </form>
   );
 }

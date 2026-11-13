@@ -3,22 +3,38 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
+  CircleCheck,
   Package,
   PackagePlus,
   Pencil,
   Plus,
   RotateCw,
   Scissors,
-  Search,
 } from "lucide-react";
 import type { MaterialDto } from "@/lib/services/inventory";
 import { usePatientSearch, type PatientOption } from "@/lib/use-patient-search";
 import { formatSyp } from "@/lib/utils";
+import {
+  MATERIAL_STATUS_LABELS,
+  healthyCount,
+  materialStockStatus,
+  materialsToCsv,
+  stockLevelRatio,
+  type MaterialStockStatus,
+} from "@/lib/inventory-view";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
-import { Card, CardBody } from "@/components/ui/Card";
+import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/Card";
+import {
+  ExportButton,
+  FilterPills,
+  PanelToolbar,
+  SearchInput,
+} from "@/components/ui/Toolbar";
+import { StatCard } from "@/components/ui/StatCard";
 import { Table, THead, TRow, TH, TD } from "@/components/ui/Table";
 import { StatusPill } from "@/components/ui/Badge";
+import { IconAction, PillAction } from "@/components/ui/TableActions";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/appointments/ConfirmDialog";
 import { Field, Input } from "@/components/ui/Field";
@@ -104,6 +120,21 @@ export default function InventoryBoard() {
   }, [materials, search, lowOnly]);
 
   const lowCount = materials?.filter((m) => m.isLow).length ?? 0;
+  const healthy = healthyCount(materials ?? []);
+
+  /** تنزيل CSV على جهاز المستخدم — من بيانات المخزون المحمّلة حصراً */
+  function exportCsv() {
+    if (!materials?.length) return;
+    const blob = new Blob([materialsToCsv(materials)], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "materials.csv";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <>
@@ -111,36 +142,34 @@ export default function InventoryBoard() {
         title="المخزون"
         description="مواد العيادة وكمياتها وحدود تنبيهها — الكمية تتغير بالتوريد والاستعمال حصراً، والخصم ذري لا يمرّ إذا لم يكفِ الرصيد."
         actions={
-          <Button onClick={() => setAdding(true)}>
-            <Plus size={16} aria-hidden />
-            مادة جديدة
-          </Button>
+          <>
+            <ExportButton onClick={exportCsv} disabled={!materials?.length} />
+            <Button onClick={() => setAdding(true)}>
+              <Plus size={16} aria-hidden />
+              مادة جديدة
+            </Button>
+          </>
         }
       />
 
-      {/* ملخص */}
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
-        <Card>
-          <CardBody className="py-4">
-            <p className="text-xs text-warm-500">إجمالي المواد</p>
-            <p className="numeric mt-1 text-lg font-semibold text-ink-900">
-              {materials?.length ?? "—"}
-            </p>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardBody className="py-4">
-            <p className="text-xs text-warm-500">مواد تحت حد التنبيه</p>
-            <p
-              className={cn(
-                "numeric mt-1 text-lg font-semibold",
-                lowCount > 0 ? "text-warning-700" : "text-ink-900",
-              )}
-            >
-              {materials ? lowCount : "—"}
-            </p>
-          </CardBody>
-        </Card>
+      {/* ملخص — ثلاث بطاقات إحصاء على شكل المرجع */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <StatCard
+          value={materials ? String(materials.length) : "—"}
+          label="المواد المسجلة"
+          icon={Package}
+        />
+        <StatCard
+          value={materials ? String(healthy) : "—"}
+          label="المتوفر"
+          icon={CircleCheck}
+        />
+        <StatCard
+          value={materials ? String(lowCount) : "—"}
+          label="تحت الحد الأدنى"
+          icon={AlertTriangle}
+          tone="danger"
+        />
       </div>
 
       {loadError ? (
@@ -181,57 +210,34 @@ export default function InventoryBoard() {
         </div>
       ) : (
         <>
-          {lowCount > 0 && (
-            <div
-              role="alert"
-              className="mt-4 flex items-start gap-2 rounded-panel border border-warning-300 bg-warning-50 px-4 py-3 text-sm text-warning-900"
-            >
-              <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden />
-              <p>
-                {lowCount} مادة وصلت حد التنبيه أو تحته — راجع الصفوف المعلّمة
-                وأورد ما ينقص قبل نفادها.
-              </p>
-            </div>
-          )}
-
-          {/* تصفية */}
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <div className="relative w-full sm:w-64">
-              <Search
-                size={14}
-                aria-hidden
-                className="pointer-events-none absolute inset-y-0 start-3 my-auto text-warm-400"
-              />
-              <input
-                type="text"
+          {/* بطاقة المحتوى — شريط أدوات + جدول على شكل المرجع */}
+          <Card>
+            <CardHeader>
+              <CardTitle>مخزون العيادة</CardTitle>
+            </CardHeader>
+            <PanelToolbar className="border-b border-warm-200">
+              <SearchInput
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={setSearch}
                 placeholder="ابحث باسم المادة…"
                 aria-label="بحث باسم المادة"
-                className="h-9 w-full rounded-field border border-warm-300 bg-surface-raised ps-9 pe-3 text-xs text-ink-900 placeholder:text-warm-400 focus:border-primary-500 focus:outline-2 focus:outline-primary-500"
               />
-            </div>
-            <button
-              type="button"
-              onClick={() => setLowOnly((v) => !v)}
-              aria-pressed={lowOnly}
-              className={cn(
-                "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                lowOnly
-                  ? "border-warning-500 bg-warning-500 text-white"
-                  : "border-warm-300 bg-surface-raised text-warm-700 hover:bg-surface-hover",
-              )}
-            >
-              الناقصة فقط
-            </button>
-          </div>
-
-          <div className="mt-3">
+              <FilterPills
+                ariaLabel="تصفية المواد"
+                value={lowOnly ? "low" : "all"}
+                onChange={(value) => setLowOnly(value === "low")}
+                options={[
+                  { value: "all", label: "الكل" },
+                  { value: "low", label: "تحت الحد الأدنى", count: lowCount },
+                ]}
+              />
+            </PanelToolbar>
+            <CardBody className="pt-0">
             {visible.length === 0 ? (
               <EmptyState
                 icon={Package}
                 title="لا مواد مطابقة"
-                description="عدّل البحث أو أزل فلتر «الناقصة فقط» لتوسيع القائمة."
+                description="عدّل البحث أو أزل فلتر «تحت الحد الأدنى» لتوسيع القائمة."
                 action={
                   <Button
                     variant="secondary"
@@ -248,12 +254,11 @@ export default function InventoryBoard() {
             ) : (
               <>
                 {/* جدول الشاشات المتوسطة فأعلى */}
-                <Table className="hidden md:table">
+                <Table className="hidden md:table" wrapperClassName="border-0">
                   <THead>
                     <TRow>
                       <TH>المادة</TH>
-                      <TH className="text-end">الرصيد</TH>
-                      <TH className="text-end">حد التنبيه</TH>
+                      <TH>الكمية</TH>
                       <TH>الحالة</TH>
                       <TH className="text-end">سعر الوحدة</TH>
                       <TH>إجراءات</TH>
@@ -261,26 +266,25 @@ export default function InventoryBoard() {
                   </THead>
                   <tbody>
                     {visible.map((m) => (
-                      <TRow key={m.id} className={m.isLow ? "bg-warning-50/50" : undefined}>
+                      <TRow key={m.id}>
                         <TD>
-                          <p className="font-medium text-ink-900">{m.name}</p>
-                          <p className="text-xs text-warm-500">{m.unit}</p>
+                          <p className="font-semibold text-ink-900">{m.name}</p>
+                          <p className="numeric text-xs text-warm-500">
+                            الحد الأدنى: {m.minQuantity} {m.unit}
+                          </p>
                         </TD>
-                        <TD className="numeric text-end font-medium text-ink-900">
-                          {m.quantityOnHand}
-                        </TD>
-                        <TD className="numeric text-end text-warm-600">
-                          {m.minQuantity}
+                        <TD className="min-w-36">
+                          <QuantityCell
+                            quantityOnHand={m.quantityOnHand}
+                            minQuantity={m.minQuantity}
+                            unit={m.unit}
+                          />
                         </TD>
                         <TD>
-                          {m.isLow ? (
-                            <StatusPill tone="warning">
-                              <AlertTriangle size={11} aria-hidden />
-                              تحت حد التنبيه
-                            </StatusPill>
-                          ) : (
-                            <StatusPill tone="success">كافٍ</StatusPill>
-                          )}
+                          <MaterialStatusPill
+                            quantityOnHand={m.quantityOnHand}
+                            minQuantity={m.minQuantity}
+                          />
                         </TD>
                         <TD className="numeric text-end text-warm-600">
                           {m.costSyp !== null ? formatSyp(m.costSyp) : "—"}
@@ -302,25 +306,26 @@ export default function InventoryBoard() {
                 <ul className="flex flex-col gap-2 md:hidden">
                   {visible.map((m) => (
                     <li key={m.id}>
-                      <Card className={m.isLow ? "border-warning-300" : undefined}>
+                      <Card className="border-warm-200">
                         <CardBody className="flex flex-col gap-2 py-3">
                           <div className="flex items-center justify-between gap-2">
-                            <p className="text-sm font-medium text-ink-900">
+                            <p className="text-sm font-semibold text-ink-900">
                               {m.name}
                             </p>
-                            {m.isLow ? (
-                              <StatusPill tone="warning">
-                                <AlertTriangle size={11} aria-hidden />
-                                تحت حد التنبيه
-                              </StatusPill>
-                            ) : (
-                              <StatusPill tone="success">كافٍ</StatusPill>
-                            )}
+                            <MaterialStatusPill
+                              quantityOnHand={m.quantityOnHand}
+                              minQuantity={m.minQuantity}
+                            />
                           </div>
                           <p className="numeric text-xs text-warm-600">
                             الرصيد {m.quantityOnHand} {m.unit} · حد التنبيه{" "}
                             {m.minQuantity}
                           </p>
+                          <QuantityCell
+                            quantityOnHand={m.quantityOnHand}
+                            minQuantity={m.minQuantity}
+                            unit={m.unit}
+                          />
                           <MaterialActions
                             busy={busyId === m.id}
                             onSupply={() => setSupplying(m)}
@@ -334,7 +339,8 @@ export default function InventoryBoard() {
                 </ul>
               </>
             )}
-          </div>
+            </CardBody>
+          </Card>
         </>
       )}
 
@@ -441,20 +447,77 @@ function MaterialActions({
   onEdit: () => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-1.5">
-      <Button size="sm" onClick={onSupply} disabled={busy}>
+    <div className="flex flex-wrap items-center gap-1.5">
+      <PillAction onClick={onSupply} disabled={busy}>
         <PackagePlus size={13} aria-hidden />
         توريد
-      </Button>
-      <Button size="sm" variant="secondary" onClick={onUsage} disabled={busy}>
+      </PillAction>
+      <PillAction variant="outline" onClick={onUsage} disabled={busy}>
         <Scissors size={13} aria-hidden />
         استعمال
-      </Button>
-      <Button size="sm" variant="ghost" onClick={onEdit} disabled={busy}>
-        <Pencil size={13} aria-hidden />
-        تعديل
-      </Button>
+      </PillAction>
+      <IconAction icon={Pencil} label="تعديل المادة" onClick={onEdit} />
     </div>
+  );
+}
+
+/** خلية الكمية — الرقم والوحدة بارزان وشريط تقدم رفيع يتلون بحالة المخزون */
+function QuantityCell({
+  quantityOnHand,
+  minQuantity,
+  unit,
+}: {
+  quantityOnHand: number;
+  minQuantity: number;
+  unit: string;
+}) {
+  const status = materialStockStatus({ quantityOnHand, minQuantity });
+  const ratio = stockLevelRatio({ quantityOnHand, minQuantity });
+  return (
+    <div className="flex flex-col gap-1.5">
+      <p className="numeric text-sm font-semibold text-ink-900">
+        {quantityOnHand} {unit}
+      </p>
+      <div
+        role="meter"
+        aria-valuenow={ratio * 100}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`نسبة الرصيد من ضعف حد التنبيه — ${MATERIAL_STATUS_LABELS[status]}`}
+        className="h-1 w-full max-w-28 overflow-hidden rounded-full bg-surface-sunken"
+      >
+        <div
+          className={cn("h-full rounded-full", statusBarClasses[status])}
+          style={{ width: `${ratio * 100}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+const statusBarClasses: Record<MaterialStockStatus, string> = {
+  available: "bg-primary-500",
+  low: "bg-warning-500",
+  critical: "bg-danger-500",
+};
+
+/** شارة حالة المادة — متوفر / منخفض / حرج بنقطة لونية ثابتة */
+function MaterialStatusPill({
+  quantityOnHand,
+  minQuantity,
+}: {
+  quantityOnHand: number;
+  minQuantity: number;
+}) {
+  const status = materialStockStatus({ quantityOnHand, minQuantity });
+  const tone =
+    status === "available"
+      ? "success"
+      : status === "low"
+        ? "warning"
+        : "danger";
+  return (
+    <StatusPill tone={tone}>{MATERIAL_STATUS_LABELS[status]}</StatusPill>
   );
 }
 
