@@ -91,6 +91,14 @@ enum SupportRequestStatus {
   RESOLVED
 }
 
+// أدوار الطاقم — التسميات العربية للعرض في lib/services/staff.ts
+enum StaffRole {
+  DENTIST
+  RECEPTION
+  ASSISTANT
+  ACCOUNTANT
+}
+
 // ─── العيادة والمستخدمون والجلسات ────────────────────────────────────────────
 
 model Clinic {
@@ -116,6 +124,7 @@ model Clinic {
   instructionTemplates InstructionTemplate[]
   instructionSends     InstructionSend[]
   appointmentReminders AppointmentReminder[]
+  staffMembers         StaffMember[]
 }
 
 model User {
@@ -229,15 +238,44 @@ model Appointment {
   note        String?
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
+  // ربط اختياري بالطبيب المسند — فلتر الأطباء في لوحة المواعيد وعرضه على البطاقة
+  staffId     String?
 
   clinic         Clinic          @relation(fields: [clinicId], references: [id])
   patient        Patient         @relation(fields: [patientId], references: [id])
+  staff          StaffMember?    @relation(fields: [staffId], references: [id])
   materialUsages MaterialUsage[]
   statusChanges  AppointmentStatusChange[]
   reminders      AppointmentReminder[]
 
   @@index([clinicId, startsAt])
   @@index([clinicId, patientId, startsAt])
+  @@index([clinicId, staffId, startsAt])
+}
+
+// ─── الطاقم ──────────────────────────────────────────────────────────────────
+// بطاقات الطاقم مستقلة عن حسابات الدخول (User) — الطبيب هنا كيان جدولة
+// وعمولة، وقد لا يحسب مسجلاً أصلاً. الحذف يفصل مواعيده (ON DELETE SET NULL)
+// فلا تُفقد أي موعد عند رحيل عضو الطاقم.
+
+model StaffMember {
+  id                String    @id @default(cuid())
+  clinicId          String
+  name              String
+  role              StaffRole @default(DENTIST)
+  specialty         String?
+  phone             String?
+  commissionPercent Float     @default(0)
+  colorHex          String    @default("#d4af37")
+  scheduleNote      String?
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  clinic       Clinic        @relation(fields: [clinicId], references: [id])
+  appointments Appointment[]
+
+  @@index([clinicId, name])
 }
 
 // سجل إرسال تذكير واتساب لموعد — سطر واحد لكل موعد أُرسل بضغطة. سطر الإرسال
