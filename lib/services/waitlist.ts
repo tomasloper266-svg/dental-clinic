@@ -41,6 +41,9 @@ export type GapDto = {
 export const WORK_DAY_START_UTC_HOUR = 7; // 10 صباحاً بتوقيت دمشق (UTC+3)
 export const WORK_DAY_END_UTC_HOUR = 14; // 5 مساءً بتوقيت دمشق
 
+/** سبب الموعد المُنشأ بتعبئة تلقائية — يميّزه عن الحجز اليدوي ليتحقق منه التراجع. */
+export const AUTO_FILL_REASON = "تعبئة تلقائية من قائمة الانتظار";
+
 export function parseCreateWaitlistEntry(
   body: unknown,
 ): { ok: true; value: CreateWaitlistInput } | { ok: false; error: string } {
@@ -278,6 +281,124 @@ export async function bookFromWaitlist(
       note: created.note,
     },
   };
+}
+
+export type UndoAutoFillInput = {
+  /** الموعد المُنشأ بالتعبئة التلقائية — يُحذف */
+  filledAppointmentId: string;
+  /** قيد الانتظار الذي حُجز — يُعاد إلى WAITING */
+  waitlistEntryId: string;
+  /** الموعد الأصلي الملغى — تُستعاد حالته السابقة */
+  sourceAppointmentId: string;
+};
+
+export type UndoAutoFillResult =
+  | { ok: true }
+  | { ok: false; error: string; code: "CONFLICT" | "NOT_FOUND" | "INVALID" };
+
+// تراجع بضغطة عن التعبئة التلقائية: حذف الموعد المحجوز، إعادة المنتظر إلى
+// القائمة، واستعادة حالة الموعد الأصلي — كلها في معاملة واحدة. الاستعادة
+// تعتمد على سجل التغيير الإلحاقي: آخر قيد للموعد الأصلي يجب أن يكون انتقاله
+// إلى CANCELLED/NO_SHOW وموافقًا لحالته الحالية، وإلا فالتغيّر شيء بعده ولا
+// يُرجع شيئاً. الحذف مقيّد بالسبب AUTO_FILL_REASON فلا يمس حجوزاً يدوياً.
+export async function undoWaitlistAutoFill(
+  ctx: TenantContext,
+  input: UndoAutoFillInput,
+): Promise<UndoAutoFillResult> {
+  const db = clinicScope(ctx.clinicId);
+
+  return db.$transaction(async (tx): Promise<UndoAutoFillResult> => {
+    const filled = await tx.appointment.findUnique({
+      where: { id: input.filledAppointmentId },
+      select: { id: true, status: true, reason: true },
+    });
+    if (!filled) {
+      return {
+        ok: false,
+        error: "موعد التعبئة التلقائية غير موجود",
+        code: "NOT_FOUND",
+      };
+    }
+    if (filled.reason !== AUTO_FILL_REASON) {
+      return {
+        ok: false,
+        error: "هذا الحجز ليس تعبئة تلقائية — لا يمكن التراجع آلياً",
+        code: "INVALID",
+      };
+    }
+    if (filled.status !== "SCHEDULED") {
+      return {
+        ok: false,
+        error: "تغيّرت حالة الموعد المحجوز — لا يمكن التراجع",
+        code: "INVALID",
+      };
+    }
+
+    const entry = await tx.waitlistEntry.findUnique({
+      where: { id: input.waitlistEntryId },
+      select: { id: true, status: true },
+    });
+    if (!entry) {
+      return { ok: false, error: "قيد الانتظار غير موجود", code: "NOT_FOUND" };
+    }
+    if (entry.status !== "BOOKED") {
+      return {
+        ok: false,
+        error: "حالة قيد الانتظار تغيّرت — لا يمكن التراجع",
+        code: "INVALID",
+      };
+    }
+
+    const source = await tx.appointment.findUnique({
+      where: { id: input.sourceAppointmentId },
+      select: { id: true, status: true },
+    });
+    if (!source) {
+      return { ok: false, error: "الموعد الأصلي غير موجود", code: "NOT_FOUND" };
+    }
+    if (source.status !== "CANCELLED" && source.status !== "NO_SHOW") {
+      return {
+        ok: false,
+        error: "تغيّرت حالة الموعد الأصلي — لا يمكن التراجع",
+        code: "INVALID",
+      };
+    }
+
+    // آخر قيد في سجل التغيير هو من فتح الفجوة — منه تُقرأ الحالة المرادعة.
+    const lastChange = await tx.appointmentStatusChange.findFirst({
+      where: { appointmentId: source.id },
+      orderBy: { createdAt: "desc" },
+      select: { fromStatus: true, toStatus: true },
+    });
+    if (!lastChange || lastChange.toStatus !== source.status) {
+      return {
+        ok: false,
+        error: "سجل التغييرات لا يطابق الحالة الحالية — لا يمكن التراجع",
+        code: "INVALID",
+      };
+    }
+
+    await tx.appointment.delete({ where: { id: filled.id } });
+    await tx.waitlistEntry.update({
+      where: { id: entry.id },
+      data: { status: "WAITING" },
+    });
+    await tx.appointment.update({
+      where: { id: source.id },
+      data: { status: lastChange.fromStatus },
+    });
+    await tx.appointmentStatusChange.create({
+      data: {
+        clinicId: ctx.clinicId,
+        appointmentId: source.id,
+        fromStatus: source.status,
+        toStatus: lastChange.fromStatus,
+        changedById: ctx.userId,
+      },
+    });
+
+    return { ok: true };
+  });
 }
 
 function mapWaitlistEntry(entry: {

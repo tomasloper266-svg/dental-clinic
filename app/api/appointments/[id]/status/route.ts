@@ -44,5 +44,10 @@ export async function PATCH(
     const code = result.code === "INVALID" ? 422 : 404;
     return NextResponse.json({ error: result.error }, { status: code });
   }
-  return NextResponse.json({ appointment: result.value }, { status: 200 });
+  // waitlistFill يُحمل فقط حين يُفتح موعد CANCELLED/NO_SHOW ويُحجز منتظر
+  // مناسباً في الفجوة — يغذي رسالة المكوّن وزر التراجع بضغطة.
+  return NextResponse.json(
+    { appointment: result.value, waitlistFill: result.waitlistFill },
+    { status: 200 },
+  );
 }

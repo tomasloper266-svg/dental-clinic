@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Undo2 } from "lucide-react";
 import { ALLOWED_TRANSITIONS } from "@/lib/appointment-state";
 import type { AppointmentStatus } from "@/lib/appointment-state";
 import {
@@ -37,6 +38,16 @@ type AppointmentDetailsDrawerProps = {
   onChanged: () => void;
 };
 
+/** نتيجة تعبئة الفجوة تلقائياً — تأتي من استجابة PATCH الحالة (waitlistFill). */
+type WaitlistFillJson = {
+  waitlistEntryId: string;
+  patientId: string;
+  patientName: string;
+  appointmentId: string;
+  startsAt: string;
+  durationMin: number;
+};
+
 export function AppointmentDetailsDrawer({
   appointment,
   onClose,
@@ -46,6 +57,8 @@ export function AppointmentDetailsDrawer({
   const [pending, setPending] = useState<AppointmentStatus | null>(null);
   const [confirming, setConfirming] = useState<AppointmentStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fill, setFill] = useState<WaitlistFillJson | null>(null);
+  const [undoing, setUndoing] = useState(false);
 
   if (!appointment) return null;
 
@@ -68,14 +81,57 @@ export function AppointmentDetailsDrawer({
         setError(data.error ?? "تعذر تغيير الحالة");
         return;
       }
-      toast(`تم تحديث حالة الموعد إلى «${STATUS_LABEL(to)}»`);
+      const data = (await res.json()) as { waitlistFill?: WaitlistFillJson | null };
+      if (data.waitlistFill) {
+        // حجز تلقائي لمنتظر في الفجوة — تبقى اللوحة مفتوحة لعرض النتيجة
+        // وزر التراجع بضغطة بدل إغلاقها فوراً.
+        setFill(data.waitlistFill);
+        toast(
+          `حُجز المنتظر ${data.waitlistFill.patientName} في فجوة ${formatTime(
+            data.waitlistFill.startsAt,
+          )}`,
+        );
+      } else {
+        toast(`تم تحديث حالة الموعد إلى «${STATUS_LABEL(to)}»`);
+      }
       setConfirming(null);
       onChanged();
-      onClose();
+      if (!data.waitlistFill) onClose();
     } catch {
       setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
     } finally {
       setPending(null);
+    }
+  }
+
+  async function undoFill() {
+    if (!fill) return;
+    setUndoing(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/waitlist/auto-fill/undo", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          filledAppointmentId: fill.appointmentId,
+          waitlistEntryId: fill.waitlistEntryId,
+          sourceAppointmentId: appointment?.id,
+        }),
+      });
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string };
+        setError(data.error ?? "تعذر التراجع");
+        return;
+      }
+      toast(
+        `تم التراجع: أُعيد موعد ${appointment?.patientName} وأُعيد ${fill.patientName} إلى قائمة الانتظار`,
+      );
+      setFill(null);
+      onChanged();
+    } catch {
+      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+    } finally {
+      setUndoing(false);
     }
   }
 
@@ -158,6 +214,45 @@ export function AppointmentDetailsDrawer({
             </p>
           )}
 
+          {fill && (
+            <div
+              role="status"
+              className="flex flex-col gap-2 rounded-field border border-primary-200 bg-primary-50 px-3 py-2.5 text-sm"
+            >
+              <p className="text-primary-800">
+                حُجز المنتظر{" "}
+                <span className="font-semibold">{fill.patientName}</span> في
+                فجوة{" "}
+                <span className="numeric font-semibold">
+                  {formatTime(fill.startsAt)}
+                </span>{" "}
+                تلقائياً ({fill.durationMin} دقيقة).
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  loading={undoing}
+                  disabled={pending !== null}
+                  onClick={() => void undoFill()}
+                >
+                  <Undo2 size={14} aria-hidden />
+                  تراجع عن الحجز التلقائي
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setFill(null);
+                    onClose();
+                  }}
+                  disabled={undoing}
+                >
+                  موافق
+                </Button>
+              </div>
+            </div>
+          )}
+
           {error && (
             <p
               role="alert"
@@ -180,8 +275,8 @@ export function AppointmentDetailsDrawer({
           }
           description={
             confirmedTarget === "CANCELLED"
-              ? `سيُلغى موعد ${appointment.patientName} ويُفتح وقته في الجدول. لا يمكن التراجع عن الإلغاء.`
-              : `سيُسجَّل أن ${appointment.patientName} لم يحضر هذا الموعد. لا يمكن التراجع.`
+              ? `سيُلغى موعد ${appointment.patientName} ويُفتح وقته في الجدول. إن وُجد منتظر مناسب سيُحجز في الفجوة تلقائياً مع إمكانية التراجع بضغطة.`
+              : `سيُسجَّل أن ${appointment.patientName} لم يحضر هذا الموعد، ويُفتح وقته في الجدول. إن وُجد منتظر مناسب سيُحجز في الفجوة تلقائياً مع إمكانية التراجع بضغطة.`
           }
           confirmLabel={
             confirmedTarget === "CANCELLED" ? "تأكيد الإلغاء" : "تأكيد عدم الحضور"
