@@ -1,37 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  CalendarDays,
-  CalendarPlus,
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-} from "lucide-react";
-import { APPOINTMENT_STATUSES } from "@/lib/appointment-state";
-import {
-  STATUS_META,
-  formatDayLabel,
-  formatTime,
-} from "@/lib/appointment-ui";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import type { StaffMemberDto } from "@/lib/services/staff";
+import { STATUS_META, formatTime } from "@/lib/appointment-ui";
 import { addDays, toDateInputValue } from "@/lib/dates";
 import {
   WEEKDAY_HEADERS,
-  addMonths,
+  dayDateLabel,
   groupByDay,
   groupByStartHour,
   hourToTimeInput,
-  minutesFromMidnightUtc,
-  monthGrid,
-  monthLabel,
   timeGridWindow,
   weekDays,
   weekRangeLabel,
 } from "@/lib/calendar-view";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { EntityCell } from "@/components/ui/EntityCell";
+import { Select } from "@/components/ui/Field";
 import { StatusPill } from "@/components/ui/Badge";
 import { cn } from "@/components/ui/cn";
 import BookingModal from "./BookingModal";
@@ -40,11 +26,11 @@ import {
   type AppointmentJson,
 } from "./AppointmentDetailsDrawer";
 
-// لوحة المواعيد: تقويم يومي (شبكة زمنية) وأسبوعي وشهري، أعمدته من اليمين
-// لليسار (السبت أول الأسبوع). ألوان الحالات من STATUS_META الموحّدة، والفجوة
-// الفارغة في اليوم قابلة للنقر لفتح نموذج الحجز عليها مباشرة.
+// لوحة المواعيد على شكل المرجع: عرضان فقط (يومي/أسبوعي)، شريط بطاقات أيام
+// الأسبوع بعدّاد المواعيد، أجندة يومية بصف لكل ساعة، وشبكة أسبوعية بأعمدة
+// بطاقات مكدّسة بلا محور ساعات. تصفية الطبيب تُطبَّق على العرض بعد التحميل.
 
-type CalendarView = "day" | "week" | "month";
+type CalendarView = "day" | "week";
 
 type LoadState =
   | { kind: "loading" }
@@ -52,12 +38,9 @@ type LoadState =
   | { kind: "loaded"; appointments: AppointmentJson[] };
 
 const VIEW_LABELS: Record<CalendarView, string> = {
-  day: "اليوم",
-  week: "الأسبوع",
-  month: "الشهر",
+  day: "يومي",
+  week: "أسبوعي",
 };
-
-const HOUR_ROW_HEIGHT_REM = 4; // ارتفاع صف الساعة الواحدة في الشبكة
 
 export default function AppointmentsCalendar({
   initialDate,
@@ -66,6 +49,8 @@ export default function AppointmentsCalendar({
 }) {
   const [view, setView] = useState<CalendarView>("day");
   const [dateValue, setDateValue] = useState(initialDate);
+  const [staffFilter, setStaffFilter] = useState("");
+  const [staff, setStaff] = useState<StaffMemberDto[]>([]);
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [selected, setSelected] = useState<AppointmentJson | null>(null);
   const [booking, setBooking] = useState<{ open: boolean; time: string }>({
@@ -93,34 +78,62 @@ export default function AppointmentsCalendar({
     void load(dateValue, view);
   }, [dateValue, view, load]);
 
+  // قائمة الأطباء النشطين — لمصفية «كل الأطباء» وتلوين حواف البطاقات.
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      try {
+        const res = await fetch("/api/staff");
+        if (!res.ok) return;
+        const data = (await res.json()) as { staff: StaffMemberDto[] };
+        if (alive) setStaff(data.staff.filter((s) => s.isActive));
+      } catch {
+        // بلا قائمة أطباء تبقى الصفحة تعمل بلا تصفية ولا تلوين حواف.
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const appointments = state.kind === "loaded" ? state.appointments : null;
 
-  /** التنقل: يوم ±1، أسبوع ±7، شهر ±1 (أول الشهر الهدف). */
+  // تصفية الطبيب على العميل — النطاق محمّل كاملاً لكل عرض.
+  const filtered = useMemo(() => {
+    if (!appointments) return null;
+    return staffFilter
+      ? appointments.filter((a) => a.staffId === staffFilter)
+      : appointments;
+  }, [appointments, staffFilter]);
+
+  /** التنقل: يوم ±1، أسبوع ±7. */
   function navigate(direction: 1 | -1) {
-    setDateValue((d) => {
-      if (view === "month") return addMonths(d, direction);
-      const step = view === "week" ? 7 : 1;
-      return toDateInputValue(
-        addDays(new Date(`${d}T00:00:00`), direction * step),
-      );
-    });
+    setDateValue((d) =>
+      toDateInputValue(addDays(new Date(`${d}T00:00:00`), direction * (view === "week" ? 7 : 1))),
+    );
   }
 
   function openBooking(time = "09:00") {
     setBooking({ open: true, time });
   }
 
+  const today = toDateInputValue(new Date());
   const rangeLabel = useMemo(() => {
-    if (view === "month") return monthLabel(dateValue);
     if (view === "week") return weekRangeLabel(weekDays(dateValue));
-    return formatDayLabel(new Date(`${dateValue}T00:00:00`));
-  }, [view, dateValue]);
+    return dayDateLabel(dateValue, today);
+  }, [view, dateValue, today]);
+
+  // لون حافة الطبيب — من لون التمييز إن وُجد، وإلا حدّ أساسي هادئ.
+  const staffColor = useCallback(
+    (staffId: string | null) =>
+      staffId ? (staff.find((s) => s.id === staffId)?.colorHex ?? null) : null,
+    [staff],
+  );
 
   return (
     <>
       <PageHeader
         title="المواعيد"
-        description="جدول العيادة اليومي والأسبوعي والشهري — انقر فجوة فارغة في يوم العرض لحجز موعد عليها."
         actions={
           <Button shape="pill" onClick={() => openBooking()}>
             <Plus size={16} aria-hidden />
@@ -129,39 +142,9 @@ export default function AppointmentsCalendar({
         }
       />
 
-      {/* صف بطاقات أيام الأسبوع — النشط بإطار بلون الهوية، والنقر ينقل إليه */}
-      <WeekStrip dateValue={dateValue} onSelect={setDateValue} />
-
-      {/* شريط الأدوات: مبدّل العرض + التنقل + التسمية */}
-      <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div
-          role="group"
-          aria-label="نمط العرض"
-          className="flex flex-wrap gap-1"
-        >
-          {(Object.keys(VIEW_LABELS) as CalendarView[]).map((v) => {
-            const active = view === v;
-            return (
-              <button
-                key={v}
-                type="button"
-                aria-pressed={active}
-                onClick={() => setView(v)}
-                className={cn(
-                  "rounded-field border px-3 py-1.5 text-xs font-medium transition-colors",
-                  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
-                  active
-                    ? "border-primary-600 bg-primary-600 text-white"
-                    : "border-warm-300 bg-surface-raised text-warm-600 hover:bg-surface-hover active:bg-surface-sunken",
-                )}
-              >
-                {VIEW_LABELS[v]}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex items-center justify-between gap-2 md:justify-start">
+      {/* شريط الأدوات: يمين (تنقّل + تسمية) — يسار (مبدّل العرض + تصفية الطبيب) */}
+      <div className="mt-5 flex flex-wrap items-center gap-3 md:flex-nowrap">
+        <div className="flex items-center gap-2">
           <Button
             variant="secondary"
             size="sm"
@@ -185,24 +168,57 @@ export default function AppointmentsCalendar({
           >
             <ChevronLeft size={16} aria-hidden />
           </Button>
-          <span className="min-w-40 text-center text-sm font-semibold text-ink-900 md:text-start">
+          <span className="min-w-40 text-sm font-semibold text-ink-900">
             {rangeLabel}
           </span>
         </div>
+
+        <div className="flex flex-1 flex-wrap items-center gap-3 md:justify-end">
+          <div role="group" aria-label="نمط العرض" className="flex gap-1">
+            {(Object.keys(VIEW_LABELS) as CalendarView[]).map((v) => {
+              const active = view === v;
+              return (
+                <button
+                  key={v}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setView(v)}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                    "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
+                    active
+                      ? "border-primary-600 bg-primary-600/10 font-semibold text-primary-800"
+                      : "border-warm-200 bg-surface-raised text-warm-600 hover:bg-surface-hover",
+                  )}
+                >
+                  {VIEW_LABELS[v]}
+                </button>
+              );
+            })}
+          </div>
+
+          <Select
+            aria-label="تصفية الطبيب"
+            value={staffFilter}
+            onChange={(e) => setStaffFilter(e.target.value)}
+            className="w-36"
+          >
+            <option value="">كل الأطباء</option>
+            {staff.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </Select>
+        </div>
       </div>
 
-      {/* دليل ألوان الحالات */}
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
-        {APPOINTMENT_STATUSES.map((status) => (
-          <span key={status} className="flex items-center gap-1.5 text-xs text-warm-600">
-            <span
-              aria-hidden
-              className={cn("size-2 rounded-full", STATUS_META[status].dot)}
-            />
-            {STATUS_META[status].label}
-          </span>
-        ))}
-      </div>
+      {/* صف بطاقات أيام الأسبوع — النشط بإطار بلون الهوية، والنقر ينقل إليه */}
+      <WeekStrip
+        dateValue={dateValue}
+        appointments={filtered ?? []}
+        onSelect={setDateValue}
+      />
 
       <div className="mt-4">
         {state.kind === "error" ? (
@@ -221,52 +237,22 @@ export default function AppointmentsCalendar({
               إعادة المحاولة
             </Button>
           </div>
-        ) : appointments === null ? (
-          <CalendarSkeleton view={view} />
-        ) : appointments.length === 0 ? (
-          <EmptyState
-            icon={CalendarDays}
-            title={
-              view === "day"
-                ? "لا مواعيد هذا اليوم"
-                : view === "week"
-                  ? "لا مواعيد هذا الأسبوع"
-                  : "لا مواعيد في هذا الشهر"
-            }
-            description="احجز موعداً جديداً، أو انقر فجوة فارغة في شبكة اليوم لتحديد وقتها مباشرة."
-            action={
-              <Button size="sm" onClick={() => openBooking()}>
-                <CalendarPlus size={14} aria-hidden />
-                حجز موعد جديد
-              </Button>
-            }
-          />
+        ) : filtered === null ? (
+          <CalendarSkeleton />
         ) : view === "day" ? (
           <DayTimeline
             date={dateValue}
-            appointments={appointments}
+            appointments={filtered}
+            staffColor={staffColor}
             onSelect={setSelected}
             onSlotClick={openBooking}
           />
-        ) : view === "week" ? (
+        ) : (
           <WeekBoard
             dateValue={dateValue}
-            appointments={appointments}
+            appointments={filtered}
+            staffColor={staffColor}
             onSelect={setSelected}
-            onDaySelect={(day) => {
-              setDateValue(day);
-              setView("day");
-            }}
-          />
-        ) : (
-          <MonthBoard
-            dateValue={dateValue}
-            appointments={appointments}
-            onSelect={setSelected}
-            onDaySelect={(day) => {
-              setDateValue(day);
-              setView("day");
-            }}
           />
         )}
       </div>
@@ -288,27 +274,49 @@ export default function AppointmentsCalendar({
   );
 }
 
+/* ---------- رمز السن — زخرفة الحالات الفارغة على شكل المرجع ---------- */
+
+function ToothGlyph({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="M12 5.5c-1.5-1-3.5-1.4-5-.4C5.4 6.2 5 8.3 5.5 10.5c.4 1.8 1 3.2 1.4 5 .3 1.4.6 3.5 1.9 3.5 1.6 0 1.2-3.2 3.2-3.2s1.6 3.2 3.2 3.2c1.3 0 1.6-2.1 1.9-3.5.4-1.8 1-3.2 1.4-5 .5-2.2.1-4.3-1.5-5.4-1.5-1-3.5-.6-5 .4Z" />
+    </svg>
+  );
+}
+
 /* ---------- صف بطاقات أيام الأسبوع ---------- */
 
 function WeekStrip({
   dateValue,
+  appointments,
   onSelect,
 }: {
   dateValue: string;
+  appointments: AppointmentJson[];
   onSelect: (day: string) => void;
 }) {
   const days = useMemo(() => weekDays(dateValue), [dateValue]);
+  const counts = useMemo(() => groupByDay(appointments), [appointments]);
   const today = toDateInputValue(new Date());
 
   return (
     <div
       role="group"
       aria-label="أيام الأسبوع"
-      className="mt-5 grid grid-cols-4 gap-2 sm:grid-cols-7"
+      className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-7"
     >
       {days.map((day, i) => {
         const active = day === dateValue;
-        const isToday = day === today;
+        const count = (counts.get(day) ?? []).length;
         return (
           <button
             key={day}
@@ -327,14 +335,20 @@ function WeekStrip({
             <span
               className={cn(
                 "numeric text-lg font-bold",
-                active ? "text-primary-800" : isToday ? "text-primary-700" : "text-ink-900",
+                active ? "text-primary-800" : day === today ? "text-primary-700" : "text-ink-900",
               )}
             >
               {day.slice(8)}
             </span>
-            <span aria-hidden className="text-[11px] text-warm-300">
-              —
-            </span>
+            {count > 0 ? (
+              <span className="numeric text-[11px] text-warm-600">
+                {count} موعد
+              </span>
+            ) : (
+              <span aria-hidden className="text-[11px] text-warm-300">
+                —
+              </span>
+            )}
           </button>
         );
       })}
@@ -342,98 +356,80 @@ function WeekStrip({
   );
 }
 
-/* ---------- الشبكة الزمنية المشتركة ---------- */
+/* ---------- بطاقة موعد مشتركة — اليوم والأسبوع بنفس الشكل ---------- */
 
-function useGrid(appointments: AppointmentJson[]) {
-  const window_ = useMemo(() => timeGridWindow(appointments), [appointments]);
-  const hours = useMemo(() => {
-    const rows: number[] = [];
-    for (let h = window_.startMin / 60; h < window_.endMin / 60; h++) rows.push(h);
-    return rows;
-  }, [window_]);
-  const totalMin = window_.endMin - window_.startMin;
-  return { window_, hours, totalMin };
-}
-
-function blockStyle(
-  appointment: AppointmentJson,
-  window_: { startMin: number },
-  totalMin: number,
-): React.CSSProperties {
-  const start = minutesFromMidnightUtc(appointment.startsAt);
-  const top = ((start - window_.startMin) / totalMin) * 100;
-  const height = Math.max((appointment.durationMin / totalMin) * 100, 4);
-  return { top: `${top}%`, height: `${height}%` };
-}
-
-/** تسمية ساعة الشبكة — بنفس منسّق الوقت المستخدم في بقية الواجهة. */
-function hourLabel(date: string, hour: number): string {
-  return formatTime(new Date(`${date}T${hourToTimeInput(hour)}:00Z`));
-}
-
-function AppointmentBlock({
+function AppointmentCard({
   appointment,
-  style,
+  accentColor,
   onSelect,
-  compact = false,
 }: {
   appointment: AppointmentJson;
-  style: React.CSSProperties;
+  accentColor: string | null;
   onSelect: (a: AppointmentJson) => void;
-  compact?: boolean;
 }) {
   const meta = STATUS_META[appointment.status];
   const settled = appointment.status === "COMPLETED" || appointment.status === "CANCELLED";
+  const doctorLine = [
+    appointment.staffName ? `د. ${appointment.staffName}` : null,
+    appointment.reason,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <button
       type="button"
       onClick={() => onSelect(appointment)}
+      title={`${appointment.patientName} · ${meta.label}`}
       className={cn(
-        "absolute inset-x-1 z-10 overflow-hidden rounded-field border px-2 py-1 text-start transition-colors",
+        "w-full rounded-field border border-s-4 border-warm-200 bg-surface px-2.5 py-2 text-start transition-colors",
         "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
-        meta.block,
+        "hover:bg-surface-hover",
         settled && "opacity-70",
       )}
-      style={style}
-      title={`${appointment.patientName} · ${meta.label}`}
+      style={accentColor ? { borderInlineStartColor: accentColor } : { borderInlineStartColor: "var(--color-primary-300)" }}
     >
-      <span className="flex items-center gap-1.5">
-        <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", meta.dot)} />
-        <span className="numeric shrink-0 text-[11px] font-semibold">
-          {formatTime(appointment.startsAt)}
+      <span className="flex items-center justify-between gap-2">
+        <span className="numeric text-xs font-bold text-ink-900">
+          {formatTime(appointment.startsAt)} · {appointment.durationMin} د
         </span>
-        <span className="truncate text-xs font-medium">
-          {appointment.patientName}
-        </span>
+        <StatusPill tone={meta.tone} className="shrink-0">
+          {meta.label}
+        </StatusPill>
       </span>
-      {!compact && appointment.reason && (
-        <span className="block truncate text-[11px] opacity-80">
-          {appointment.reason}
+      <span className="mt-0.5 block truncate text-sm font-semibold text-ink-900">
+        {appointment.patientName}
+      </span>
+      {doctorLine && (
+        <span className="block truncate text-[11px] text-warm-500">
+          {doctorLine}
         </span>
       )}
     </button>
   );
 }
 
-/* ---------- عرض اليوم ---------- */
+/* ---------- عرض اليوم: أجندة صف لكل ساعة ---------- */
 
-/**
- * شبكة الفتحات الزمنية على شكل المرجع: صف لكل ساعة، بمربع وقت مستدير بلون
- * باهت، وبطاقة موعد بأفاتار المريض واسمه وملاحظته الفرعية وشارة حالته،
- * والساعات الخالية فجوات بنص هادئ قابلة للنقر لفتح الحجز عليها.
- */
 function DayTimeline({
   date,
   appointments,
+  staffColor,
   onSelect,
   onSlotClick,
 }: {
   date: string;
   appointments: AppointmentJson[];
+  staffColor: (staffId: string | null) => string | null;
   onSelect: (a: AppointmentJson) => void;
   onSlotClick: (time: string) => void;
 }) {
-  const { hours } = useGrid(appointments);
+  const window_ = useMemo(() => timeGridWindow(appointments), [appointments]);
+  const hours = useMemo(() => {
+    const rows: number[] = [];
+    for (let h = window_.startMin / 60; h < window_.endMin / 60; h++) rows.push(h);
+    return rows;
+  }, [window_]);
   const byHour = useMemo(() => groupByStartHour(appointments), [appointments]);
 
   return (
@@ -456,7 +452,12 @@ function DayTimeline({
             <div className="flex min-w-0 flex-1 flex-col gap-2">
               {items.length > 0 ? (
                 items.map((a) => (
-                  <SlotCard key={a.id} appointment={a} onSelect={onSelect} />
+                  <AppointmentCard
+                    key={a.id}
+                    appointment={a}
+                    accentColor={staffColor(a.staffId)}
+                    onSelect={onSelect}
+                  />
                 ))
               ) : (
                 <button
@@ -464,12 +465,13 @@ function DayTimeline({
                   onClick={() => onSlotClick(hourToTimeInput(h))}
                   aria-label={`حجز موعد عند ${hourLabel(date, h)}`}
                   className={cn(
-                    "rounded-field border border-dashed border-warm-200 px-3 py-2 text-start text-xs text-warm-400 transition-colors",
+                    "flex flex-col items-center gap-0.5 rounded-field border border-dashed border-warm-200 py-2 text-xs text-warm-400 transition-colors",
                     "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
                     "hover:bg-surface-hover hover:text-warm-500",
                   )}
                 >
-                  — فاضٍ — انقر لإضافة موعد
+                  <ToothGlyph className="size-5" />
+                  — فارغ — انقر لإضافة موعد
                 </button>
               )}
             </div>
@@ -480,291 +482,93 @@ function DayTimeline({
   );
 }
 
-/** بطاقة موعد الفتحة — أفاتار + اسم + ملاحظة فرعية + شارة الحالة، والنقر يفتح التفاصيل. */
-function SlotCard({
-  appointment,
-  onSelect,
-}: {
-  appointment: AppointmentJson;
-  onSelect: (a: AppointmentJson) => void;
-}) {
-  const meta = STATUS_META[appointment.status];
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect(appointment)}
-      title={`${appointment.patientName} · ${meta.label}`}
-      className={cn(
-        "flex w-full items-center gap-3 rounded-panel border px-3 py-2 text-start transition-colors",
-        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
-        meta.block,
-        "hover:opacity-90",
-      )}
-    >
-      <EntityCell
-        name={appointment.patientName}
-        subtitle={appointment.reason}
-        className="min-w-0 flex-1"
-      />
-      <span className="numeric shrink-0 text-xs font-semibold">
-        {formatTime(appointment.startsAt)}
-      </span>
-      <StatusPill tone={meta.tone} className="shrink-0">
-        {meta.label}
-      </StatusPill>
-    </button>
-  );
+/** تسمية ساعة الشبكة — بنفس منسّق الوقت المستخدم في بقية الواجهة. */
+function hourLabel(date: string, hour: number): string {
+  return formatTime(new Date(`${date}T${hourToTimeInput(hour)}:00Z`));
 }
 
-/* ---------- عرض الأسبوع ---------- */
+/* ---------- عرض الأسبوع: أعمدة بطاقات مكدّسة على شكل المرجع ---------- */
 
 function WeekBoard({
   dateValue,
   appointments,
+  staffColor,
   onSelect,
-  onDaySelect,
 }: {
   dateValue: string;
   appointments: AppointmentJson[];
+  staffColor: (staffId: string | null) => string | null;
   onSelect: (a: AppointmentJson) => void;
-  onDaySelect: (day: string) => void;
 }) {
   const days = useMemo(() => weekDays(dateValue), [dateValue]);
   const byDay = useMemo(() => groupByDay(appointments), [appointments]);
-  const { window_, hours, totalMin } = useGrid(appointments);
   const today = toDateInputValue(new Date());
 
   return (
-    <>
-      {/* الشاشات الصغيرة: قائمة أيام مختصرة — النقر يفتح يوم العرض */}
-      <div className="flex flex-col gap-2 md:hidden">
-        {days.map((day) => {
+    <div className="overflow-x-auto">
+      <div className="grid min-w-[840px] grid-cols-7 gap-2">
+        {days.map((day, i) => {
           const items = byDay.get(day) ?? [];
+          const isToday = day === today;
           return (
-            <button
+            <section
               key={day}
-              type="button"
-              onClick={() => onDaySelect(day)}
+              aria-label={`${WEEKDAY_HEADERS[i]} ${day}`}
               className={cn(
-                "flex items-center justify-between gap-3 rounded-panel border bg-surface-raised px-4 py-3 text-start transition-colors",
-                "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
-                day === today ? "border-primary-300 bg-primary-50" : "border-warm-200 hover:bg-surface-hover",
+                "flex min-h-72 flex-col overflow-hidden rounded-panel border bg-surface-raised",
+                isToday
+                  ? "border-primary-600 ring-1 ring-primary-600"
+                  : "border-warm-200",
               )}
             >
-              <span className="flex flex-col">
-                <span className="text-xs text-warm-500">
-                  {WEEKDAY_HEADERS[days.indexOf(day)]}
-                </span>
-                <span className="numeric text-sm font-semibold text-ink-900">
-                  {day.slice(8)} / {day.slice(5, 7)}
-                </span>
-              </span>
-              {items.length === 0 ? (
-                <span className="text-xs text-warm-400">لا مواعيد</span>
-              ) : (
-                <span className="flex items-center gap-1.5">
-                  {items.slice(0, 4).map((a) => (
-                    <span
+              {/* ترويسة العمود: اسم اليوم + الرقم + العدد */}
+              <div
+                className={cn(
+                  "border-b border-warm-100 px-2 py-2 text-center",
+                  isToday && "bg-primary-50",
+                )}
+              >
+                <p className="text-[11px] text-warm-500">{WEEKDAY_HEADERS[i]}</p>
+                <p
+                  className={cn(
+                    "numeric text-base font-bold",
+                    isToday ? "text-primary-800" : "text-ink-900",
+                  )}
+                >
+                  {day.slice(8)}
+                </p>
+                {items.length > 0 ? (
+                  <p className="numeric text-[11px] text-warm-600">
+                    {items.length} موعد
+                  </p>
+                ) : (
+                  <p aria-hidden className="text-[11px] text-warm-300">
+                    —
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-1 flex-col gap-2 p-2">
+                {items.length > 0 ? (
+                  items.map((a) => (
+                    <AppointmentCard
                       key={a.id}
-                      aria-hidden
-                      className={cn("size-2 rounded-full", STATUS_META[a.status].dot)}
+                      appointment={a}
+                      accentColor={staffColor(a.staffId)}
+                      onSelect={onSelect}
                     />
-                  ))}
-                  <span className="numeric text-xs text-warm-600">
-                    {items.length}
-                  </span>
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* التابلت والشاشات الأوسع: شبكة أسبوع كاملة */}
-      <div className="hidden overflow-hidden rounded-panel border border-warm-200 bg-surface-raised md:block">
-        {/* ترويسة الأيام */}
-        <div className="grid grid-cols-7 border-b border-warm-200">
-          <div className="w-14 shrink-0" aria-hidden />
-          {days.map((day, i) => (
-            <div
-              key={day}
-              className={cn(
-                "border-s border-warm-100 px-2 py-2 text-center",
-                day === today && "bg-primary-50",
-              )}
-            >
-              <p className="text-[11px] text-warm-500">{WEEKDAY_HEADERS[i]}</p>
-              <p
-                className={cn(
-                  "numeric text-sm font-semibold",
-                  day === today ? "text-primary-800" : "text-ink-900",
-                )}
-              >
-                {day.slice(8)}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex">
-          {/* عمود الساعات */}
-          <div className="w-14 shrink-0 border-e border-warm-200">
-            {hours.map((h) => (
-              <div
-                key={h}
-                style={{ height: `${HOUR_ROW_HEIGHT_REM}rem` }}
-                className="numeric -translate-y-2 pt-0.5 text-end text-[11px] text-warm-400"
-              >
-                <span className="me-1">{hourLabel(days[0], h)}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* أعمدة الأيام — RTL يجعل السبت أقصى اليمين */}
-          <div
-            className="grid flex-1 grid-cols-7"
-            style={{ height: `${hours.length * HOUR_ROW_HEIGHT_REM}rem` }}
-          >
-            {days.map((day) => (
-              <div
-                key={day}
-                className={cn(
-                  "relative border-s border-warm-100",
-                  day === today && "bg-primary-50/40",
-                )}
-              >
-                {(byDay.get(day) ?? []).map((a) => (
-                  <AppointmentBlock
-                    key={a.id}
-                    appointment={a}
-                    style={blockStyle(a, window_, totalMin)}
-                    onSelect={onSelect}
-                    compact
-                  />
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
-/* ---------- عرض الشهر ---------- */
-
-const MONTH_CHIPS_DESKTOP = 2;
-const MONTH_DOTS_MOBILE = 4;
-
-function MonthBoard({
-  dateValue,
-  appointments,
-  onSelect,
-  onDaySelect,
-}: {
-  dateValue: string;
-  appointments: AppointmentJson[];
-  onSelect: (a: AppointmentJson) => void;
-  onDaySelect: (day: string) => void;
-}) {
-  const weeks = useMemo(() => monthGrid(dateValue), [dateValue]);
-  const byDay = useMemo(() => groupByDay(appointments), [appointments]);
-  const today = toDateInputValue(new Date());
-
-  return (
-    <div className="overflow-hidden rounded-panel border border-warm-200 bg-surface-raised">
-      {/* ترويسة الأيام */}
-      <div className="grid grid-cols-7 border-b border-warm-200 bg-surface-sunken">
-        {WEEKDAY_HEADERS.map((name) => (
-          <div
-            key={name}
-            className="px-1 py-2 text-center text-[11px] font-semibold text-warm-600"
-          >
-            {name}
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-7">
-        {weeks.flat().map((cell) => {
-          const items = byDay.get(cell.date) ?? [];
-          const isToday = cell.date === today;
-          return (
-            <div
-              key={cell.date}
-              className={cn(
-                "min-h-20 border-b border-s border-warm-100 p-1.5 sm:min-h-24",
-                cell.inMonth ? "bg-surface-raised" : "bg-surface-sunken/60",
-              )}
-            >
-              <button
-                type="button"
-                onClick={() => onDaySelect(cell.date)}
-                aria-label={`عرض يوم ${cell.date}`}
-                className={cn(
-                  "numeric rounded-field px-1.5 text-xs font-semibold transition-colors",
-                  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
-                  isToday
-                    ? "bg-primary-600 text-white"
-                    : cell.inMonth
-                      ? "text-ink-900 hover:bg-surface-hover"
-                      : "text-warm-400 hover:bg-surface-hover",
-                )}
-              >
-                {cell.date.slice(8)}
-              </button>
-
-              {/* الموبايل: نقاط حالات فقط */}
-              <div className="mt-1 flex items-center gap-1 sm:hidden">
-                {items.slice(0, MONTH_DOTS_MOBILE).map((a) => (
-                  <span
-                    key={a.id}
-                    aria-hidden
-                    className={cn("size-1.5 rounded-full", STATUS_META[a.status].dot)}
-                  />
-                ))}
-                {items.length > MONTH_DOTS_MOBILE && (
-                  <span className="numeric text-[10px] text-warm-400">
-                    +{items.length - MONTH_DOTS_MOBILE}
-                  </span>
-                )}
-              </div>
-
-              {/* الشاشات الأوسع: بطاقات مصغرة للمواعيد */}
-              <div className="mt-1 hidden flex-col gap-1 sm:flex">
-                {items.slice(0, MONTH_CHIPS_DESKTOP).map((a) => {
-                  const meta = STATUS_META[a.status];
-                  return (
-                    <button
-                      key={a.id}
-                      type="button"
-                      onClick={() => onSelect(a)}
-                      className={cn(
-                        "truncate rounded-field border px-1.5 py-0.5 text-start text-[11px] transition-colors",
-                        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
-                        meta.block,
-                      )}
-                      title={`${formatTime(a.startsAt)} · ${a.patientName} · ${meta.label}`}
-                    >
-                      <span className="numeric font-semibold">
-                        {formatTime(a.startsAt)}
-                      </span>{" "}
-                      {a.patientName}
-                    </button>
-                  );
-                })}
-                {items.length > MONTH_CHIPS_DESKTOP && (
-                  <button
-                    type="button"
-                    onClick={() => onDaySelect(cell.date)}
-                    className="rounded-field px-1.5 text-start text-[11px] text-warm-500 hover:bg-surface-hover hover:text-ink-900"
+                  ))
+                ) : (
+                  <div
+                    role="presentation"
+                    className="flex flex-1 flex-col items-center justify-center gap-1 py-6 text-warm-300"
                   >
-                    <span className="numeric">+{items.length - MONTH_CHIPS_DESKTOP}</span>{" "}
-                    مواعيد أخرى
-                  </button>
+                    <ToothGlyph className="size-8" />
+                    <span className="text-xs">لا مواعيد</span>
+                  </div>
                 )}
               </div>
-            </div>
+            </section>
           );
         })}
       </div>
@@ -772,26 +576,9 @@ function MonthBoard({
   );
 }
 
-/* ---------- هياكل التحميل ---------- */
+/* ---------- هيكل التحميل ---------- */
 
-function CalendarSkeleton({ view }: { view: CalendarView }) {
-  if (view === "month") {
-    return (
-      <div
-        aria-busy="true"
-        className="grid grid-cols-7 overflow-hidden rounded-panel border border-warm-200 bg-surface-raised"
-      >
-        {Array.from({ length: 42 }, (_, i) => (
-          <div
-            key={i}
-            className="min-h-20 border-b border-s border-warm-100 p-2"
-          >
-            <div className="h-3 w-4 animate-pulse rounded bg-warm-100" aria-hidden />
-          </div>
-        ))}
-      </div>
-    );
-  }
+function CalendarSkeleton() {
   return (
     <div
       aria-busy="true"

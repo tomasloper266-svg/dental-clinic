@@ -24,6 +24,8 @@ function appt(
     status,
     reason: null,
     note: null,
+    staffId: null,
+    staffName: null,
   };
 }
 

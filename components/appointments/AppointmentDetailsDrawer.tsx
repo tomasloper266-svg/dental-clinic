@@ -29,6 +29,9 @@ export type AppointmentJson = {
   status: AppointmentStatus;
   reason: string | null;
   note: string | null;
+  // الطبيب المسند — اختياري (كل الأطباء = null)
+  staffId: string | null;
+  staffName: string | null;
 };
 
 type AppointmentDetailsDrawerProps = {
@@ -172,6 +175,12 @@ export function AppointmentDetailsDrawer({
               <dt className="text-warm-500">السبب</dt>
               <dd className="font-medium text-ink-900">
                 {appointment.reason || "بدون سبب محدد"}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-warm-500">الطبيب</dt>
+              <dd className="font-medium text-ink-900">
+                {appointment.staffName ? `د. ${appointment.staffName}` : "بلا طبيب"}
               </dd>
             </div>
             {appointment.note && (

@@ -7,6 +7,7 @@ import {
   timeGridWindow,
   weekDays,
   weekRangeLabel,
+  dayDateLabel,
   hourToTimeInput,
 } from "@/lib/calendar-view";
 
@@ -99,5 +100,16 @@ describe("مساعدات التقويم — التسميات العربية", ()
     const label = weekRangeLabel(weekDays(SAT));
     expect(label).toContain("13");
     expect(label).toContain("19");
+  });
+
+  it("تسمية اليوم الفرد باسم اليوم والتاريخ الرقمي", () => {
+    const label = dayDateLabel(SAT, "2026-06-20");
+    expect(label).toContain("السبت");
+    expect(label).toContain("2026/06/13");
+    expect(label).not.toContain("(اليوم)");
+  });
+
+  it("تسمية اليوم تضيف لاحقة (اليوم) عندما يطابق التاريخ تاريخ اليوم", () => {
+    expect(dayDateLabel(SAT, SAT)).toContain("(اليوم)");
   });
 });

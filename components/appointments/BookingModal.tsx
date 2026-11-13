@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CalendarPlus, Search } from "lucide-react";
+import type { StaffMemberDto } from "@/lib/services/staff";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
@@ -38,8 +39,29 @@ export default function BookingModal({
   const [time, setTime] = useState(initialTime);
   const [duration, setDuration] = useState<number>(30);
   const [reason, setReason] = useState("");
+  const [staffId, setStaffId] = useState("");
+  const [doctors, setDoctors] = useState<StaffMemberDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // قائمة الأطباء النشطين — من خدمة الطاقم نفسها، وقائمة فارغة تعني بلا تصفية.
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    void (async () => {
+      try {
+        const res = await fetch("/api/staff");
+        if (!res.ok) return;
+        const data = (await res.json()) as { staff: StaffMemberDto[] };
+        if (alive) setDoctors(data.staff.filter((s) => s.isActive));
+      } catch {
+        // بلا قائمة أطباء يبقى الحجز متاحاً بلا إسناد — الحقل اختياري.
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [open]);
 
   // نافذة جديدة بذكريات سابقة — إعادة ضبط عند كل فتح.
   useEffect(() => {
@@ -49,6 +71,7 @@ export default function BookingModal({
       setTime(initialTime);
       setDuration(30);
       setReason("");
+      setStaffId("");
       setError(null);
     }
   }, [open, initialTime]);
@@ -69,6 +92,7 @@ export default function BookingModal({
           startsAt: `${dateValue}T${time}:00`,
           durationMin: duration,
           reason: reason.trim() || undefined,
+          staffId: staffId || undefined,
         }),
       });
       const data = (await res.json()) as { error?: string };
@@ -183,6 +207,22 @@ export default function BookingModal({
               placeholder="كشف، حشو…"
             />
           </Field>
+          <div className="col-span-2">
+            <Field label="الطبيب (اختياري)" htmlFor="booking-staff">
+              <Select
+                id="booking-staff"
+                value={staffId}
+                onChange={(e) => setStaffId(e.target.value)}
+              >
+                <option value="">بلا طبيب</option>
+                {doctors.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
         </div>
 
         {error && (

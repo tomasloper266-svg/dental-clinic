@@ -260,6 +260,8 @@ export async function bookFromWaitlist(
       status: true,
       reason: true,
       note: true,
+      staffId: true,
+      staff: { select: { name: true } },
     },
   });
 
@@ -279,6 +281,8 @@ export async function bookFromWaitlist(
       status: created.status,
       reason: created.reason,
       note: created.note,
+      staffId: created.staffId,
+      staffName: created.staff?.name ?? null,
     },
   };
 }

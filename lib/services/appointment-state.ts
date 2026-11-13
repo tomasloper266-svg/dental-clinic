@@ -88,6 +88,8 @@ export async function changeAppointmentStatus(
         status: true,
         reason: true,
         note: true,
+        staffId: true,
+        staff: { select: { name: true } },
       },
     });
 
@@ -122,6 +124,8 @@ export async function changeAppointmentStatus(
         status: updated.status,
         reason: updated.reason,
         note: updated.note,
+        staffId: updated.staffId,
+        staffName: updated.staff?.name ?? null,
       },
       waitlistFill,
     };

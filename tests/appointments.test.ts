@@ -125,6 +125,22 @@ describe("parseCreateAppointment", () => {
   it("يتعامل مع جسم غير كائن", () => {
     expect(parseCreateAppointment("نص").ok).toBe(false);
   });
+
+  it("يقبل إسناد طبيب اختيارياً ويتجاهل الفارغ", () => {
+    const withStaff = parseCreateAppointment({
+      patientId: "p1",
+      startsAt: "2026-06-15T10:00:00Z",
+      staffId: "  st1  ",
+    });
+    expect(withStaff.ok && withStaff.value.staffId).toBe("st1");
+
+    const withoutStaff = parseCreateAppointment({
+      patientId: "p1",
+      startsAt: "2026-06-15T10:00:00Z",
+      staffId: "   ",
+    });
+    expect(withoutStaff.ok && withoutStaff.value.staffId).toBeUndefined();
+  });
 });
 
 describe("فجوات شاغرة — computeOpenGaps", () => {

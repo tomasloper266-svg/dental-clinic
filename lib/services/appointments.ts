@@ -19,6 +19,9 @@ export type AppointmentDto = {
   status: AppointmentStatus;
   reason: string | null;
   note: string | null;
+  // الطبيب المسند — اختياري كما في المخطط (staffId nullable)
+  staffId: string | null;
+  staffName: string | null;
 };
 
 export type CreateAppointmentInput = {
@@ -27,6 +30,7 @@ export type CreateAppointmentInput = {
   durationMin: number;
   reason?: string;
   note?: string;
+  staffId?: string;
 };
 
 export type ServiceError =
@@ -73,10 +77,11 @@ export function parseCreateAppointment(
   }
   const reason = typeof b.reason === "string" ? b.reason.trim() : undefined;
   const note = typeof b.note === "string" ? b.note.trim() : undefined;
+  const staffId = typeof b.staffId === "string" && b.staffId.trim() ? b.staffId.trim() : undefined;
 
   return {
     ok: true,
-    value: { patientId, startsAt, durationMin, reason, note },
+    value: { patientId, startsAt, durationMin, reason, note, staffId },
   };
 }
 
@@ -92,6 +97,17 @@ export async function createAppointment(
   });
   if (!patient) {
     return { ok: false, error: "المريض غير موجود", code: "NOT_FOUND" };
+  }
+
+  // التحقق من الطبيب المُسند — يجب أن يتبع نفس العيادة إن ذُكر.
+  if (input.staffId) {
+    const staff = await db.staffMember.findUnique({
+      where: { id: input.staffId },
+      select: { id: true },
+    });
+    if (!staff) {
+      return { ok: false, error: "الطبيب غير موجود", code: "NOT_FOUND" };
+    }
   }
 
   // التداخل يتطلب busyStart < نهاية المرشح و busyEnd > بدايته — يكفي مسح
@@ -132,6 +148,7 @@ export async function createAppointment(
       status: "SCHEDULED",
       reason: input.reason,
       note: input.note,
+      staffId: input.staffId,
     },
     select: {
       id: true,
@@ -142,6 +159,8 @@ export async function createAppointment(
       status: true,
       reason: true,
       note: true,
+      staffId: true,
+      staff: { select: { name: true } },
     },
   });
   return {
@@ -155,6 +174,8 @@ export async function createAppointment(
       status: appointment.status,
       reason: appointment.reason,
       note: appointment.note,
+      staffId: appointment.staffId,
+      staffName: appointment.staff?.name ?? null,
     },
   };
 }
@@ -178,6 +199,8 @@ export async function listAppointments(
         status: true,
         reason: true,
         note: true,
+        staffId: true,
+        staff: { select: { name: true } },
       },
     })
     .then((rows) =>
@@ -190,6 +213,8 @@ export async function listAppointments(
         status: a.status,
         reason: a.reason,
         note: a.note,
+        staffId: a.staffId,
+        staffName: a.staff?.name ?? null,
       })),
     );
 }
@@ -215,6 +240,8 @@ export async function listPatientAppointments(
         status: true,
         reason: true,
         note: true,
+        staffId: true,
+        staff: { select: { name: true } },
       },
     })
     .then((rows) =>
@@ -227,6 +254,8 @@ export async function listPatientAppointments(
         status: a.status,
         reason: a.reason,
         note: a.note,
+        staffId: a.staffId,
+        staffName: a.staff?.name ?? null,
       })),
     );
 }

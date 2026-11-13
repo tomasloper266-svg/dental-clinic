@@ -81,22 +81,30 @@ const MONTH_FMT = new Intl.DateTimeFormat("ar-SY-u-nu-latn", {
   timeZone: "UTC",
 });
 
-const RANGE_FMT = new Intl.DateTimeFormat("ar-SY-u-nu-latn", {
-  day: "numeric",
-  month: "short",
-  timeZone: "UTC",
-});
-
-/** تسمية الشهر — «شهر نوفمبر 2026» على شكل «نوفمبر 2026». */
 export function monthLabel(date: string): string {
   return MONTH_FMT.format(parseIsoDate(date));
 }
 
-/** تسمية نطاق الأسبوع — «14 نوفمبر — 20 نوفمبر». */
+/** تسمية نطاق الأسبوع — «2026/11/08 — 2026/11/14» بنمط المرجع الرقمي. */
 export function weekRangeLabel(days: string[]): string {
-  return `${RANGE_FMT.format(parseIsoDate(days[0]))} — ${RANGE_FMT.format(
-    parseIsoDate(days[days.length - 1]),
-  )}`;
+  return `${numericDate(days[0])} — ${numericDate(days[days.length - 1])}`;
+}
+
+// «الجمعة 2026/11/13» — اسم اليوم + التاريخ الرقمي بنمط المرجع (سنة/شهر/يوم).
+const WEEKDAY_FMT = new Intl.DateTimeFormat("ar-SY-u-nu-latn", {
+  weekday: "long",
+  timeZone: "UTC",
+});
+
+/** تسمية اليوم المفرد بأسلوب المرجع، مع لاحقة (اليوم) إذا كان تاريخ اليوم. */
+export function dayDateLabel(date: string, today: string): string {
+  const base = `${WEEKDAY_FMT.format(parseIsoDate(date))} ${numericDate(date)}`;
+  return date === today ? `${base} (اليوم)` : base;
+}
+
+/** «2026/11/08» — تاريخ رقمي صريح بحدود UTC بترتيب المرجع. */
+function numericDate(date: string): string {
+  return date.replaceAll("-", "/");
 }
 
 export type TimeGridWindow = { startMin: number; endMin: number };
