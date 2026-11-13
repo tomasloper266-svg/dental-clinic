@@ -11,6 +11,7 @@ import { toothStatusMeta } from "@/lib/odontogram/statuses";
 import { planBoardColumns, planTotals, chartToothHref } from "@/lib/treatment-plan-view";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
+import { MicButton } from "@/components/ui/MicButton";
 import { cn } from "@/components/ui/cn";
 
 // لوحة خطط العلاج على مستوى العيادة (صفحة /plans) — منظور عرض عبر منتقي
@@ -214,13 +215,20 @@ export default function PlansBoard({ patientId, initialItems }: Props) {
         <label className="sr-only" htmlFor="board-procedure">
           الإجراء
         </label>
-        <Input
-          id="board-procedure"
-          value={procedure}
-          onChange={(e) => setProcedure(e.target.value)}
-          placeholder="الإجراء — حشو، خلع…"
-          className={inputClass}
-        />
+        <div className="flex items-center gap-1.5">
+          <Input
+            id="board-procedure"
+            value={procedure}
+            onChange={(e) => setProcedure(e.target.value)}
+            placeholder="الإجراء — حشو، خلع…"
+            className={inputClass}
+          />
+          <MicButton
+            targetId="board-procedure"
+            value={procedure}
+            onChange={setProcedure}
+          />
+        </div>
         <label className="sr-only" htmlFor="board-price">
           السعر بالليرة السورية
         </label>

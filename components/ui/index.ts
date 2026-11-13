@@ -12,4 +12,5 @@ export { ToastProvider, useToast } from "./Toast";
 export type { ToastTone } from "./Toast";
 export { EmptyState } from "./EmptyState";
 export { PageHeader } from "./PageHeader";
+export { MicButton } from "./MicButton";
 export { cn } from "./cn";

@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Drawer } from "@/components/ui/Drawer";
 import { Field, Input } from "@/components/ui/Field";
+import { MicButton } from "@/components/ui/MicButton";
 import { cn } from "@/components/ui/cn";
 
 // لوحة الأودوغرام التفاعلية — السن يُنقر لفتح لوحة حالته وسجله الكامل.
@@ -328,13 +329,20 @@ export default function OdontogramBoard({
               label="ملاحظة (اختياري)"
               htmlFor={`finding-note-${selected}`}
             >
-              <Input
-                id={`finding-note-${selected}`}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                maxLength={500}
-                placeholder="مثال: تسوس سطح مضغي"
-              />
+              <div className="flex items-center gap-1.5">
+                <Input
+                  id={`finding-note-${selected}`}
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  maxLength={500}
+                  placeholder="مثال: تسوس سطح مضغي"
+                />
+                <MicButton
+                  targetId={`finding-note-${selected}`}
+                  value={note}
+                  onChange={setNote}
+                />
+              </div>
             </Field>
 
             {error && (

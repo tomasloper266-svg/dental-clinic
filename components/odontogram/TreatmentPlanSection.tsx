@@ -12,6 +12,7 @@ import { toothStatusMeta } from "@/lib/odontogram/statuses";
 import { planTotals, planByTooth } from "@/lib/treatment-plan-view";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
+import { MicButton } from "@/components/ui/MicButton";
 import { cn } from "@/components/ui/cn";
 
 // قسم خطة العلاج المسعّرة — إضافة بنود بأسعار، تعديل غير المنفذ، وبدء التنفيذ.
@@ -266,13 +267,20 @@ export default function TreatmentPlanSection({
         <label className="sr-only" htmlFor="plan-procedure">
           الإجراء
         </label>
-        <Input
-          id="plan-procedure"
-          value={procedure}
-          onChange={(e) => setProcedure(e.target.value)}
-          placeholder="الإجراء — حشو، خلع…"
-          className={inputClass}
-        />
+        <div className="flex items-center gap-1.5">
+          <Input
+            id="plan-procedure"
+            value={procedure}
+            onChange={(e) => setProcedure(e.target.value)}
+            placeholder="الإجراء — حشو، خلع…"
+            className={inputClass}
+          />
+          <MicButton
+            targetId="plan-procedure"
+            value={procedure}
+            onChange={setProcedure}
+          />
+        </div>
         <label className="sr-only" htmlFor="plan-price">
           السعر بالليرة السورية
         </label>
@@ -331,12 +339,20 @@ export default function TreatmentPlanSection({
                   <li key={item.id} className="bg-surface-raised px-3 py-2.5">
                     {editingId === item.id ? (
                       <div className="grid gap-2 sm:grid-cols-[1fr_8rem_auto_auto]">
-                        <Input
-                          value={editProcedure}
-                          onChange={(e) => setEditProcedure(e.target.value)}
-                          aria-label="الإجراء"
-                          className={inputClass}
-                        />
+                        <div className="flex items-center gap-1.5">
+                          <Input
+                            id={`plan-procedure-edit-${item.id}`}
+                            value={editProcedure}
+                            onChange={(e) => setEditProcedure(e.target.value)}
+                            aria-label="الإجراء"
+                            className={inputClass}
+                          />
+                          <MicButton
+                            targetId={`plan-procedure-edit-${item.id}`}
+                            value={editProcedure}
+                            onChange={setEditProcedure}
+                          />
+                        </div>
                         <Input
                           type="number"
                           min={0}
