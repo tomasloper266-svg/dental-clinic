@@ -11,6 +11,7 @@ export type PatientDto = {
   phone: string | null;
   address: string | null;
   medicalNotes: string | null;
+  createdAt: Date;
 };
 
 const PATIENT_SELECT = {
@@ -20,6 +21,7 @@ const PATIENT_SELECT = {
   phone: true,
   address: true,
   medicalNotes: true,
+  createdAt: true,
 } as const;
 
 export async function listPatients(
@@ -189,4 +191,61 @@ export async function updatePatient(
     data: input,
     select: PATIENT_SELECT,
   });
+}
+
+export type DeletePatientResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * حذف مريض محصور بالعيادة عبر clinicScope — مسموح فقط لمن بلا أي سجل
+ * (مواعيد، قيود، مخطط أسنان، خطة، انتظار، استهلاك مواد، إرسال تعليمات).
+ * السجل السريري والمالي لا يُحذف أبداً — الحذف للسجلات الخاطئة الفارغة حصراً.
+ */
+export async function deletePatient(
+  ctx: TenantContext,
+  patientId: string,
+): Promise<DeletePatientResult> {
+  const db = clinicScope(ctx.clinicId);
+  const existing = await db.patient.findFirst({
+    where: { id: patientId },
+    select: { id: true },
+  });
+  if (!existing) return { ok: false, error: "المريض غير موجود" };
+
+  const [
+    appointments,
+    ledgerEntries,
+    toothFindings,
+    treatmentPlanItems,
+    waitlistEntries,
+    materialUsages,
+    instructionSends,
+  ] = await Promise.all([
+    db.appointment.count({ where: { patientId } }),
+    db.ledgerEntry.count({ where: { patientId } }),
+    db.toothFinding.count({ where: { patientId } }),
+    db.treatmentPlanItem.count({ where: { patientId } }),
+    db.waitlistEntry.count({ where: { patientId } }),
+    db.materialUsage.count({ where: { patientId } }),
+    db.instructionSend.count({ where: { patientId } }),
+  ]);
+
+  if (
+    appointments +
+      ledgerEntries +
+      toothFindings +
+      treatmentPlanItems +
+      waitlistEntries +
+      materialUsages +
+      instructionSends >
+    0
+  ) {
+    return {
+      ok: false,
+      error:
+        "لا يمكن حذف مريض له سجل سريري أو مالي — السجل محفوظ ويبقى في مكانه",
+    };
+  }
+
+  await db.patient.delete({ where: { id: patientId } });
+  return { ok: true };
 }

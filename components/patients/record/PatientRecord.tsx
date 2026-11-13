@@ -29,11 +29,12 @@ import AppointmentsTab from "./AppointmentsTab";
 import LedgerTab from "./LedgerTab";
 import NewAppointmentModal from "./NewAppointmentModal";
 import NewLedgerEntryModal from "./NewLedgerEntryModal";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { cn } from "@/components/ui/cn";
 
 // ملف المريض المتكامل — وحدة عمل سريرية بخمسة تبويبات: نظرة عامة، مخطط
-// الأسنان، خطط العلاج، المواعيد، الحسابات. رأس الملف ثابت أعلى الصفحة
-// (بانر الحساسية بـ role=alert وأزرار الإجراءات). اختيار السن مشترك بين
+// الأسنان، خطط العلاج، المواعيد، الحسابات. رأس الملف بهوية الصفحات
+// (اسم كبير + بيانات فرعية + إجراءات + فاصل بمعيّن). اختيار السن مشترك بين
 // تبويبَي الأودوغرام والخطة: نقر سن في الرسم يعبّئ بند الخطة الجديد،
 // وزر السن في الخطة أو الدفتر يفتح السن على الرسم. كل ميزة من الملف
 // السابق محفوظة — التبويبات تنظّمها ولا تحذف شيئاً.
@@ -108,14 +109,12 @@ export default function PatientRecord({
 
   return (
     <div className="w-full">
-      {/* ─── رأس الملف الثابت: بيانات + إجراءات + تبويبات ────────────── */}
-      <header className="border-warm-200 bg-surface/95 sticky top-0 z-30 border-b px-4 py-4 backdrop-blur-sm">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="text-ink-900 text-2xl font-semibold">
-              {patient.name}
-            </h1>
-            <div className="text-warm-700 mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+      {/* ─── رأس الملف بهوية الصفحات: اسم كبير + بيانات فرعية + إجراءات ── */}
+      <div className="px-4 pt-6">
+        <PageHeader
+          title={patient.name}
+          description={
+            <span className="text-warm-700 flex flex-wrap items-center gap-x-4 gap-y-1">
               <InfoCell icon={Stethoscope}>
                 {ageFromBirthYear(patient.birthYear) !== null ? (
                   <>
@@ -145,11 +144,11 @@ export default function PatientRecord({
               {patient.address && (
                 <InfoCell icon={ReceiptText}>{patient.address}</InfoCell>
               )}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <PatientEditModal patient={patient} />
+            </span>
+          }
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <PatientEditModal patient={patient} />
             <button
               type="button"
               onClick={() => setApptOpen(true)}
@@ -172,8 +171,9 @@ export default function PatientRecord({
               <Plus size={16} aria-hidden />
               قيد جديد
             </button>
-          </div>
-        </div>
+            </div>
+          }
+        />
 
         {/* بانر الحساسية — دائم الظهور أعلى الملف إن وُجدت */}
         {notes.allergies && (
@@ -234,7 +234,7 @@ export default function PatientRecord({
             })}
           </div>
         </nav>
-      </header>
+      </div>
 
       {/* ─── اللوحات — كلها مركّبة والمخفية بـ hidden حتى لا يفقد تبويب
            الأودوغرام قيوده المحلية عند التنقل بين التبويبات ──────────── */}

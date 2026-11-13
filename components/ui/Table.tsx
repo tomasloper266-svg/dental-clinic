@@ -1,12 +1,20 @@
 import { forwardRef } from "react";
 import { cn } from "./cn";
 
-type TableProps = React.TableHTMLAttributes<HTMLTableElement>;
+type TableProps = React.TableHTMLAttributes<HTMLTableElement> & {
+  /** أصناف غلاف الجدول — تُفرَّغ عند تداخل الجدول داخل بطاقة أكبر منه */
+  wrapperClassName?: string;
+};
 
 export const Table = forwardRef<HTMLTableElement, TableProps>(
-  function Table({ className, ...rest }, ref) {
+  function Table({ className, wrapperClassName, ...rest }, ref) {
     return (
-      <div className="w-full overflow-x-auto rounded-panel border border-warm-200 bg-surface-raised">
+      <div
+        className={cn(
+          "w-full overflow-x-auto rounded-panel border border-warm-200 bg-surface-raised",
+          wrapperClassName,
+        )}
+      >
         <table
           ref={ref}
           className={cn("w-full border-collapse text-sm", className)}

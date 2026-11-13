@@ -2,8 +2,8 @@ import { cn } from "./cn";
 
 type PageHeaderProps = {
   title: string;
-  /** سطر تاريخ/وصف صغير باهت تحت العنوان */
-  description?: string;
+  /** سطر تاريخ/وصف صغير باهت تحت العنوان — نص أو محتوى (أيقونات بيانات) */
+  description?: React.ReactNode;
   /** أزرار إجراءات الصفحة — تظهر في الطرف المقابل للعنوان (RTL) */
   actions?: React.ReactNode;
   className?: string;

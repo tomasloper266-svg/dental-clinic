@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   LEDGER_TYPE_META,
+  LEDGER_SETTLEMENT_META,
+  buildLedgerRows,
+  filterBySettlement,
   formatEntryDate,
   runningBalances,
+  runningBalancesByPatient,
+  searchLedgerRows,
+  settlementOfCharge,
   sortEntriesAsc,
   summarizeLedger,
 } from "@/lib/finance-view";
@@ -85,5 +91,75 @@ describe("تنسيق تاريخ القيد", () => {
     const text = formatEntryDate("2026-01-15T09:30:00Z");
     expect(text).toMatch(/2026/);
     expect(text).not.toMatch(/[٠-٩]/);
+  });
+});
+
+
+// ─── حالة السداد وصفوف العرض (الهيكل المرجعي) ───────────────────────────────
+
+describe("settlementOfCharge", () => {
+  it("رصيد مسدَّد كلياً بعد القيد يعني تغطية كاملة", () => {
+    expect(settlementOfCharge(0, 300_000)).toBe("settled");
+    expect(settlementOfCharge(-50_000, 300_000)).toBe("settled");
+  });
+
+  it("رصيد أقل من قيمة القيد يعني تغطية جزئية", () => {
+    expect(settlementOfCharge(100_000, 300_000)).toBe("partial");
+  });
+
+  it("رصيد يساوي القيد أو أكثر يعني غير مسدد", () => {
+    expect(settlementOfCharge(300_000, 300_000)).toBe("unsettled");
+    expect(settlementOfCharge(450_000, 300_000)).toBe("unsettled");
+  });
+});
+
+describe("runningBalancesByPatient", () => {
+  it("يحسب الرصيد لكل مريض على حدة بترتيبه الزمني", () => {
+    const after = runningBalancesByPatient([
+      { id: "e1", patientId: "p1", amountSyp: 300_000, createdAt: "2026-01-01" },
+      { id: "e2", patientId: "p2", amountSyp: 100_000, createdAt: "2026-01-02" },
+      { id: "e3", patientId: "p1", amountSyp: -200_000, createdAt: "2026-01-03" },
+    ]);
+    expect(after.get("e1")).toBe(300_000);
+    expect(after.get("e2")).toBe(100_000);
+    expect(after.get("e3")).toBe(100_000); // رصيد p1 وحده — لا يختلط بمريض آخر
+  });
+});
+
+describe("buildLedgerRows و filterBySettlement", () => {
+  const entries = [
+    { id: "e1", patientId: "p1", patientName: "أحمد", patientPhone: null, type: "CHARGE" as const, amountSyp: 300_000, note: null, createdAt: "2026-01-01" },
+    { id: "e2", patientId: "p1", patientName: "أحمد", patientPhone: null, type: "PAYMENT" as const, amountSyp: -200_000, note: null, createdAt: "2026-01-02" },
+  ];
+
+  it("الرسوم المُصدرة تُصنَّف من رصيد المريض بعدها، والدفعات مسددة بحكمها", () => {
+    const rows = buildLedgerRows(entries);
+    // الأحدث أولاً: الدفعة ثم الرسوم
+    expect(rows[0].settlement).toBe("settled");
+    // بعد الرسوم بقي 300 ألف — غير مسددة وقتئذٍ (الدفعة جاءت بعدها)
+    expect(rows[1].settlement).toBe("unsettled");
+    expect(rows[1].patientBalanceAfter).toBe(300_000);
+  });
+
+  it("التصفية تعيد الكل كما هو وترشّح بحالة السداد", () => {
+    const rows = buildLedgerRows(entries);
+    expect(filterBySettlement(rows, "ALL")).toHaveLength(2);
+    expect(
+      filterBySettlement(rows, "settled").map((r) => r.entry.id),
+    ).toEqual(["e2"]);
+    expect(filterBySettlement(rows, "unsettled").map((r) => r.entry.id)).toEqual(["e1"]);
+    // التصحيح والاسترداد بلا حالة سداد — لا يظهرون إلا تحت الكل
+  });
+
+  it("البحث يطابق اسم المريض أو البيان", () => {
+    const rows = buildLedgerRows(entries);
+    expect(searchLedgerRows(rows, "أحمد")).toHaveLength(2);
+    expect(searchLedgerRows(rows, "لا يوجد")).toHaveLength(0);
+  });
+
+  it("لكل حالة سداد تسمية عربية ونبرة موحّدة", () => {
+    expect(LEDGER_SETTLEMENT_META.settled).toEqual({ label: "مسدد", tone: "success" });
+    expect(LEDGER_SETTLEMENT_META.partial.label).toBe("جزئي");
+    expect(LEDGER_SETTLEMENT_META.unsettled.tone).toBe("danger");
   });
 });

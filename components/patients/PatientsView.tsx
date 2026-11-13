@@ -1,143 +1,115 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { FileText, Pencil, Plus, Search, TriangleAlert, Users } from "lucide-react";
-import { parseMedicalNotes } from "@/lib/medical-notes";
-import { pageWrapClass } from "@/lib/page-width";
+import { Pencil, Plus, Trash2, Users } from "lucide-react";
+import { formatDateCell } from "@/lib/dates";
+import { formatDayLabel } from "@/lib/appointment-ui";
+import { formatSyp } from "@/lib/utils";
 import type { PatientDto } from "@/lib/services/patients";
 import {
   PATIENT_FILTERS,
   ageFromBirthYear,
   countFlags,
   filterPatients,
-  patientNotesFlags,
+  searchPatientRows,
+  sortPatientRows,
   type PatientFilterKey,
+  type PatientRowView,
+  type PatientSortKey,
 } from "@/lib/patients-view";
 import PatientForm from "@/components/patients/PatientForm";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Table, THead, TRow, TH, TD } from "@/components/ui/Table";
+import { Card } from "@/components/ui/Card";
+import { PanelToolbar, SearchInput, FilterPills, SortSelect } from "@/components/ui/Toolbar";
+import { EntityCell } from "@/components/ui/EntityCell";
+import { PillAction, IconAction } from "@/components/ui/TableActions";
 import { Badge } from "@/components/ui/Badge";
-import { Input } from "@/components/ui/Field";
+import { Table, THead, TRow, TH, TD } from "@/components/ui/Table";
 import { Modal } from "@/components/ui/Modal";
-import { cn } from "@/components/ui/cn";
+import { useToast } from "@/components/ui/Toast";
 
-// شاشة المرضى: بحث فوري بالاسم والهاتف مع تخفيف الإدخال (300ms)، فلاتر
-// الملاحظات الطبية تصفية زبونية فوق النتائج، جدول كامل بملف لكل مريض،
-// والحالات الأربع: تحميل/فراغ/خطأ/نتائج.
+// شاشة المرضى — الهيكل المرجعي: ترويسة كبيرة بحبة «مريض جديد»، ثم بطاقة
+// محتوى واحدة تجمع شريط الأدوات (بحث بالعدسة، حبوب تصفية، قائمة ترتيب)
+// والجدول بأعمدته: خلية المريض بالأفاتار، العمر، آخر زيارة، موعد قادم،
+// الرصيد المستحق (أخضر «مسدد ✓» أو أحمر بالمبلغ)، وإجراءات الملف/تحرير/حذف.
+// البيانات كلها من الصفحة الخادمية — التصفية والترتيب هنا زبونية نقية.
 
-const SEARCH_DEBOUNCE_MS = 300;
-
-const flagBadge: Record<keyof ReturnType<typeof patientNotesFlags>, string> = {
-  allergies: "border-danger-300 bg-danger-50 text-danger-700",
-  conditions: "border-warning-300 bg-warning-50 text-warning-900",
-  medications: "border-ink-600/20 bg-surface-sunken text-ink-800",
-};
-
-const flagLabel = {
-  allergies: "حساسية",
-  conditions: "أمراض",
-  medications: "أدوية",
-} as const;
-
-function NotesBadges({ raw }: { raw: string | null | undefined }) {
-  const flags = patientNotesFlags(raw);
-  const notes = parseMedicalNotes(raw);
-  const items = (Object.keys(flags) as Array<keyof typeof flags>)
-    .filter((key) => flags[key])
-    .map((key) => {
-      const value =
-        key === "allergies"
-          ? notes.allergies
-          : key === "conditions"
-            ? notes.conditions
-            : notes.medications;
-      const first = value.split("\n")[0].trim();
-      return (
-        <Badge key={key} className={flagBadge[key]}>
-          <TriangleAlert size={11} aria-hidden className={key === "medications" ? "hidden" : ""} />
-          {flagLabel[key]}: {first}
-        </Badge>
-      );
-    });
-  if (items.length === 0) return <span className="text-warm-400 text-xs">—</span>;
-  return <div className="flex flex-wrap gap-1">{items}</div>;
-}
+const SORT_OPTIONS: ReadonlyArray<{ value: PatientSortKey; label: string }> = [
+  { value: "name", label: "الاسم" },
+  { value: "newest", label: "الأحدث تسجيلاً" },
+  { value: "balance", label: "الرصيد المستحق" },
+];
 
 function AgeCell({ birthYear }: { birthYear: number | null }) {
   const age = ageFromBirthYear(birthYear);
-  if (age === null) return <span className="text-warm-400 text-xs">—</span>;
+  if (age === null) return <span className="text-xs text-warm-400">—</span>;
   return (
-    <span className="numeric">
-      {age} <span className="text-warm-400 text-xs">سنة</span>
+    <span className="numeric whitespace-nowrap">
+      {age} <span className="text-xs text-warm-400">سنة</span>
     </span>
   );
 }
 
-function RowsSkeleton() {
+function VisitCell({ value }: { value: string | null }) {
+  if (!value) return <span className="text-xs text-warm-400">—</span>;
   return (
-    <>
-      {[0, 1, 2, 3, 4].map((i) => (
-        <TRow key={i}>
-          {[0, 1, 2, 3, 4].map((j) => (
-            <TD key={j}>
-              <div className="h-5 animate-pulse rounded bg-warm-100" aria-hidden />
-            </TD>
-          ))}
-        </TRow>
-      ))}
-    </>
+    <span className="numeric whitespace-nowrap text-warm-700">
+      {formatDateCell(value)}
+    </span>
   );
 }
 
-export default function PatientsView() {
+function BalanceCell({ balanceSyp }: { balanceSyp: number }) {
+  if (balanceSyp <= 0) {
+    return <Badge tone="success">مسدد ✓</Badge>;
+  }
+  return (
+    <span className="numeric font-semibold text-danger-600" title="رصيد مستحق">
+      {formatSyp(balanceSyp)}
+    </span>
+  );
+}
+
+type Props = {
+  rows: PatientRowView[];
+};
+
+export default function PatientsView({ rows }: Props) {
   const router = useRouter();
+  const { toast } = useToast();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<PatientFilterKey>("ALL");
-  const [patients, setPatients] = useState<PatientDto[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<PatientSortKey>("name");
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<PatientDto | null>(null);
+  const [deleting, setDeleting] = useState<PatientDto | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const load = useCallback(
-    async (search: string) => {
-      setError(null);
-      try {
-        const res = await fetch(
-          `/api/patients${search ? `?q=${encodeURIComponent(search)}` : ""}`,
-        );
-        if (res.status === 401) {
-          router.push("/login");
-          return;
-        }
-        if (!res.ok) {
-          setError("تعذر تحميل قائمة المرضى، حاول مرة أخرى");
-          return;
-        }
-        const data = (await res.json()) as { patients: PatientDto[] };
-        setPatients(data.patients);
-      } catch {
-        setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
-      }
-    },
-    [router],
-  );
+  const counts = useMemo(() => countFlags(rows.map((r) => r.patient)), [rows]);
 
-  useEffect(() => {
-    const timer = setTimeout(
-      () => void load(query.trim()),
-      SEARCH_DEBOUNCE_MS,
+  const visible = useMemo(() => {
+    const afterFilter = filterPatients(
+      rows.map((r) => r.patient),
+      filter,
     );
-    return () => clearTimeout(timer);
-  }, [query, load]);
+    const ids = new Set(afterFilter.map((p) => p.id));
+    return sortPatientRows(
+      searchPatientRows(rows, query).filter((r) => ids.has(r.patient.id)),
+      sortKey,
+    );
+  }, [rows, filter, query, sortKey]);
+
+  const filtered = filter !== "ALL";
+  const searching = query.trim().length > 0;
 
   function onSaved() {
     setShowForm(false);
     setEditing(null);
-    void load(query.trim());
+    router.refresh();
   }
 
   function openCreate() {
@@ -155,25 +127,37 @@ export default function PatientsView() {
     setEditing(null);
   }
 
-  const visible = useMemo(
-    () => (patients ? filterPatients(patients, filter) : null),
-    [patients, filter],
-  );
-  const counts = useMemo(
-    () => (patients ? countFlags(patients) : null),
-    [patients],
-  );
-
-  const filtered = filter !== "ALL";
-  const searching = query.trim().length > 0;
+  async function confirmDelete() {
+    if (!deleting) return;
+    setDeleteBusy(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(
+        `/api/patients/${encodeURIComponent(deleting.id)}`,
+        { method: "DELETE" },
+      );
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) {
+        setDeleteError(data.error ?? "تعذر حذف المريض، أعد المحاولة");
+        return;
+      }
+      toast("حُذف المريض");
+      setDeleting(null);
+      router.refresh();
+    } catch {
+      setDeleteError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
 
   return (
-    <div className={pageWrapClass("full")}>
+    <div className="w-full">
       <PageHeader
         title="المرضى"
-        description="سجل مرضى العيادة — البحث والفلاتر من النتائج المرجعة، وملف طبي كامل لكل مريض."
+        description={formatDayLabel(new Date())}
         actions={
-          <Button onClick={openCreate}>
+          <Button shape="pill" onClick={openCreate}>
             <Plus size={16} aria-hidden />
             مريض جديد
           </Button>
@@ -190,199 +174,171 @@ export default function PatientsView() {
         </Modal>
       )}
 
-      {error ? (
-        <div
-          role="alert"
-          className="mt-5 flex flex-col items-center gap-3 rounded-panel border border-danger-300 bg-danger-50 px-6 py-10 text-center"
-        >
-          <p className="text-sm font-medium text-danger-700">{error}</p>
-          <Button variant="secondary" size="sm" onClick={() => void load(query.trim())}>
-            إعادة المحاولة
-          </Button>
-        </div>
-      ) : (
-        <>
-          {/* شريط البحث والفلاتر */}
-          <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="relative w-full md:max-w-sm">
-              <Search
-                size={16}
-                aria-hidden
-                className="absolute start-3 top-1/2 -translate-y-1/2 text-warm-400"
-              />
-              <Input
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="بحث بالاسم أو الهاتف…"
-                aria-label="بحث بالاسم أو الهاتف"
-                className="ps-9"
-              />
-            </div>
-
-            <div
-              role="group"
-              aria-label="تصفية حسب الملاحظات الطبية"
-              className="flex flex-wrap gap-1"
-            >
-              {PATIENT_FILTERS.map(({ key, label }) => {
-                const active = filter === key;
-                const count =
-                  counts && key !== "ALL" ? counts[key] : (patients?.length ?? 0);
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => setFilter(key)}
-                    className={cn(
-                      "rounded-field border px-3 py-1.5 text-xs font-medium transition-colors",
-                      "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
-                      active
-                        ? "border-primary-600 bg-primary-600 text-white"
-                        : "border-warm-300 bg-surface-raised text-warm-600 hover:bg-surface-hover active:bg-surface-sunken",
-                    )}
-                  >
-                    {label}
-                    <span
-                      className={cn(
-                        "numeric ms-1.5 text-[10px]",
-                        active ? "text-primary-100" : "text-warm-400",
-                      )}
-                    >
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {visible === null ? (
-            <Table className="mt-4" aria-busy="true">
-              <THead>
-                <TRow>
-                  <TH className="w-[22%]">الاسم</TH>
-                  <TH className="w-[15%]">الهاتف</TH>
-                  <TH className="hidden w-[10%] md:table-cell">العمر</TH>
-                  <TH className="hidden w-[15%] lg:table-cell">العنوان</TH>
-                  <TH>الملاحظات الطبية</TH>
-                  <TH className="w-[10%]">
-                    <span className="sr-only">إجراءات</span>
-                  </TH>
-                </TRow>
-              </THead>
-              <tbody>
-                <RowsSkeleton />
-              </tbody>
-            </Table>
-          ) : visible.length === 0 ? (
-            <EmptyState
-              icon={Users}
-              className="mt-4"
-              title={
-                filtered || searching
-                  ? "لا نتائج مطابقة"
-                  : "لا مرضى مسجلين بعد"
-              }
-              description={
-                filtered
-                  ? "لا يوجد مريض ضمن هذا الفلتر — جرّب فلتراً آخر أو ابحث باسم آخر."
-                  : searching
-                    ? "جرّب اسماً أو رقماً أقصر."
-                    : "أضف أول مريض بزر «مريض جديد»."
-              }
-              action={
-                filtered ? (
-                  <Button variant="secondary" size="sm" onClick={() => setFilter("ALL")}>
-                    إلغاء الفلتر
-                  </Button>
-                ) : !searching ? (
-                  <Button size="sm" onClick={openCreate}>
-                    <Plus size={14} aria-hidden />
-                    مريض جديد
-                  </Button>
-                ) : undefined
-              }
-            />
-          ) : (
-            <Table className="mt-4">
-              <THead>
-                <TRow>
-                  <TH>الاسم</TH>
-                  <TH>الهاتف</TH>
-                  <TH className="hidden md:table-cell">العمر</TH>
-                  <TH className="hidden lg:table-cell">العنوان</TH>
-                  <TH>الملاحظات الطبية</TH>
-                  <TH>
-                    <span className="sr-only">إجراءات</span>
-                  </TH>
-                </TRow>
-              </THead>
-              <tbody>
-                {visible.map((patient) => (
-                  <TRow key={patient.id} className="group">
-                    <TD>
-                      <Link
-                        href={`/patients/${patient.id}`}
-                        className="font-medium text-ink-900 transition-colors group-hover:text-primary-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
-                      >
-                        {patient.name}
-                      </Link>
-                    </TD>
-                    <TD>
-                      {patient.phone ? (
-                        <span dir="ltr" className="numeric block text-start text-warm-700">
-                          {patient.phone}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-warm-400">—</span>
-                      )}
-                    </TD>
-                    <TD className="hidden md:table-cell">
-                      <AgeCell birthYear={patient.birthYear} />
-                    </TD>
-                    <TD className="hidden max-w-40 truncate lg:table-cell">
-                      {patient.address ?? <span className="text-xs text-warm-400">—</span>}
-                    </TD>
-                    <TD>
-                      <NotesBadges raw={patient.medicalNotes} />
-                    </TD>
-                    <TD>
-                      <div className="flex items-center justify-end gap-1">
-                        <Link
-                          href={`/patients/${patient.id}`}
-                          aria-label={`فتح ملف ${patient.name}`}
-                          title="فتح الملف"
-                          className="rounded-field p-1.5 text-warm-500 transition-colors hover:bg-surface-hover hover:text-ink-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
-                        >
-                          <FileText size={16} aria-hidden />
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => openEdit(patient)}
-                          aria-label={`تحرير بيانات ${patient.name}`}
-                          title="تحرير"
-                          className="rounded-field p-1.5 text-warm-500 transition-colors hover:bg-surface-hover hover:text-ink-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
-                        >
-                          <Pencil size={16} aria-hidden />
-                        </button>
-                      </div>
-                    </TD>
-                  </TRow>
-                ))}
-              </tbody>
-            </Table>
-          )}
-
-          {visible && visible.length > 0 && (
-            <p className="text-warm-500 mt-3 text-xs">
-              <span className="numeric">{visible.length}</span> مريض
-              {searching ? " ضمن نتائج البحث" : ""}
-              {filtered ? " ضمن الفلتر" : ""} — الحد الأقصى للعرض 100 مريض.
+      <Modal
+        open={deleting !== null}
+        onClose={() => {
+          setDeleting(null);
+          setDeleteError(null);
+        }}
+        title="حذف مريض"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-warm-700">
+            هل تريد حذف «{deleting?.name}» نهائياً؟ الحذف متاح فقط لمن بلا أي
+            سجل مواعيد أو قيود مالية — والسجلات المحفوظة لا تُحذف.
+          </p>
+          {deleteError && (
+            <p role="alert" className="text-xs text-danger-600">
+              {deleteError}
             </p>
           )}
-        </>
+          <div className="flex items-center justify-start gap-2">
+            <Button
+              variant="danger"
+              loading={deleteBusy}
+              onClick={() => void confirmDelete()}
+            >
+              حذف نهائي
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={deleteBusy}
+              onClick={() => {
+                setDeleting(null);
+                setDeleteError(null);
+              }}
+            >
+              إلغاء
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Card>
+        <PanelToolbar className="border-b border-warm-200">
+          <SearchInput
+            value={query}
+            onChange={setQuery}
+            placeholder="ابحث بالاسم أو الهاتف أو البريد أو الرقم الوطني…"
+            aria-label="بحث بالاسم أو الهاتف"
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <FilterPills
+              options={PATIENT_FILTERS.map(({ key, label }) => ({
+                value: key,
+                label,
+                count:
+                  key === "ALL"
+                    ? (rows.length ?? 0)
+                    : counts[key],
+              }))}
+              value={filter}
+              onChange={setFilter}
+              ariaLabel="تصفية حسب الملاحظات الطبية"
+            />
+            <SortSelect
+              options={SORT_OPTIONS}
+              value={sortKey}
+              onChange={setSortKey}
+              ariaLabel="ترتيب المرضى"
+            />
+          </div>
+        </PanelToolbar>
+
+        {visible.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title={filtered || searching ? "لا نتائج مطابقة" : "لا مرضى مسجلين بعد"}
+            description={
+              filtered
+                ? "لا يوجد مريض ضمن هذا الفلتر — جرّب فلتراً آخر أو ابحث باسم آخر."
+                : searching
+                  ? "جرّب اسماً أو رقماً أقصر."
+                  : "أضف أول مريض بزر «مريض جديد»."
+            }
+            action={
+              filtered ? (
+                <Button variant="secondary" size="sm" onClick={() => setFilter("ALL")}>
+                  إلغاء الفلتر
+                </Button>
+              ) : !searching ? (
+                <Button size="sm" onClick={openCreate}>
+                  <Plus size={14} aria-hidden />
+                  مريض جديد
+                </Button>
+              ) : undefined
+            }
+            className="py-10"
+          />
+        ) : (
+          <Table wrapperClassName="border-0 rounded-none">
+            <THead>
+              <TRow>
+                <TH>المريض</TH>
+                <TH className="hidden md:table-cell">العمر</TH>
+                <TH className="hidden md:table-cell">آخر زيارة</TH>
+                <TH className="hidden lg:table-cell">موعد قادم</TH>
+                <TH>الرصيد المستحق</TH>
+                <TH className="w-[10%]">
+                  <span className="sr-only">إجراءات</span>
+                </TH>
+              </TRow>
+            </THead>
+            <tbody>
+              {visible.map(({ patient, balanceSyp, lastVisit, nextVisit }) => (
+                <TRow key={patient.id}>
+                  <TD>
+                    <EntityCell
+                      name={patient.name}
+                      subtitle={patient.phone ?? undefined}
+                    />
+                  </TD>
+                  <TD className="hidden md:table-cell">
+                    <AgeCell birthYear={patient.birthYear} />
+                  </TD>
+                  <TD className="hidden md:table-cell">
+                    <VisitCell value={lastVisit} />
+                  </TD>
+                  <TD className="hidden lg:table-cell">
+                    <VisitCell value={nextVisit} />
+                  </TD>
+                  <TD>
+                    <BalanceCell balanceSyp={balanceSyp} />
+                  </TD>
+                  <TD>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <PillAction href={`/patients/${patient.id}`}>
+                        الملف
+                      </PillAction>
+                      <IconAction
+                        icon={Pencil}
+                        label={`تحرير بيانات ${patient.name}`}
+                        onClick={() => openEdit(patient)}
+                      />
+                      <IconAction
+                        icon={Trash2}
+                        label={`حذف ${patient.name}`}
+                        tone="danger"
+                        onClick={() => {
+                          setDeleteError(null);
+                          setDeleting(patient);
+                        }}
+                      />
+                    </div>
+                  </TD>
+                </TRow>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </Card>
+
+      {rows.length > 0 && (
+        <p className="text-warm-500 mt-3 text-xs">
+          <span className="numeric">{visible.length}</span> مريض
+          {searching ? " ضمن نتائج البحث" : ""}
+          {filtered ? " ضمن الفلتر" : ""} — الحد الأقصى للعرض 100 مريض.
+        </p>
       )}
     </div>
   );

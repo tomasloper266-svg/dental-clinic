@@ -41,3 +41,15 @@ export function addDays(date: Date, days: number): Date {
 export function toDateInputValue(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
+
+
+const DATE_CELL_FMT = new Intl.DateTimeFormat("ar-SY-u-nu-latn", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
+
+/** تاريخ خلية جدول — صيغة قصيرة موحّدة 2026/11/09 بأرقام لاتينية */
+export function formatDateCell(date: Date | string): string {
+  return DATE_CELL_FMT.format(new Date(date));
+}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenant } from "@/lib/tenant/require-tenant";
 import {
+  deletePatient,
   getPatient,
   parseUpdatePatient,
   updatePatient,
@@ -53,5 +54,28 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
   } catch (err) {
     console.error("[patients:update] failed:", err);
     return NextResponse.json({ error: "تعذر تحديث المريض" }, { status: 500 });
+  }
+}
+
+export async function DELETE(_req: NextRequest, ctx: RouteContext) {
+  const tenant = await requireTenant(_req);
+  if (!tenant) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  }
+
+  const { patientId: id } = await ctx.params;
+  try {
+    const result = await deletePatient(tenant, id);
+    if (!result.ok) {
+      // مريض غير موجود يعيد 404، ورفض حذف سجل محفوظ يعيد 409 تعارضاً.
+      return NextResponse.json(
+        { error: result.error },
+        { status: result.error === "المريض غير موجود" ? 404 : 409 },
+      );
+    }
+    return NextResponse.json({ ok: true }, { status: 200 });
+  } catch (err) {
+    console.error("[patients:delete] failed:", err);
+    return NextResponse.json({ error: "تعذر حذف المريض" }, { status: 500 });
   }
 }
