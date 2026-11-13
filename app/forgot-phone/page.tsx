@@ -20,7 +20,7 @@ export default function ForgotPhonePage() {
 
   return (
     <AuthShell>
-      <h1 className="text-2xl font-bold text-ink-900">نسيت رقم الهاتف؟</h1>
+      <h1 className="font-display text-[25px] font-normal leading-[1.45] text-ink-900">نسيت رقم الهاتف؟</h1>
       <p className="mt-2 text-sm text-warm-600">
         اختر طريقة استعادة حسابك — لا يمكن تغيير رقم الهاتف دون إثبات ملكية
         الحساب.

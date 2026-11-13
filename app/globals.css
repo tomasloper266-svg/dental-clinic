@@ -19,6 +19,9 @@
     system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
+  /* خط العناوين المزخرف — Aref Ruqaa مطابق للمرجع (عناوين الصفحات والشعار) */
+  --font-display: var(--font-aref-ruqaa), "Aref Ruqaa", serif;
+
   /* الأسطح — عاجي دافئ */
   --color-surface: #faf9f7;
   --color-surface-raised: #ffffff;

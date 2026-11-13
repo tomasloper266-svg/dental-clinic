@@ -25,7 +25,7 @@ export function EmptyState({
         className,
       )}
     >
-      {Icon && <Icon size={40} className="text-warm-300" aria-hidden strokeWidth={1.5} />}
+      {Icon && <Icon size={44} className="text-primary-500/50" aria-hidden strokeWidth={1.3} />}
       <p className="text-sm font-semibold text-warm-500">{title}</p>
       {description && (
         <p className="max-w-sm text-xs text-warm-400">{description}</p>

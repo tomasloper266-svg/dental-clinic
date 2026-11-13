@@ -54,7 +54,7 @@ export default function SignupPage() {
     return (
       <AuthShell>
         <section aria-labelledby="recovery-code-title">
-          <h1 id="recovery-code-title" className="text-2xl font-bold text-ink-900">
+          <h1 id="recovery-code-title" className="font-display text-[25px] font-normal leading-[1.45] text-ink-900">
             تم إنشاء عيادتك
           </h1>
 
@@ -98,7 +98,7 @@ export default function SignupPage() {
   return (
     <AuthShell>
       <section aria-labelledby="signup-title">
-        <h1 id="signup-title" className="text-2xl font-bold text-ink-900">
+        <h1 id="signup-title" className="font-display text-[25px] font-normal leading-[1.45] text-ink-900">
           تسجيل عيادة جديدة
         </h1>
         <p className="mt-2 text-sm text-warm-600">

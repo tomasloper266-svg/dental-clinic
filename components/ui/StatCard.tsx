@@ -34,7 +34,7 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-3 rounded-panel border border-warm-200 bg-surface-raised px-5 py-4",
+        "flex items-center justify-between gap-4 rounded-panel border border-warm-200 bg-surface-raised px-5 py-4",
         className,
       )}
     >
@@ -52,11 +52,11 @@ export function StatCard({
       <span
         aria-hidden
         className={cn(
-          "grid size-11 shrink-0 place-items-center rounded-field",
+          "grid size-12 shrink-0 place-items-center rounded-[14px]",
           iconBoxClasses[tone],
         )}
       >
-        <Icon size={20} />
+        <Icon size={22} />
       </span>
     </div>
   );

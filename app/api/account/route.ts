@@ -34,6 +34,7 @@ export async function PATCH(req: NextRequest) {
   const result = await updateProfile(ctx, {
     name: typeof raw.name === "string" ? raw.name : undefined,
     clinicName: typeof raw.clinicName === "string" ? raw.clinicName : undefined,
+    usdRate: typeof raw.usdRate === "number" ? raw.usdRate : undefined,
   });
   if (!result.ok) {
     return NextResponse.json({ error: result.error.message }, { status: 400 });

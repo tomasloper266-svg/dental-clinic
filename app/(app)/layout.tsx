@@ -6,6 +6,7 @@ import { listWaitlist } from "@/lib/services/waitlist";
 import { lowStockMaterials } from "@/lib/services/inventory";
 import { listClinicLedgerEntries } from "@/lib/services/ledger";
 import { outstandingDuesSyp } from "@/lib/finance-view";
+import { getClinicUsdRate } from "@/lib/services/account";
 import { AppShell } from "@/components/shell/AppShell";
 
 // غلاف الصفحات المحمية — الجلسة من الكوكي، والشارات والمستحقات من خدمات
@@ -21,10 +22,11 @@ export default async function AppLayout({
   if (!session) redirect("/login");
 
   const ctx = tenantContextFromSession(session);
-  const [waitlist, lowStock, ledgerEntries] = await Promise.all([
+  const [waitlist, lowStock, ledgerEntries, usdRate] = await Promise.all([
     listWaitlist(ctx),
     lowStockMaterials(ctx),
     listClinicLedgerEntries(ctx),
+    getClinicUsdRate(ctx),
   ]);
 
   return (
@@ -32,6 +34,7 @@ export default async function AppLayout({
       userName={session.name}
       badges={{ waitlist: waitlist.length, lowStock: lowStock.length }}
       outstandingDuesSyp={outstandingDuesSyp(ledgerEntries)}
+      usdRate={usdRate}
     >
       {children}
     </AppShell>

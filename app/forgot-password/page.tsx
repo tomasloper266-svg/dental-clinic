@@ -131,7 +131,7 @@ export default function ForgotPasswordPage() {
     <AuthShell>
       {step === "identifier" && (
         <section aria-labelledby="forgot-title">
-          <h1 id="forgot-title" className="text-2xl font-bold text-ink-900">
+          <h1 id="forgot-title" className="font-display text-[25px] font-normal leading-[1.45] text-ink-900">
             استعادة كلمة المرور
           </h1>
           <p className="mt-2 text-sm text-warm-600">
@@ -216,7 +216,7 @@ export default function ForgotPasswordPage() {
 
       {step === "code" && (
         <section aria-labelledby="code-title">
-          <h1 id="code-title" className="text-2xl font-bold text-ink-900">
+          <h1 id="code-title" className="font-display text-[25px] font-normal leading-[1.45] text-ink-900">
             أدخل رمز التحقق
           </h1>
           <p className="mt-2 text-sm text-warm-600">
@@ -286,7 +286,7 @@ export default function ForgotPasswordPage() {
 
       {step === "newPassword" && (
         <section aria-labelledby="newpass-title">
-          <h1 id="newpass-title" className="text-2xl font-bold text-ink-900">
+          <h1 id="newpass-title" className="font-display text-[25px] font-normal leading-[1.45] text-ink-900">
             كلمة السر الجديدة
           </h1>
           <p className="mt-2 text-sm text-warm-600">

@@ -142,16 +142,24 @@ export async function verifyEmail(
 // هنا أبداً: تغيير الهاتف يتطلب إثبات ملكية منفصل خارج هذه الواجهة.
 export async function updateProfile(
   ctx: TenantContext,
-  input: { name?: string; clinicName?: string },
-): Promise<AccountOutcome<{ name: string; clinicName: string }>> {
+  input: { name?: string; clinicName?: string; usdRate?: number },
+): Promise<AccountOutcome<{ name: string; clinicName: string; usdRate: number }>> {
   const name = input.name?.trim();
   const clinicName = input.clinicName?.trim();
+  const { usdRate } = input;
   if (name !== undefined && (name.length < 2 || name.length > 100)) {
     return fail("invalid-input", "الاسم يجب أن يكون بين 2 و100 حرف");
   }
   if (clinicName !== undefined && (clinicName.length < 2 || clinicName.length > 100)) {
     return fail("invalid-input", "اسم العيادة يجب أن يكون بين 2 و100 حرف");
   }
+  if (usdRate !== undefined && (!Number.isFinite(usdRate) || usdRate <= 0)) {
+    return fail("invalid-input", "سعر الصرف يجب أن يكون رقماً موجباً");
+  }
+
+  const clinicData: { name?: string; usdRate?: number } = {};
+  if (clinicName !== undefined) clinicData.name = clinicName;
+  if (usdRate !== undefined) clinicData.usdRate = usdRate;
 
   const [userRow, clinicRow] = await prisma.$transaction([
     name !== undefined
@@ -164,25 +172,38 @@ export async function updateProfile(
           where: { id: ctx.userId },
           select: { name: true },
         }),
-    clinicName !== undefined
+    Object.keys(clinicData).length > 0
       ? prisma.clinic.update({
           where: { id: ctx.clinicId },
-          data: { name: clinicName },
-          select: { name: true },
+          data: clinicData,
+          select: { name: true, usdRate: true },
         })
       : prisma.clinic.findUniqueOrThrow({
           where: { id: ctx.clinicId },
-          select: { name: true },
+          select: { name: true, usdRate: true },
         }),
   ]);
 
-  return { ok: true, value: { name: userRow.name, clinicName: clinicRow.name } };
+  return {
+    ok: true,
+    value: { name: userRow.name, clinicName: clinicRow.name, usdRate: clinicRow.usdRate },
+  };
+}
+
+// سعر صرف العيادة لعرض العملة المزدوجة — قراءة واحدة لكل صفحة محمية.
+export async function getClinicUsdRate(ctx: TenantContext): Promise<number> {
+  const clinic = await prisma.clinic.findUniqueOrThrow({
+    where: { id: ctx.clinicId },
+    select: { usdRate: true },
+  });
+  return clinic.usdRate;
 }
 
 // لمحة الحساب لصفحة الإعداد — حالة البريد وحالة ربط قنوات الإرسال.
 export async function getAccountOverview(ctx: TenantContext): Promise<{
   name: string;
   clinicName: string;
+  usdRate: number;
   email: string | null;
   emailVerified: boolean;
   channels: ReturnType<typeof describeChannelConfig>;
@@ -193,12 +214,13 @@ export async function getAccountOverview(ctx: TenantContext): Promise<{
       name: true,
       email: true,
       emailVerifiedAt: true,
-      clinic: { select: { name: true } },
+      clinic: { select: { name: true, usdRate: true } },
     },
   });
   return {
     name: user.name,
     clinicName: user.clinic.name,
+    usdRate: user.clinic.usdRate,
     email: user.email,
     emailVerified: user.emailVerifiedAt !== null,
     channels: describeChannelConfig(),

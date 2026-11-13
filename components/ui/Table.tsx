@@ -60,7 +60,7 @@ export function TH({
     <th
       scope="col"
       className={cn(
-        "px-4 py-2.5 text-start text-xs font-semibold text-warm-600",
+        "border-b border-primary-500/20 px-4 py-3 text-start text-[11px] font-bold text-primary-800",
         className,
       )}
       {...rest}

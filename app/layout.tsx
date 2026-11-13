@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans_Arabic } from "next/font/google";
+import { IBM_Plex_Sans_Arabic, Aref_Ruqaa } from "next/font/google";
 import "./globals.css";
 
 // الهوية الطباعية: IBM Plex Sans Arabic — عناوين 600–700 ومتن 400–500.
@@ -7,6 +7,13 @@ const plexArabic = IBM_Plex_Sans_Arabic({
   variable: "--font-plex-arabic",
   subsets: ["arabic", "latin"],
   weight: ["400", "500", "600", "700"],
+});
+
+// خط العناوين المزخرف — مطابق للمرجع (Aref Ruqaa) لعناوين الصفحات والشعار.
+const arefRuqaa = Aref_Ruqaa({
+  variable: "--font-aref-ruqaa",
+  subsets: ["arabic", "latin"],
+  weight: ["400", "700"],
 });
 
 export const metadata: Metadata = {
@@ -21,7 +28,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ar" dir="rtl" className={plexArabic.variable}>
+    <html
+      lang="ar"
+      dir="rtl"
+      className={`${plexArabic.variable} ${arefRuqaa.variable}`}
+    >
       {/*
         متغير الخط على <html> وليس <body>: لأن `--font-sans` في
         @theme يُصدر على :root ويشير إلى `var(--font-plex-arabic)` —
