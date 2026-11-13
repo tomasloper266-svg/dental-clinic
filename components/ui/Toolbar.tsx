@@ -1,0 +1,191 @@
+import { ArrowUpDown, Download, Search } from "lucide-react";
+import { cn } from "./cn";
+
+type SearchInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
+  /** قيمة نص البحث */
+  value: string;
+  /** معالج تغيير النص */
+  onChange: (value: string) => void;
+};
+
+/** حقل بحث مستدير بأيقونة عدسة — بداية شريط الأدوات في كل قسم */
+export function SearchInput({
+  value,
+  onChange,
+  className,
+  ...rest
+}: SearchInputProps) {
+  return (
+    <label
+      className={cn(
+        "relative flex h-9 w-full max-w-64 items-center rounded-full border border-warm-200 bg-surface-raised transition-colors focus-within:border-primary-400",
+        className,
+      )}
+    >
+      <Search
+        size={15}
+        aria-hidden
+        className="text-warm-400 ms-3 shrink-0"
+      />
+      <input
+        type="search"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="numeric h-full w-full bg-transparent px-2 text-xs text-ink-900 outline-none placeholder:text-warm-400"
+        {...rest}
+      />
+    </label>
+  );
+}
+
+export type FilterPillOption<V extends string> = {
+  value: V;
+  label: string;
+  /** عدد اختياري يُعرض داخل الحبة */
+  count?: number;
+};
+
+type FilterPillsProps<V extends string> = {
+  options: ReadonlyArray<FilterPillOption<V>>;
+  /** القيمة النشطة حالياً */
+  value: V;
+  onChange: (value: V) => void;
+  ariaLabel?: string;
+  className?: string;
+};
+
+/**
+ * أزرار تصفية بشكل حبوب — النشطة ممتلئة بلون الهوية والبقية محددة الحد.
+ * نقية ومعرضة للاختبار لاستخدامها في كل الأقسام.
+ */
+export function FilterPills<V extends string>({
+  options,
+  value,
+  onChange,
+  ariaLabel,
+  className,
+}: FilterPillsProps<V>) {
+  return (
+    <div
+      role="group"
+      aria-label={ariaLabel}
+      className={cn("flex flex-wrap items-center gap-1.5", className)}
+    >
+      {options.map((option) => {
+        const active = option.value === value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onChange(option.value)}
+            className={cn(
+              "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors",
+              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
+              active
+                ? "bg-primary-600 text-white"
+                : "border border-warm-200 bg-surface-raised text-warm-600 hover:bg-surface-hover",
+            )}
+          >
+            {option.label}
+            {option.count !== undefined && (
+              <span
+                className={cn(
+                  "numeric text-[10px]",
+                  active ? "text-primary-100" : "text-warm-400",
+                )}
+              >
+                {option.count}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+type SortOption<V extends string> = {
+  value: V;
+  label: string;
+};
+
+type SortSelectProps<V extends string> = {
+  options: ReadonlyArray<SortOption<V>>;
+  value: V;
+  onChange: (value: V) => void;
+  ariaLabel?: string;
+  className?: string;
+};
+
+/** قائمة ترتيب موحّدة — قائمة منسدلة صغيرة بأيقونة سهم */
+export function SortSelect<V extends string>({
+  options,
+  value,
+  onChange,
+  ariaLabel,
+  className,
+}: SortSelectProps<V>) {
+  return (
+    <label
+      className={cn(
+        "inline-flex h-8 items-center gap-1.5 rounded-full border border-warm-200 bg-surface-raised px-3 text-xs text-warm-600 transition-colors focus-within:border-primary-400",
+        className,
+      )}
+    >
+      <ArrowUpDown size={14} aria-hidden className="text-warm-400" />
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value as V)}
+        aria-label={ariaLabel}
+        className="cursor-pointer bg-transparent text-xs text-ink-900 outline-none"
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+type ExportButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement>;
+
+/** زر تصدير بشكل حبة محددة — بند شريط الأدوات عند الحاجة (CSV مثلاً) */
+export function ExportButton({ className, ...rest }: ExportButtonProps) {
+  return (
+    <button
+      type="button"
+      className={cn(
+        "inline-flex h-8 items-center gap-1.5 rounded-full border border-warm-200 bg-surface-raised px-3 text-xs font-medium text-warm-600 transition-colors hover:bg-surface-hover active:bg-surface-sunken",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
+        className,
+      )}
+      {...rest}
+    >
+      <Download size={14} aria-hidden />
+      تصدير CSV
+    </button>
+  );
+}
+
+/** شريط أدوات اللوحة — يجمع البحث والتصفية والترتيب والتصدير في صف واحد */
+export function PanelToolbar({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-wrap items-center justify-between gap-3 px-5 py-3",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}

@@ -11,6 +11,8 @@ import type { BadgeKey } from "./nav-items";
 type AppShellProps = {
   userName: string;
   badges: Record<BadgeKey, number>;
+  /** المستحقات غير المسددة — بطاقة التنبيه المثبتة في السايدبار */
+  outstandingDuesSyp?: number;
   children: React.ReactNode;
 };
 
@@ -20,7 +22,7 @@ const COLLAPSE_KEY = "sidebar-collapsed";
  * غلاف التطبيق المشترك: سايدبار كحلي قابل للطي (حالته في localStorage)،
  * شريط علوي بزر رجوع وbreadcrumbs، وتنقل سفلي على الموبايل.
  */
-export function AppShell({ userName, badges, children }: AppShellProps) {
+export function AppShell({ userName, badges, outstandingDuesSyp = 0, children }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   // استرجاع الحالة المحفوظة بعد التركيب فقط — تجنّباً لعدم تطابق الترطيب.
@@ -42,6 +44,7 @@ export function AppShell({ userName, badges, children }: AppShellProps) {
         onToggle={toggleCollapsed}
         userName={userName}
         badges={badges}
+        outstandingDuesSyp={outstandingDuesSyp}
       />
       <div
         className={cn(

@@ -65,6 +65,6 @@ export function TD({
   ...rest
 }: React.TdHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <td className={cn("px-4 py-2.5 text-ink-900", className)} {...rest} />
+    <td className={cn("px-4 py-3.5 text-ink-900", className)} {...rest} />
   );
 }

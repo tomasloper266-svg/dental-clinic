@@ -105,3 +105,25 @@ export function sortEntriesAsc<T extends { createdAt: string | Date }>(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
   );
 }
+
+/**
+ * نقي — المستحقات غير المسددة عبر المرضى: مجمع أرصدة المرضى الموجبة حصراً،
+ * فلا يُحاسَب زائد دفع مريض على عجز مريض آخر. أساس بطاقة التنبيه المثبتة
+ * في الشريط الجانبي وبطاقة إحصاء المستحقات في لوحة القيادة.
+ */
+export function outstandingDuesSyp(
+  entries: ReadonlyArray<{ patientId: string; amountSyp: number }>,
+): number {
+  const perPatient = new Map<string, number>();
+  for (const entry of entries) {
+    perPatient.set(
+      entry.patientId,
+      (perPatient.get(entry.patientId) ?? 0) + entry.amountSyp,
+    );
+  }
+  let dues = 0;
+  for (const balance of perPatient.values()) {
+    if (balance > 0) dues += balance;
+  }
+  return dues;
+}

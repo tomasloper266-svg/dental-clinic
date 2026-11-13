@@ -6,10 +6,13 @@ import { cn } from "./cn";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 export type ButtonSize = "sm" | "md";
+/** شكل الزر — field الحقل القياسي، pill حبة الإجراء البارزة في رؤوس الصفحات */
+export type ButtonShape = "field" | "pill";
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
   size?: ButtonSize;
+  shape?: ButtonShape;
   /** يعرض مؤشر تحميل ويعطّل الزر أثناء الانتظار */
   loading?: boolean;
 };
@@ -32,7 +35,7 @@ const sizeClasses: Record<ButtonSize, string> = {
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   function Button(
-    { variant = "primary", size = "md", loading = false, className, children, disabled, type = "button", ...rest },
+    { variant = "primary", size = "md", shape = "field", loading = false, className, children, disabled, type = "button", ...rest },
     ref,
   ) {
     return (
@@ -42,7 +45,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || loading}
         aria-busy={loading || undefined}
         className={cn(
-          "inline-flex items-center justify-center rounded-field font-medium transition-colors",
+          "inline-flex items-center justify-center font-medium transition-colors",
+          shape === "pill" ? "rounded-full" : "rounded-field",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
           "disabled:pointer-events-none disabled:opacity-50",
           variantClasses[variant],

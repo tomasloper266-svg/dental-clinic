@@ -3,31 +3,32 @@ import { pageWrapClass } from "@/lib/page-width";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
 import { tenantContextFromSession } from "@/lib/tenant/context";
-import { getDailyReport } from "@/lib/services/reports";
+import { getDailyReport, getDailySeries } from "@/lib/services/reports";
 import { listAppointments } from "@/lib/services/appointments";
-import { listWaitlist } from "@/lib/services/waitlist";
 import { lowStockMaterials } from "@/lib/services/inventory";
 import { listPatients } from "@/lib/services/patients";
+import { listClinicLedgerEntries } from "@/lib/services/ledger";
 import { dayStart } from "@/lib/dates";
 import {
   appointmentsWithin,
-  countDistinctPatients,
   greetingForDate,
-  selectUpcomingAppointments,
 } from "@/lib/dashboard-view";
+import { outstandingDuesSyp } from "@/lib/finance-view";
 import { formatDayLabel } from "@/lib/appointment-ui";
-import { DailySummaryStrip } from "@/components/dashboard/DailySummaryStrip";
+import { formatSyp } from "@/lib/utils";
+import { CalendarDays, Coins, Users, Wallet } from "lucide-react";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { StatCard } from "@/components/ui/StatCard";
+import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/Card";
 import { AppointmentsTimeline } from "@/components/dashboard/AppointmentsTimeline";
-import {
-  LowStockPanel,
-  RecentPatientsPanel,
-  UpcomingAppointmentsPanel,
-} from "@/components/dashboard/AlertsPanels";
+import { RevenueChart } from "@/components/dashboard/RevenueChart";
+import { RecentPayments } from "@/components/dashboard/RecentPayments";
+import { LowStockPanel } from "@/components/dashboard/AlertsPanels";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 
-// لوحة الطبيب — أول شاشة بعد الدخول: تجمع أرقام اليوم ومواعيده وتنبيهاته من
-// خدمات القائمة حصراً (لا إعادة حساب لأي منطق عمل). نافذة جلب واحدة تغطي
-// اليوم وأسبوعه القادم: منها مواعيد اليوم والمواعيد القادمة معاً.
+// لوحة الطبيب — الهيكل المرجعي: بطاقات إحصاء بأعلى، ثم صف (رسم المدخول
+// + مواعيد اليوم)، ثم صف (آخر المدفوعات + تنبيهات المخزون). كل الأرقام
+// من خدمات العيادة القائمة حصراً — لا إعادة حساب لأي منطق عمل.
 export default async function DashboardPage() {
   const session = await getSessionUser(
     (await cookies()).get(SESSION_COOKIE)?.value,
@@ -41,68 +42,115 @@ export default async function DashboardPage() {
     fetchWindowStart.getTime() + 8 * 24 * 60 * 60 * 1000,
   );
 
-  const [report, weekAppointments, waitlist, lowStock, patients] =
-    await Promise.all([
-      getDailyReport(ctx, now),
-      listAppointments(ctx, fetchWindowStart, fetchWindowEnd),
-      listWaitlist(ctx),
-      lowStockMaterials(ctx),
-      listPatients(ctx),
-    ]);
+  const [
+    report,
+    weekAppointments,
+    lowStock,
+    patients,
+    series,
+    clinicEntries,
+  ] = await Promise.all([
+    getDailyReport(ctx, now),
+    listAppointments(ctx, fetchWindowStart, fetchWindowEnd),
+    lowStockMaterials(ctx),
+    listPatients(ctx),
+    getDailySeries(ctx, now, 7),
+    listClinicLedgerEntries(ctx),
+  ]);
 
   const todaysAppointments = appointmentsWithin(
     weekAppointments,
     fetchWindowStart,
     fetchWindowEnd,
   );
-  const upcoming = selectUpcomingAppointments(weekAppointments, 5);
+  const duesSyp = outstandingDuesSyp(clinicEntries);
+  const weekCollectedSyp = series.reduce(
+    (sum, point) => sum + point.collectedSyp,
+    0,
+  );
+  const recentPayments = clinicEntries
+    .filter((entry) => entry.type === "PAYMENT")
+    .slice(0, 5);
 
   return (
     <div className={pageWrapClass("wide")}>
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-ink-900 text-xl font-semibold">
-            {greetingForDate(now)}، {session.name}
-          </h1>
-          <p className="text-warm-500 mt-1 text-sm">{formatDayLabel(now)}</p>
-        </div>
-        <QuickActions />
-      </header>
+      <PageHeader
+        title={`${greetingForDate(now)}، ${session.name}`}
+        description={formatDayLabel(now)}
+        actions={<QuickActions />}
+      />
 
-      <div className="mt-5">
-        <DailySummaryStrip
-          netSyp={report.netSyp}
-          collectedSyp={report.collectedSyp}
-          expensesSyp={report.expensesSyp}
-          patientsToday={countDistinctPatients(todaysAppointments)}
-          waitlistCount={waitlist.length}
+      {/* صف بطاقات الإحصاء — مواعيد اليوم، مدخول الأسبوع، المستحقات، المرضى */}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          value={String(todaysAppointments.length)}
+          label="مواعيد اليوم"
+          icon={CalendarDays}
+        />
+        <StatCard
+          value={formatSyp(weekCollectedSyp)}
+          label="إجمالي المدخول (7 أيام)"
+          icon={Coins}
+        />
+        <StatCard
+          value={formatSyp(duesSyp)}
+          label="مستحقات غير مسددة"
+          icon={Wallet}
+          tone="danger"
+        />
+        <StatCard
+          value={String(patients.length)}
+          label="عدد المرضى"
+          icon={Users}
         />
       </div>
 
-      {/* تخطيط غير متماثل: الخط الزمني عريض وعمود التنبيهات جانبي */}
-      <div className="mt-5 grid items-start gap-4 lg:grid-cols-3">
-        <section className="rounded-panel border-warm-200 bg-surface-raised border lg:col-span-2">
-          <h2 className="border-warm-200 text-ink-900 border-b px-5 py-4 text-base font-semibold">
-            مواعيد اليوم
-          </h2>
-          <AppointmentsTimeline
-            appointments={todaysAppointments}
-            emptyAction={
-              <a
-                href="/appointments"
-                className="rounded-field border-warm-300 bg-surface-raised text-ink-900 hover:bg-surface-hover active:bg-surface-sunken inline-flex h-8 items-center border px-3 text-xs font-medium transition-colors"
-              >
-                اذهب إلى المواعيد
-              </a>
-            }
-          />
-        </section>
+      {/* صف الرسم والمواعيد — الرسم عريض ومواعيد اليوم بجانبه */}
+      <div className="mt-4 grid items-start gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>المدخول — آخر 7 أيام</CardTitle>
+          </CardHeader>
+          <CardBody>
+            <RevenueChart points={series} />
+            <p className="mt-3 text-xs text-warm-400">
+              المدفوعات المجمّعة اليومية — صافي اليوم {formatSyp(report.netSyp)}
+            </p>
+          </CardBody>
+        </Card>
 
-        <div className="flex flex-col gap-4">
-          <UpcomingAppointmentsPanel appointments={upcoming} />
-          <LowStockPanel materials={lowStock} />
-          <RecentPatientsPanel patients={patients} />
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>مواعيد اليوم</CardTitle>
+          </CardHeader>
+          <CardBody>
+            <AppointmentsTimeline
+              appointments={todaysAppointments}
+              emptyAction={
+                <a
+                  href="/appointments"
+                  className="inline-flex h-8 items-center rounded-full border border-warm-300 bg-surface-raised px-3 text-xs font-medium text-ink-900 transition-colors hover:bg-surface-hover active:bg-surface-sunken"
+                >
+                  اذهب إلى المواعيد
+                </a>
+              }
+            />
+          </CardBody>
+        </Card>
+      </div>
+
+      {/* صف المدفوعات وتنبيهات المخزون — لوحة المخزون تحمل عنوانها وحدودها بنفسها */}
+      <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>آخر المدفوعات</CardTitle>
+          </CardHeader>
+          <CardBody>
+            <RecentPayments entries={recentPayments} />
+          </CardBody>
+        </Card>
+
+        <LowStockPanel materials={lowStock} />
       </div>
     </div>
   );
