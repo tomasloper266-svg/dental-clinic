@@ -4,12 +4,12 @@ import {
   BellRing,
   BookOpen,
   CalendarDays,
-  ClipboardList,
   Clock,
   FileText,
   LayoutDashboard,
   Package,
   Settings,
+  UserRound,
   Users,
 } from "lucide-react";
 import { ToothIcon } from "./icons/ToothIcon";
@@ -52,8 +52,7 @@ export const navGroups: NavGroup[] = [
     label: "علاجي",
     items: [
       { href: "/patients", label: "المرضى", icon: Users },
-      { href: "/chart", label: "مخطط الأسنان", icon: ToothIcon },
-      { href: "/plans", label: "خطط العلاج", icon: ClipboardList },
+      { href: "/chart", label: "مخطط الأسنان وخطط العلاج", icon: ToothIcon },
     ],
   },
   {
@@ -83,6 +82,7 @@ export const navGroups: NavGroup[] = [
     key: "admin",
     label: "إداري",
     items: [
+      { href: "/staff", label: "الطاقم", icon: UserRound },
       { href: "/inventory", label: "المخزون", icon: Package, badge: "lowStock" },
       { href: "/instructions", label: "قوالب التعليمات", icon: FileText },
       { href: "/settings", label: "الإعدادات", icon: Settings },
@@ -117,9 +117,9 @@ const segmentLabels: Record<string, string> = {
   inventory: "المخزون",
   reminders: "تذكير الغد",
   instructions: "قوالب التعليمات",
-  chart: "مخطط الأسنان",
-  plans: "خطط العلاج",
+  chart: "مخطط الأسنان وخطط العلاج",
   odontogram: "الأودوغرام",
+  staff: "الطاقم",
   settings: "الإعدادات",
   setup: "الإعداد",
 };

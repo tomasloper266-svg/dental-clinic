@@ -19,17 +19,12 @@ describe("تجميع الأقسام", () => {
     ]);
   });
 
-  it("«مخطط الأسنان» و«خطط العلاج» في المجموعة العلاجية بعد المرضى", () => {
+  it("«مخطط الأسنان وخطط العلاج» في المجموعة العلاجية بعد المرضى — دون /plans", () => {
     const clinical = navGroups.find((g) => g.key === "clinical");
-    expect(clinical?.items.map((i) => i.href)).toEqual([
-      "/patients",
-      "/chart",
-      "/plans",
-    ]);
+    expect(clinical?.items.map((i) => i.href)).toEqual(["/patients", "/chart"]);
     expect(clinical?.items.map((i) => i.label)).toEqual([
       "المرضى",
-      "مخطط الأسنان",
-      "خطط العلاج",
+      "مخطط الأسنان وخطط العلاج",
     ]);
   });
 
@@ -92,14 +87,14 @@ describe("سلامة العناصر", () => {
 });
 
 describe("التسميات وbreadcrumbs", () => {
-  it("تسمية عربية للمسارين الجديدين", () => {
-    expect(segmentLabel("chart")).toBe("مخطط الأسنان");
-    expect(segmentLabel("plans")).toBe("خطط العلاج");
+  it("تسمية عربية للمسار المدموج ولا شيء لـ plans", () => {
+    expect(segmentLabel("chart")).toBe("مخطط الأسنان وخطط العلاج");
+    expect(segmentLabel("plans")).toBe("plans");
   });
 
   it("breadcrumb لمسار /chart يبني الرابط الصحيح", () => {
     expect(breadcrumbsFromPath("/chart")).toEqual([
-      { href: "/chart", label: "مخطط الأسنان" },
+      { href: "/chart", label: "مخطط الأسنان وخطط العلاج" },
     ]);
   });
 
