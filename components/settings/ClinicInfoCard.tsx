@@ -26,8 +26,8 @@ type ClinicInfoCardProps = {
   onSaved: (patch: ClinicInfoPatch) => Promise<string | null>;
 };
 
-/** خيارات ساعات العمل بخطوة نصف ساعة — «12:00 AM» حتى «11:30 PM» */
-const WORK_TIME_OPTIONS = Array.from({ length: 24 }, (_, index) => {
+/** خيارات ساعات العمل بخطوة نصف ساعة — «12:00 AM» حتى «11:30 PM» (يوم كامل) */
+const WORK_TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => {
   const halfHour = Math.floor(index / 2);
   const hour12 = halfHour % 12 === 0 ? 12 : halfHour % 12;
   const suffix = halfHour < 12 ? "AM" : "PM";
