@@ -12,6 +12,8 @@ type SidebarProps = {
   collapsed: boolean;
   onToggle: () => void;
   userName: string;
+  /** اسم العيادة المسجل — يُعرض بصيغة «{الاسم} لطب الأسنان» مع بقاء الافتراضي عند غيابه */
+  clinicName?: string;
   badges: Record<BadgeKey, number>;
   /** المستحقات غير المسددة عبر المرضى — بطاقة التنبيه المثبتة أسفل الشريط */
   outstandingDuesSyp?: number;
@@ -21,6 +23,15 @@ type SidebarProps = {
 
 const SYSTEM_NAME = "عيادات الأسنان";
 const SYSTEM_SUBTITLE = "نظام إدارة العيادات";
+
+/**
+ * نقي — اسم ترويسة السايدبار: «{اسم العيادة} لطب الأسنان» لما وُجد اسم
+ * مسجل، والاسم الافتراضي للنظام عند غيابه (عيادات قديمة أو بيانات ناقصة).
+ */
+export function clinicHeaderName(clinicName?: string): string {
+  const trimmed = clinicName?.trim();
+  return trimmed ? `${trimmed} لطب الأسنان` : SYSTEM_NAME;
+}
 
 function isItemActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + "/");
@@ -168,6 +179,7 @@ export function Sidebar({
   collapsed,
   onToggle,
   userName,
+  clinicName,
   badges,
   outstandingDuesSyp = 0,
   usdRate = DEFAULT_USD_RATE,
@@ -197,7 +209,7 @@ export function Sidebar({
         {!collapsed && (
           <span className="min-w-0">
             <span className="block truncate font-display text-lg font-normal text-white">
-              {SYSTEM_NAME}
+              {clinicHeaderName(clinicName)}
             </span>
             <span className="block truncate text-[11px] text-primary-100/60">
               {SYSTEM_SUBTITLE}

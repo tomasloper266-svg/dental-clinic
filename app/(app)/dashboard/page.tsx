@@ -17,7 +17,6 @@ import { outstandingDuesSyp } from "@/lib/finance-view";
 import { getClinicUsdRate } from "@/lib/services/account";
 import { formatDualFromSyp } from "@/lib/currency";
 import { formatDayLabel } from "@/lib/appointment-ui";
-import { formatSyp } from "@/lib/utils";
 import { CalendarDays, Coins, Users, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
@@ -28,9 +27,10 @@ import { RecentPayments } from "@/components/dashboard/RecentPayments";
 import { LowStockPanel } from "@/components/dashboard/AlertsPanels";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 
-// لوحة الطبيب — الهيكل المرجعي: بطاقات إحصاء بأعلى، ثم صف (رسم المدخول
-// + مواعيد اليوم)، ثم صف (آخر المدفوعات + تنبيهات المخزون). كل الأرقام
-// من خدمات العيادة القائمة حصراً — لا إعادة حساب لأي منطق عمل.
+// لوحة الطبيب — الهيكل المرجعي: شريط إجراءات وتاريخ، ثم بطاقات إحصاء بأعلى،
+// ثم صف (مواعيد اليوم عريضة + رسم الدخل الحالي بجانبها)، ثم صف (آخر
+// العمليات + تنبيهات المخزون). كل الأرقام من خدمات العيادة القائمة حصراً —
+// لا إعادة حساب لأي منطق عمل.
 export default async function DashboardPage() {
   const session = await getSessionUser(
     (await cookies()).get(SESSION_COOKIE)?.value,
@@ -68,10 +68,6 @@ export default async function DashboardPage() {
     fetchWindowEnd,
   );
   const duesSyp = outstandingDuesSyp(clinicEntries);
-  const weekCollectedSyp = series.reduce(
-    (sum, point) => sum + point.collectedSyp,
-    0,
-  );
   const recentPayments = clinicEntries
     .filter((entry) => entry.type === "PAYMENT")
     .slice(0, 5);
@@ -84,16 +80,21 @@ export default async function DashboardPage() {
         actions={<QuickActions />}
       />
 
-      {/* صف بطاقات الإحصاء — مواعيد اليوم، مدخول الأسبوع، المستحقات، المرضى */}
+      {/* صف بطاقات الإحصاء — المرضى، موعد اليوم، دخل اليوم، المستحقات */}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
+          value={String(patients.length)}
+          label="إجمالي المرضى"
+          icon={Users}
+        />
+        <StatCard
           value={String(todaysAppointments.length)}
-          label="مواعيد اليوم"
+          label="موعد اليوم"
           icon={CalendarDays}
         />
         <StatCard
-          value={formatDualFromSyp(weekCollectedSyp, usdRate)}
-          label="إجمالي المدخول (7 أيام)"
+          value={formatDualFromSyp(report.collectedSyp, usdRate)}
+          label="دخل اليوم"
           icon={Coins}
         />
         <StatCard
@@ -102,30 +103,13 @@ export default async function DashboardPage() {
           icon={Wallet}
           tone="danger"
         />
-        <StatCard
-          value={String(patients.length)}
-          label="عدد المرضى"
-          icon={Users}
-        />
       </div>
 
-      {/* صف الرسم والمواعيد — الرسم عريض ومواعيد اليوم بجانبه */}
-      <div className="mt-4 grid items-start gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>المدخول — آخر 7 أيام</CardTitle>
-          </CardHeader>
-          <CardBody>
-            <RevenueChart points={series} />
-            <p className="mt-3 text-xs text-warm-400">
-              المدفوعات المجمّعة اليومية — صافي اليوم {formatSyp(report.netSyp)}
-            </p>
-          </CardBody>
-        </Card>
-
+      {/* صف المواعيد والرسم — مواعيد اليوم عريضة أولاً (يمين) والرسم بجانبها */}
+      <div className="mt-4 grid items-start gap-4 lg:grid-cols-[5fr_4fr]">
         <Card>
           <CardHeader>
-            <CardTitle>مواعيد اليوم</CardTitle>
+            <CardTitle>مواعيد اليوم — {formatDayLabel(now)}</CardTitle>
           </CardHeader>
           <CardBody>
             <AppointmentsTimeline
@@ -141,13 +125,22 @@ export default async function DashboardPage() {
             />
           </CardBody>
         </Card>
-      </div>
 
-      {/* صف المدفوعات وتنبيهات المخزون — لوحة المخزون تحمل عنوانها وحدودها بنفسها */}
-      <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>آخر المدفوعات</CardTitle>
+            <CardTitle>الدخل الحالي - آخر 7 أيام</CardTitle>
+          </CardHeader>
+          <CardBody>
+            <RevenueChart points={series} />
+          </CardBody>
+        </Card>
+      </div>
+
+      {/* صف العمليات والمخزون — آخر المدفوعات عريضة أولاً (يمين) وتنبيهات المخزون بجانبها */}
+      <div className="mt-4 grid items-start gap-4 lg:grid-cols-[5fr_4fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>آخر العمليات</CardTitle>
           </CardHeader>
           <CardBody>
             <RecentPayments entries={recentPayments} />

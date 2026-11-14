@@ -199,6 +199,16 @@ export async function getClinicUsdRate(ctx: TenantContext): Promise<number> {
   return clinic.usdRate;
 }
 
+// اسم العيادة كما أدخله الطبيب عند التسجيل — من سجل العيادة حصراً،
+// لعرضه في ترويسة الشريط الجانبي بدل الاسم الثابت.
+export async function getClinicName(ctx: TenantContext): Promise<string> {
+  const clinic = await prisma.clinic.findUniqueOrThrow({
+    where: { id: ctx.clinicId },
+    select: { name: true },
+  });
+  return clinic.name;
+}
+
 // لمحة الحساب لصفحة الإعداد — حالة البريد وحالة ربط قنوات الإرسال.
 export async function getAccountOverview(ctx: TenantContext): Promise<{
   name: string;

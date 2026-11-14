@@ -11,6 +11,8 @@ import type { BadgeKey } from "./nav-items";
 
 type AppShellProps = {
   userName: string;
+  /** اسم العيادة كما أدخله الطبيب عند التسجيل — لترويسة السايدبار */
+  clinicName?: string;
   badges: Record<BadgeKey, number>;
   /** المستحقات غير المسددة — بطاقة التنبيه المثبتة في السايدبار */
   outstandingDuesSyp?: number;
@@ -27,6 +29,7 @@ const COLLAPSE_KEY = "sidebar-collapsed";
  */
 export function AppShell({
   userName,
+  clinicName,
   badges,
   outstandingDuesSyp = 0,
   usdRate = DEFAULT_USD_RATE,
@@ -52,6 +55,7 @@ export function AppShell({
         collapsed={collapsed}
         onToggle={toggleCollapsed}
         userName={userName}
+        clinicName={clinicName}
         badges={badges}
         outstandingDuesSyp={outstandingDuesSyp}
         usdRate={usdRate}

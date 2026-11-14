@@ -1,40 +1,33 @@
-import { CalendarPlus, UserPlus, Wallet } from "lucide-react";
+import { CalendarPlus, UserPlus } from "lucide-react";
 import { cn } from "@/components/ui/cn";
 
-// شريط الإجراءات السريعة — روابط لمسارات قائمة: نموذج «مريض جديد» في صفحة
-// المرضى، ونموذج الحجز في صفحة المواعيد. إجراء «تسجيل دفعة» معطّل حالياً:
-// الدفعة تُسجَّل لكل مريض عبر واجهة برمجة الدفتر، وشاشة الدفتر المالي
-// القادمة في موجة الحسابات هي موضع ربطها — لا رابط وهمي قبلها.
+// شريط الإجراءات السريعة في لوحة الطبيب — روابط لمسارات قائمة: نموذج «مريض
+// جديد» في صفحة المرضى، ونموذج الحجز في صفحة المواعيد. الترتيب والتمييز على
+// شكل المرجع: إجراء ثانوي للمريض ثم إجراء أساسي (بلون الهوية) للموعد.
 
 const QUICK_ACTIONS = [
   {
     href: "/patients",
-    label: "مريض جديد",
+    label: "+ مريض جديد",
     Icon: UserPlus,
-    enabled: true,
+    primary: false,
   },
   {
     href: "/appointments",
-    label: "حجز موعد",
+    label: "+ موعد جديد",
     Icon: CalendarPlus,
-    enabled: true,
-  },
-  {
-    href: null,
-    label: "تسجيل دفعة",
-    Icon: Wallet,
-    enabled: false,
+    primary: true,
   },
 ] as const;
 
 const actionClasses =
   "inline-flex h-10 items-center gap-2 rounded-field px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500";
 
-const enabledClasses =
-  "border border-transparent bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800";
+const secondaryClasses =
+  "border border-warm-200 bg-surface-raised text-ink-900 hover:bg-surface-hover active:bg-surface-sunken";
 
-const disabledClasses =
-  "cursor-not-allowed border border-warm-200 bg-surface-sunken text-warm-400";
+const primaryClasses =
+  "border border-transparent bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800";
 
 export function QuickActions() {
   return (
@@ -42,29 +35,16 @@ export function QuickActions() {
       aria-label="إجراءات سريعة"
       className="flex flex-wrap items-center gap-2"
     >
-      {QUICK_ACTIONS.map(({ href, label, Icon, enabled }) =>
-        enabled && href !== null ? (
-          <a
-            key={label}
-            href={href}
-            className={cn(actionClasses, enabledClasses)}
-          >
-            <Icon size={16} aria-hidden />
-            {label}
-          </a>
-        ) : (
-          <span
-            key={label}
-            aria-disabled="true"
-            title="تُفتح مع شاشة الدفتر المالي"
-            className={cn(actionClasses, disabledClasses)}
-          >
-            <Icon size={16} aria-hidden />
-            {label}
-            <span className="text-[11px] font-normal">قريباً</span>
-          </span>
-        ),
-      )}
+      {QUICK_ACTIONS.map(({ href, label, Icon, primary }) => (
+        <a
+          key={label}
+          href={href}
+          className={cn(actionClasses, primary ? primaryClasses : secondaryClasses)}
+        >
+          <Icon size={16} aria-hidden />
+          {label}
+        </a>
+      ))}
     </nav>
   );
 }
