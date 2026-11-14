@@ -4,6 +4,7 @@ import { PanelRightClose, PanelRightOpen, Wallet } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { formatDualFromSyp, DEFAULT_USD_RATE } from "@/lib/currency";
+import { clinicLogoLetter } from "@/lib/branding";
 import LogoutButton from "@/components/LogoutButton";
 import { cn } from "@/components/ui/cn";
 import { navGroups, homeNav, type BadgeKey, type NavGroup } from "./nav-items";
@@ -14,6 +15,8 @@ type SidebarProps = {
   userName: string;
   /** اسم العيادة المسجل — يُعرض بصيغة «{الاسم} لطب الأسنان» مع بقاء الافتراضي عند غيابه */
   clinicName?: string;
+  /** حرف الشعار المخزّن — يُفسَّر من اسم العيادة عند غيابه بدل الثابت القديم */
+  logoLetter?: string;
   badges: Record<BadgeKey, number>;
   /** المستحقات غير المسددة عبر المرضى — بطاقة التنبيه المثبتة أسفل الشريط */
   outstandingDuesSyp?: number;
@@ -201,6 +204,7 @@ export function Sidebar({
   onToggle,
   userName,
   clinicName,
+  logoLetter,
   badges,
   outstandingDuesSyp = 0,
   usdRate = DEFAULT_USD_RATE,
@@ -225,7 +229,7 @@ export function Sidebar({
           aria-hidden
           className="grid size-12 shrink-0 place-items-center rounded-[14px] bg-primary-500 font-display text-xl font-bold text-white shadow-xs"
         >
-          س
+          {clinicLogoLetter(logoLetter, clinicName)}
         </span>
         {!collapsed && (
           <span className="min-w-0">

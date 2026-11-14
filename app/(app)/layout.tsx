@@ -13,6 +13,7 @@ import {
 import {
   getClinicCurrency,
   getClinicName,
+  getClinicLogoLetter,
   getClinicUsdRate,
 } from "@/lib/services/account";
 import { AppShell } from "@/components/shell/AppShell";
@@ -33,13 +34,14 @@ export default async function AppLayout({
   if (!session) redirect("/login");
 
   const ctx = tenantContextFromSession(session);
-  const [waitlist, lowStock, ledgerEntries, usdRate, clinicName, currency] =
+  const [waitlist, lowStock, ledgerEntries, usdRate, clinicName, logoLetter, currency] =
     await Promise.all([
       listWaitlist(ctx),
       lowStockMaterials(ctx),
       listClinicLedgerEntries(ctx),
       getClinicUsdRate(ctx),
       getClinicName(ctx),
+      getClinicLogoLetter(ctx),
       getClinicCurrency(ctx),
     ]);
 
@@ -60,6 +62,7 @@ export default async function AppLayout({
       <AppShell
         userName={session.name}
         clinicName={clinicName}
+        logoLetter={logoLetter}
         badges={{
           waitlist: waitlist.length,
           lowStock: lowStock.length,

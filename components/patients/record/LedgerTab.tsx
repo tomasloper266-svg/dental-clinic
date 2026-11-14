@@ -9,7 +9,8 @@ import {
   deriveInvoices,
 } from "@/lib/patient-finance";
 import { formatDateCell } from "@/lib/dates";
-import { useMoney } from "@/components/ui/CurrencyContext";
+import { useMoney, useDisplayCurrency, useUsdRate } from "@/components/ui/CurrencyContext";
+import { formatPrimaryCostFromSyp } from "@/lib/currency";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Table, THead, TRow, TH, TD } from "@/components/ui/Table";
@@ -43,6 +44,8 @@ export default function LedgerTab({
   onNewEntry,
 }: Props) {
   const money = useMoney();
+  const currency = useDisplayCurrency();
+  const usdRate = useUsdRate();
   const invoices = deriveInvoices(entries);
   const paymentLog = buildPaymentLog(entries, materialRows);
   const dueSyp = Math.max(balance, 0);
@@ -179,7 +182,13 @@ export default function LedgerTab({
                       )}
                     >
                       {row.kind === "PAYMENT" ? "−" : "+"}
-                      {money(Math.abs(row.amountSyp))}
+                      {row.kind === "PAYMENT"
+                        ? money(Math.abs(row.amountSyp))
+                        : formatPrimaryCostFromSyp(
+                            Math.abs(row.amountSyp),
+                            usdRate,
+                            currency,
+                          )}
                     </TD>
                     <TD>
                       <span
