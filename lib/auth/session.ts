@@ -16,6 +16,8 @@ export type SessionUser = {
   clinicId: string;
   name: string;
   role: "DENTIST" | "ASSISTANT";
+  /** حالة قفل حساب الجلسة — الغلاف يحول الدخول لشاشة القفل عند تفعيلها */
+  lockEnabled: boolean;
 };
 
 export function hashToken(token: string): string {
@@ -54,6 +56,7 @@ export async function getSessionUser(
     clinicId: session.user.clinicId,
     name: session.user.name,
     role: session.user.role,
+    lockEnabled: session.user.lockEnabled,
   };
 }
 

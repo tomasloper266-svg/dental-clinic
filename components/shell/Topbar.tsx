@@ -1,7 +1,8 @@
 "use client";
 
-import { ChevronLeft, ArrowRight } from "lucide-react";
+import { ChevronLeft, ArrowRight, Lock } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/components/ui/cn";
 import { breadcrumbsFromPath, navItemByHref } from "./nav-items";
@@ -67,8 +68,47 @@ function Breadcrumbs({ pathname }: { pathname: string }) {
   );
 }
 
+/** زر القفل اليدوي — يحذف كوكي فتح القفل فتعود شاشة القفل فوراً */
+function ManualLock() {
+  const router = useRouter();
+  const [locking, setLocking] = useState(false);
+
+  async function onLock() {
+    if (locking) return;
+    setLocking(true);
+    try {
+      await fetch("/api/lock", { method: "DELETE" });
+      router.refresh();
+    } catch {
+      // فشل الشبكة: تبقى الصفحة مفتوحة — القفل إجراء قابل للتكرار
+      setLocking(false);
+      return;
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onLock}
+      disabled={locking}
+      aria-label="قفل التطبيق"
+      title="قفل التطبيق"
+      className="ms-auto rounded-field p-1.5 text-warm-600 hover:bg-surface-hover hover:text-ink-900 disabled:opacity-50"
+    >
+      <Lock size={18} aria-hidden />
+    </button>
+  );
+}
+
 /** الشريط العلوي: رجوع ذكي + مسار تفصّل + عنوان الصفحة الحالي */
-export function Topbar({ className }: { className?: string }) {
+export function Topbar({
+  className,
+  lockEnabled = false,
+}: {
+  className?: string;
+  /** يظهر زر القفل اليدوي فقط حين يكون قفل حساب الجلسة مفعّلاً */
+  lockEnabled?: boolean;
+}) {
   const pathname = usePathname() ?? "/";
   const current = navItemByHref(pathname);
 
@@ -81,11 +121,12 @@ export function Topbar({ className }: { className?: string }) {
     >
       <SmartBack pathname={pathname} />
       <Breadcrumbs pathname={pathname} />
-      {current && (
+      {current && !lockEnabled && (
         <span className="ms-auto hidden truncate text-sm font-semibold text-warm-500 sm:inline">
           {current.label}
         </span>
       )}
+      {lockEnabled && <ManualLock />}
     </div>
   );
 }

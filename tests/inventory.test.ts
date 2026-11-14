@@ -249,13 +249,15 @@ describeDb("المخزون — integration", () => {
       userId: userA.id,
       clinicId: clinicAId,
       name: "د. سامر",
-      role: "DENTIST",
+      lockEnabled: false,
+role: "DENTIST",
     });
     ctxB = tenantContextFromSession({
       userId: userB.id,
       clinicId: clinicBId,
       name: "د. ناديا",
-      role: "DENTIST",
+      lockEnabled: false,
+role: "DENTIST",
     });
   });
 

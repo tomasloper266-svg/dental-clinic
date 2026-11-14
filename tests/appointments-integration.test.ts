@@ -66,7 +66,8 @@ describeDb("المواعيد وقائمة الانتظار — integration", () 
       userId,
       clinicId,
       name: user.name,
-      role: "DENTIST",
+      lockEnabled: false,
+role: "DENTIST",
     });
   });
 
@@ -193,7 +194,8 @@ describeDb("المواعيد وقائمة الانتظار — integration", () 
       userId: otherUser.id,
       clinicId: otherClinic.id,
       name: otherUser.name,
-      role: "DENTIST",
+      lockEnabled: false,
+role: "DENTIST",
     });
 
     const mine = await prisma.appointment.findFirstOrThrow({

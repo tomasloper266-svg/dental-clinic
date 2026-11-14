@@ -12,6 +12,7 @@ import { channelFor } from "@/lib/notifications/delivery";
 import { describeChannelConfig } from "@/lib/notifications/delivery";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { hashToken } from "@/lib/auth/session";
+import { type DisplayCurrency } from "@/lib/currency";
 import type { RecoveryError } from "@/lib/auth/recovery";
 import type { TenantContext } from "@/lib/tenant/context";
 
@@ -138,15 +139,48 @@ export async function verifyEmail(
   return { ok: true, value: { email: normalized } };
 }
 
-// استكمال بيانات العيادة والطبيب — تعديل أسماء فقط؛ لا يُلمس رقم الهاتف
+// ساعات العمل بصيغة 12 ساعة — «09:00 AM» حتى «09:00 PM» خطوة نصف ساعة.
+const WORK_TIME_PATTERN = /^(0[0-9]|1[0-2]):[0-5]0 (AM|PM)$/;
+
+export function isValidWorkTime(value: string): boolean {
+  return WORK_TIME_PATTERN.test(value);
+}
+
+/** العملات المعروضة المسموحة — قائمة مغلقة لا نص حر */
+const DISPLAY_CURRENCIES: readonly DisplayCurrency[] = ["USD", "SYP"];
+
+function isDisplayCurrency(value: string): value is DisplayCurrency {
+  return (DISPLAY_CURRENCIES as readonly string[]).includes(value);
+}
+
+// استكمال بيانات العيادة والطبيب — تعديل أسماء وإعدادات العيادة العامة
+// (العملة وسعر الصرف والرصيد الافتتاحي وساعات العمل)؛ لا يُلمس رقم الهاتف
 // هنا أبداً: تغيير الهاتف يتطلب إثبات ملكية منفصل خارج هذه الواجهة.
 export async function updateProfile(
   ctx: TenantContext,
-  input: { name?: string; clinicName?: string; usdRate?: number },
-): Promise<AccountOutcome<{ name: string; clinicName: string; usdRate: number }>> {
+  input: {
+    name?: string;
+    clinicName?: string;
+    usdRate?: number;
+    logoLetter?: string;
+    currency?: string;
+    openingBalance?: number;
+    workStart?: string;
+    workEnd?: string;
+  },
+): Promise<
+  AccountOutcome<{
+    name: string;
+    clinicName: string;
+    usdRate: number;
+    currency: DisplayCurrency;
+  }>
+> {
   const name = input.name?.trim();
   const clinicName = input.clinicName?.trim();
-  const { usdRate } = input;
+  const logoLetter = input.logoLetter?.trim();
+  const currency = input.currency?.trim();
+  const { usdRate, openingBalance, workStart, workEnd } = input;
   if (name !== undefined && (name.length < 2 || name.length > 100)) {
     return fail("invalid-input", "الاسم يجب أن يكون بين 2 و100 حرف");
   }
@@ -156,10 +190,41 @@ export async function updateProfile(
   if (usdRate !== undefined && (!Number.isFinite(usdRate) || usdRate <= 0)) {
     return fail("invalid-input", "سعر الصرف يجب أن يكون رقماً موجباً");
   }
+  if (logoLetter !== undefined && logoLetter.length > 2) {
+    return fail("invalid-input", "حرف الشعار حرف أو حرفان كحد أقصى");
+  }
+  if (currency !== undefined && !isDisplayCurrency(currency)) {
+    return fail("invalid-input", "العملة إما دولار (USD) أو ليرة سورية (SYP)");
+  }
+  if (
+    openingBalance !== undefined &&
+    (!Number.isFinite(openingBalance) || openingBalance < 0)
+  ) {
+    return fail("invalid-input", "الرصيد الافتتاحي يجب أن يكون رقماً غير سالب");
+  }
+  if (workStart !== undefined && !isValidWorkTime(workStart)) {
+    return fail("invalid-input", "بداية الدوام بصيغة غير صحيحة");
+  }
+  if (workEnd !== undefined && !isValidWorkTime(workEnd)) {
+    return fail("invalid-input", "نهاية الدوام بصيغة غير صحيحة");
+  }
 
-  const clinicData: { name?: string; usdRate?: number } = {};
+  const clinicData: {
+    name?: string;
+    usdRate?: number;
+    currency?: string;
+    logoLetter?: string;
+    openingBalance?: number;
+    workStart?: string;
+    workEnd?: string;
+  } = {};
   if (clinicName !== undefined) clinicData.name = clinicName;
   if (usdRate !== undefined) clinicData.usdRate = usdRate;
+  if (currency !== undefined) clinicData.currency = currency;
+  if (logoLetter !== undefined) clinicData.logoLetter = logoLetter;
+  if (openingBalance !== undefined) clinicData.openingBalance = openingBalance;
+  if (workStart !== undefined) clinicData.workStart = workStart;
+  if (workEnd !== undefined) clinicData.workEnd = workEnd;
 
   const [userRow, clinicRow] = await prisma.$transaction([
     name !== undefined
@@ -176,17 +241,22 @@ export async function updateProfile(
       ? prisma.clinic.update({
           where: { id: ctx.clinicId },
           data: clinicData,
-          select: { name: true, usdRate: true },
+          select: { name: true, usdRate: true, currency: true },
         })
       : prisma.clinic.findUniqueOrThrow({
           where: { id: ctx.clinicId },
-          select: { name: true, usdRate: true },
+          select: { name: true, usdRate: true, currency: true },
         }),
   ]);
 
   return {
     ok: true,
-    value: { name: userRow.name, clinicName: clinicRow.name, usdRate: clinicRow.usdRate },
+    value: {
+      name: userRow.name,
+      clinicName: clinicRow.name,
+      usdRate: clinicRow.usdRate,
+      currency: clinicRow.currency as DisplayCurrency,
+    },
   };
 }
 
@@ -199,6 +269,84 @@ export async function getClinicUsdRate(ctx: TenantContext): Promise<number> {
   return clinic.usdRate;
 }
 
+// العملة المعروضة لصفحات المبالغ — USD يعرض الدولار أساسياً، والعكس مع SYP.
+export async function getClinicCurrency(
+  ctx: TenantContext,
+): Promise<DisplayCurrency> {
+  const clinic = await prisma.clinic.findUniqueOrThrow({
+    where: { id: ctx.clinicId },
+    select: { currency: true },
+  });
+  return clinic.currency as DisplayCurrency;
+}
+
+// ─── قفل التطبيق — لكل حساب مستقله كقفل الهاتف ─────────────────────────────────
+
+// الرمز الافتراضي وفق ملاحظة البطاقة — يُهشَّر ولا يُخزَّن نصاً أبداً.
+export const DEFAULT_LOCK_PIN = "0000";
+
+export function isValidLockPin(pin: string): boolean {
+  return /^\d{4}$/.test(pin);
+}
+
+// حفظ إعدادات القفل من بطاقة الإعدادات: تفعيل/تعطيل مع إعادة تعيين الرمز
+// اختيارياً. التفعيل بلا رمز جديد يُبقي الرمز الحالياً أو يضع الافتراضي 0000.
+export async function setLockSettings(
+  ctx: TenantContext,
+  input: { enabled: boolean; pin?: string },
+): Promise<AccountOutcome<{ enabled: boolean; pinChanged: boolean }>> {
+  const pin = input.pin?.trim();
+  if (pin !== undefined && !isValidLockPin(pin)) {
+    return fail("invalid-input", "الرمز الرقمي 4 أرقام بالضبط");
+  }
+
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: ctx.userId },
+    select: { lockPinHash: true },
+  });
+
+  let pinHash: string | undefined;
+  if (pin !== undefined) {
+    pinHash = await hashPassword(pin);
+  } else if (input.enabled && user.lockPinHash === null) {
+    pinHash = await hashPassword(DEFAULT_LOCK_PIN);
+  }
+
+  await prisma.user.update({
+    where: { id: ctx.userId },
+    data: {
+      lockEnabled: input.enabled,
+      ...(pinHash !== undefined ? { lockPinHash: pinHash } : {}),
+    },
+  });
+  return { ok: true, value: { enabled: input.enabled, pinChanged: pinHash !== undefined } };
+}
+
+export type LockState = { enabled: boolean; hasPin: boolean };
+
+// حالة قفل حساب الجلسة — يقرأها غلاف الصفحات لتحويل الدخول إلى شاشة القفل.
+export async function getLockState(ctx: TenantContext): Promise<LockState> {
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: ctx.userId },
+    select: { lockEnabled: true, lockPinHash: true },
+  });
+  return { enabled: user.lockEnabled, hasPin: user.lockPinHash !== null };
+}
+
+// التحقق من الرمز الرقمي على شاشة القفل — مقارنة الهاش، بلا أي كشف عن الرمز.
+export async function verifyLockPin(
+  ctx: TenantContext,
+  pin: string,
+): Promise<boolean> {
+  if (!isValidLockPin(pin)) return false;
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: ctx.userId },
+    select: { lockEnabled: true, lockPinHash: true },
+  });
+  if (!user.lockEnabled || user.lockPinHash === null) return false;
+  return verifyPassword(pin, user.lockPinHash);
+}
+
 // اسم العيادة كما أدخله الطبيب عند التسجيل — من سجل العيادة حصراً،
 // لعرضه في ترويسة الشريط الجانبي بدل الاسم الثابت.
 export async function getClinicName(ctx: TenantContext): Promise<string> {
@@ -209,11 +357,19 @@ export async function getClinicName(ctx: TenantContext): Promise<string> {
   return clinic.name;
 }
 
-// لمحة الحساب لصفحة الإعداد — حالة البريد وحالة ربط قنوات الإرسال.
+// لمحة الحساب لصفحة الإعدادات — بيانات العيدة وحالتها وحالة البريد
+// وقنوات الإرسال، وحالة القفل بلا أي أثر للرمز نفسه.
 export async function getAccountOverview(ctx: TenantContext): Promise<{
   name: string;
   clinicName: string;
   usdRate: number;
+  currency: DisplayCurrency;
+  logoLetter: string;
+  openingBalance: number;
+  workStart: string;
+  workEnd: string;
+  lockEnabled: boolean;
+  hasPin: boolean;
   email: string | null;
   emailVerified: boolean;
   channels: ReturnType<typeof describeChannelConfig>;
@@ -224,17 +380,140 @@ export async function getAccountOverview(ctx: TenantContext): Promise<{
       name: true,
       email: true,
       emailVerifiedAt: true,
-      clinic: { select: { name: true, usdRate: true } },
+      lockEnabled: true,
+      lockPinHash: true,
+      clinic: {
+        select: {
+          name: true,
+          usdRate: true,
+          currency: true,
+          logoLetter: true,
+          openingBalance: true,
+          workStart: true,
+          workEnd: true,
+        },
+      },
     },
   });
   return {
     name: user.name,
     clinicName: user.clinic.name,
     usdRate: user.clinic.usdRate,
+    currency: user.clinic.currency as DisplayCurrency,
+    logoLetter: user.clinic.logoLetter,
+    openingBalance: user.clinic.openingBalance,
+    workStart: user.clinic.workStart,
+    workEnd: user.clinic.workEnd,
+    lockEnabled: user.lockEnabled,
+    hasPin: user.lockPinHash !== null,
     email: user.email,
     emailVerified: user.emailVerifiedAt !== null,
     channels: describeChannelConfig(),
   };
+}
+
+// ─── واجهة بطاقة الإعدادات — معلومات العيادة والعملة والقفل معاً ──────────────
+
+/** حقول بطاقة «معلومات العيادة» و«قفل التطبيق» القابلة للتحديث من الصفحة */
+export type SettingsPatchInput = {
+  clinicName?: string;
+  logoLetter?: string;
+  currency?: string;
+  usdRate?: number;
+  openingBalance?: number;
+  workStart?: string;
+  workEnd?: string;
+};
+
+export type LockPatchInput = { enabled?: boolean; pin?: string };
+
+type ParseResult<T> = { ok: true; value: T } | { ok: false; error: string };
+
+/** رقم من الجسم — رقم صريح أو نص رقمي، وإلا يُتجاهل */
+function numberFrom(raw: Record<string, unknown>, key: string): number | undefined {
+  const value = raw[key];
+  if (typeof value === "number") return value;
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+}
+
+/** منطق من الجسم — نص صريح أو قيمة منطقية، مع قبول تسميات الواجهة العربية */
+function booleanFrom(raw: Record<string, unknown>, key: string): boolean | undefined {
+  const value = raw[key];
+  if (typeof value === "boolean") return value;
+  if (value === "true" || value === "ENABLED") return true;
+  if (value === "false" || value === "DISABLED") return false;
+  return undefined;
+}
+
+/** تحليل جسم طلب الإعدادات — الحقول الغريبة تُتجاهل والنواقص تبقى كما هي */
+export function parseSettingsInput(
+  raw: Record<string, unknown>,
+): ParseResult<SettingsPatchInput> {
+  const input: SettingsPatchInput = {};
+  if (typeof raw.clinicName === "string") input.clinicName = raw.clinicName;
+  if (typeof raw.logoLetter === "string") input.logoLetter = raw.logoLetter;
+  if (typeof raw.currency === "string") input.currency = raw.currency;
+  if (typeof raw.workStart === "string") input.workStart = raw.workStart;
+  if (typeof raw.workEnd === "string") input.workEnd = raw.workEnd;
+  const usdRate = numberFrom(raw, "usdRate");
+  if (usdRate !== undefined) input.usdRate = usdRate;
+  const openingBalance = numberFrom(raw, "openingBalance");
+  if (openingBalance !== undefined) input.openingBalance = openingBalance;
+  return { ok: true, value: input };
+}
+
+/** تحليل جسم طلب القفل — الرمز إن وُجد يجب أن يكون 4 أرقام بالضبط */
+export function parseLockInput(
+  raw: Record<string, unknown>,
+): ParseResult<LockPatchInput> {
+  const input: LockPatchInput = {};
+  const enabled = booleanFrom(raw, "lockEnabled");
+  if (enabled !== undefined) input.enabled = enabled;
+  if (typeof raw.pinCode === "string" && raw.pinCode.trim() !== "") {
+    const pin = raw.pinCode.trim();
+    if (!isValidLockPin(pin)) {
+      return { ok: false, error: "الرمز الرقمي 4 أرقام بالضبط" };
+    }
+    input.pin = pin;
+  }
+  return { ok: true, value: input };
+}
+
+// حفظ بطاقتي الإعدادات معاً: بيانات العيادة ثم حالة القفل إن طُلب أحدهما.
+// تعطيل القفل بلا رمز لا يلمس الرمز المحفوظ — تعاد الإعدادات كاملة بعد الحفظ.
+export async function updateSettings(
+  ctx: TenantContext,
+  settings: SettingsPatchInput,
+  lock: LockPatchInput,
+): Promise<AccountOutcome<Awaited<ReturnType<typeof getAccountOverview>>>> {
+  const hasClinicFields =
+    settings.clinicName !== undefined ||
+    settings.logoLetter !== undefined ||
+    settings.currency !== undefined ||
+    settings.usdRate !== undefined ||
+    settings.openingBalance !== undefined ||
+    settings.workStart !== undefined ||
+    settings.workEnd !== undefined;
+
+  if (hasClinicFields) {
+    const clinicResult = await updateProfile(ctx, settings);
+    if (!clinicResult.ok) return clinicResult;
+  }
+
+  if (lock.enabled !== undefined || lock.pin !== undefined) {
+    const lockInput =
+      lock.enabled !== undefined
+        ? { enabled: lock.enabled, pin: lock.pin }
+        : { enabled: (await getLockState(ctx)).enabled, pin: lock.pin };
+    const lockResult = await setLockSettings(ctx, lockInput);
+    if (!lockResult.ok) return lockResult;
+  }
+
+  return { ok: true, value: await getAccountOverview(ctx) };
 }
 
 // ─── تغيير كلمة السر من صفحة الإعدادات ──────────────────────────────────────

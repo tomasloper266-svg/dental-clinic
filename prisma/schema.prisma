@@ -118,6 +118,17 @@ model Clinic {
   // قيمة موجبة يتجاوز الصفر، تُعدَّل من إعدادات العيادة فقط.
   usdRate   Float    @default(15000)
 
+  // إعدادات العيادة العامة — تُعدَّل من صفحة الإعدادات حصراً.
+  // العملة المعروضة: USD يعرض الدولار أساسياً والليرة بين قوسين، والعكس مع SYP.
+  currency       String @default("USD")
+  // حرف الشعار — الحرف الظاهر في مربع السايدبار، ويُفسر من اسم العيادة إن غاب.
+  logoLetter     String @default("")
+  // رصيد الافتتاحي بالليرة السورية — وحدة تخزين المبالغ في النظام كلها.
+  openingBalance Float  @default(0)
+  // ساعات العمل بصيغة 12 ساعة — «09:00 AM» حتى «09:00 PM».
+  workStart      String @default("09:00 AM")
+  workEnd        String @default("09:00 PM")
+
   users                User[]
   patients             Patient[]
   appointments         Appointment[]
@@ -135,6 +146,26 @@ model Clinic {
   appointmentReminders AppointmentReminder[]
   staffMembers         StaffMember[]
   materialMovements    MaterialMovement[]
+  backups              ClinicBackup[]
+}
+
+// نسخة احتياطية تلقائية أو يدوية (JSON) — آخر نسخة تلقائية فقط تُحفظ للعيادة،
+// والاستعادة تعيد البيانات التشغيلية دون حسابات الدخول.
+enum BackupKind {
+  AUTO
+  MANUAL
+}
+
+model ClinicBackup {
+  id        String     @id @default(cuid())
+  clinicId  String
+  kind      BackupKind @default(AUTO)
+  payload   Json
+  createdAt DateTime   @default(now())
+
+  clinic Clinic @relation(fields: [clinicId], references: [id])
+
+  @@index([clinicId, kind, createdAt])
 }
 
 model User {
@@ -151,6 +182,11 @@ model User {
   email           String?
   emailVerifiedAt DateTime?
   recoveryCodeHash String?
+
+  // قفل التطبيق — لكل حساب مستقله (كقفل الهاتف): الحالة وهاش الرمز الرقمي.
+  // الرمز نفسه لا يُخزَّن أبداً — هاشه فقط، وصفحة الإعدادات تُعيده ولا تعرضه.
+  lockEnabled Boolean @default(false)
+  lockPinHash String?
 
   clinic                Clinic          @relation(fields: [clinicId], references: [id])
   sessions              Session[]

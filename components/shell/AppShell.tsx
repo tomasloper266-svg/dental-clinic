@@ -18,6 +18,8 @@ type AppShellProps = {
   outstandingDuesSyp?: number;
   /** سعر صرف الدولار — لعرض العملة المزدوجة في بطاقة المستحقات */
   usdRate?: number;
+  /** قفل حساب الجلسة مفعّل — يظهر زر القفل اليدوي في الشريط العلوي */
+  lockEnabled?: boolean;
   children: React.ReactNode;
 };
 
@@ -33,6 +35,7 @@ export function AppShell({
   badges,
   outstandingDuesSyp = 0,
   usdRate = DEFAULT_USD_RATE,
+  lockEnabled = false,
   children,
 }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
@@ -66,7 +69,7 @@ export function AppShell({
           collapsed ? "md:ps-16" : "md:ps-60",
         )}
       >
-        <Topbar />
+        <Topbar lockEnabled={lockEnabled} />
         <main className="flex-1 pb-20 md:pb-8">{children}</main>
       </div>
       <BottomNav badges={badges} />

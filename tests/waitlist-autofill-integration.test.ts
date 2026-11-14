@@ -102,7 +102,8 @@ describeDb("التعبئة التلقائية للفجوات من قائمة ا�
       userId,
       clinicId,
       name: user.name,
-      role: "DENTIST",
+      lockEnabled: false,
+role: "DENTIST",
     });
   });
 

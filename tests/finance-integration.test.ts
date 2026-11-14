@@ -130,13 +130,15 @@ describeDb("الحسابات — integration", () => {
       userId: userA.id,
       clinicId: clinicAId,
       name: "د. فارس",
-      role: "DENTIST",
+      lockEnabled: false,
+role: "DENTIST",
     });
     ctxB = tenantContextFromSession({
       userId: userB.id,
       clinicId: clinicBId,
       name: "د. هاني",
-      role: "DENTIST",
+      lockEnabled: false,
+role: "DENTIST",
     });
   });
 

@@ -69,7 +69,8 @@ describeDb("قائمة تذكير الغد — integration", () => {
       userId,
       clinicId,
       name: user.name,
-      role: "DENTIST",
+      lockEnabled: false,
+role: "DENTIST",
     });
   });
 
@@ -171,7 +172,8 @@ describeDb("قوالب التعليمات وتسجيل الإرسال — integr
       userId,
       clinicId,
       name: user.name,
-      role: "DENTIST",
+      lockEnabled: false,
+role: "DENTIST",
     });
   });
 
@@ -300,7 +302,8 @@ describeDb("تتبع حالة إرسال تذكير الغد — integration", (
       userId: trackUserId,
       clinicId: trackClinicId,
       name: user.name,
-      role: "DENTIST",
+      lockEnabled: false,
+role: "DENTIST",
     });
   });
 

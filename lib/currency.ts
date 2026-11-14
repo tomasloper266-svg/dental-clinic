@@ -49,13 +49,49 @@ export function usdToSyp(usd: number, rate: number): number {
   return Math.round(usd * rate);
 }
 
+/** العملة المعروضة — اختيار العيادة من صفحة الإعدادات */
+export type DisplayCurrency = "USD" | "SYP";
+
+/**
+ * المبلغ بالعملة المعروضة مع مقابله بالعملة الأخرى — العملة المختارة في
+ * الإعدادات أساسية والأخرى بين قوسين أو تحتها، بسعر صرف العيادة:
+ * USD: «$50 (750,000 ل.س)» — SYP: «750,000 ل.س ($50)».
+ */
+export function displayPartsFromSyp(
+  syp: number,
+  rate: number,
+  currency: DisplayCurrency = "USD",
+): { primary: string; secondary: string } {
+  assertRate(rate);
+  const usd = formatUsd(syp / rate);
+  const sypText = formatSypAmount(syp);
+  return currency === "SYP"
+    ? { primary: sypText, secondary: usd }
+    : { primary: usd, secondary: sypText };
+}
+
+/** المبلغ بالعملة المعروضة وحدها — للتصدير والأسطر المختصرة */
+export function formatPrimaryFromSyp(
+  syp: number,
+  rate: number,
+  currency: DisplayCurrency = "USD",
+): string {
+  return displayPartsFromSyp(syp, rate, currency).primary;
+}
+
 /**
  * المبلغ بالعملتين معاً بالعربية: «$50 (750,000 ل.س)» — الدولار أولاً
  * (يُحسب بقسمة المبلغ على سعر الصرف) ثم الليرة بين قوسين.
+ * العملة المختارة تتقدم، والأخرى تليها بين قوسين.
  */
-export function formatDualFromSyp(syp: number, rate: number): string {
+export function formatDualFromSyp(
+  syp: number,
+  rate: number,
+  currency: DisplayCurrency = "USD",
+): string {
   assertRate(rate);
-  return `${formatUsd(syp / rate)} (${formatSypAmount(syp)})`;
+  const { primary, secondary } = displayPartsFromSyp(syp, rate, currency);
+  return `${primary} (${secondary})`;
 }
 
 /**

@@ -124,7 +124,8 @@ describeDb("عزل العيادات — integration", () => {
       userId: userA.id,
       clinicId: clinicAId,
       name: "د. سليم",
-      role: "DENTIST",
+      lockEnabled: false,
+role: "DENTIST",
     });
   });
 

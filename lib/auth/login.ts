@@ -16,6 +16,7 @@ export async function authenticate(
         clinicId: user.clinicId,
         name: user.name,
         role: user.role,
+        lockEnabled: user.lockEnabled,
       };
     }
   }
