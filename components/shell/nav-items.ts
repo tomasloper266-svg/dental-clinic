@@ -52,7 +52,7 @@ export const navGroups: NavGroup[] = [
     label: "علاجي",
     items: [
       { href: "/patients", label: "المرضى", icon: Users },
-      { href: "/chart", label: "مخطط الأسنان وخطط العلاج", icon: ToothIcon },
+      { href: "/dental", label: "مخطط الأسنان وخطط العلاج", icon: ToothIcon },
     ],
   },
   {
@@ -117,7 +117,7 @@ const segmentLabels: Record<string, string> = {
   inventory: "المخزون",
   reminders: "تذكير الغد",
   instructions: "قوالب التعليمات",
-  chart: "مخطط الأسنان وخطط العلاج",
+  dental: "مخطط الأسنان وخطط العلاج",
   odontogram: "الأودوغرام",
   staff: "الطاقم",
   settings: "الإعدادات",

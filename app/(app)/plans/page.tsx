@@ -8,5 +8,5 @@ export default async function PlansRedirectPage({
   searchParams: Promise<{ patient?: string }>;
 }) {
   const { patient } = await searchParams;
-  redirect(patient ? `/chart?patient=${encodeURIComponent(patient)}` : "/chart");
+  redirect(patient ? `/dental?patient=${encodeURIComponent(patient)}` : "/dental");
 }

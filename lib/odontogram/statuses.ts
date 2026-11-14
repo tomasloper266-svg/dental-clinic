@@ -10,6 +10,8 @@ export const TOOTH_STATUS_KEYS = [
   "CROWN",
   "IMPLANT",
   "WATCH",
+  "BROKEN",
+  "SENSITIVITY",
 ] as const;
 
 export type ToothStatusKey = (typeof TOOTH_STATUS_KEYS)[number];
@@ -82,11 +84,60 @@ export const TOOTH_STATUS_META: Record<ToothStatusKey, ToothStatusMeta> = {
     cellClass: "border-warning-500 border-dashed bg-warning-50 text-warning-900",
     chipClass: "border-warning-300 border-dashed bg-warning-50 text-warning-900",
   },
+  // حالتان إضافيتان من مرجع مخطط الأسنان المستقل — إلحاقية على المجموعة القائمة
+  BROKEN: {
+    value: "BROKEN",
+    labelAr: "مكسور",
+    icon: "ك",
+    cellClass: "border-warning-600 bg-warning-50 text-warning-900",
+    chipClass: "border-warning-300 bg-warning-100 text-warning-900",
+  },
+  SENSITIVITY: {
+    value: "SENSITIVITY",
+    labelAr: "حساسية",
+    icon: "حس",
+    cellClass: "border-primary-400 bg-primary-50 text-primary-800",
+    chipClass: "border-primary-200 bg-primary-100 text-primary-800",
+  },
 } as const;
 
 export function toothStatusMeta(value: string): ToothStatusMeta | null {
   return (TOOTH_STATUS_META as Record<string, ToothStatusMeta>)[value] ?? null;
 }
+
+// ─── المخطط الوطني المستقل — ألوان التعبئة ووُسام الأسفل ─────────────────────
+// ألوان تعبئة التاج كما في المرجع (لون صريح للحالة) — الحالات العلاجية
+// فقط تُلوِّن؛ السليم والمراقبة يبقيان السن بلون العاج.
+
+export const TOOTH_CHART_FILL: Partial<Record<ToothStatusKey, string>> = {
+  DECAYED: "#b3524f",
+  FILLED: "#5b7fbe",
+  CROWN: "#c9a227",
+  ROOT_CANAL: "#8a63b8",
+  IMPLANT: "#2e8f83",
+  BROKEN: "#c07a3e",
+  SENSITIVITY: "#a89b3e",
+};
+
+/** حالة مقلوعة — رسم متقطع باهت بلا تعبئة */
+export function isChartFaded(status: ToothStatusKey): boolean {
+  return status === "EXTRACTED";
+}
+
+/** وُسام مخطط الأسنان — بالترتيب من اليمين كما في المرجع، مع لون كل نقطة */
+export const TOOTH_CHART_LEGEND: {
+  labelAr: string;
+  fill: string | null; // null = نقطة متقطعة (مقلوع)
+}[] = [
+  { labelAr: "تسوس", fill: TOOTH_CHART_FILL.DECAYED ?? null },
+  { labelAr: "حشوة", fill: TOOTH_CHART_FILL.FILLED ?? null },
+  { labelAr: "تاج", fill: TOOTH_CHART_FILL.CROWN ?? null },
+  { labelAr: "معالج بالجذور", fill: TOOTH_CHART_FILL.ROOT_CANAL ?? null },
+  { labelAr: "زرعة / جسر", fill: TOOTH_CHART_FILL.IMPLANT ?? null },
+  { labelAr: "مكسور", fill: TOOTH_CHART_FILL.BROKEN ?? null },
+  { labelAr: "حساسية", fill: TOOTH_CHART_FILL.SENSITIVITY ?? null },
+  { labelAr: "مقلوع", fill: null },
+];
 
 // أنواع القيد — فصل إلزامي بين الموجود والتشخيص والعلاج المنجز.
 export const FINDING_KINDS = ["EXISTING", "DIAGNOSIS", "TREATMENT_DONE"] as const;

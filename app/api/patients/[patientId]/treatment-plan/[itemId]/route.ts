@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireTenant } from "@/lib/tenant/require-tenant";
 import { getPatient } from "@/lib/services/patients";
 import {
+  deletePlanItem,
   parseResultStatus,
   parseUpdatePlanItem,
   startPlanItem,
@@ -82,4 +83,25 @@ export async function POST(req: NextRequest, { params }: Params) {
     console.error("[treatment-plan:start] failed:", err);
     return NextResponse.json({ error: "تعذر بدء تنفيذ البند" }, { status: 500 });
   }
+}
+
+// حذف بند غير منفذ — البند المنفذ نهائي.
+export async function DELETE(_req: NextRequest, { params }: Params) {
+  const ctx = await requireTenant(_req);
+  if (!ctx) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  }
+
+  const { patientId, itemId } = await params;
+  const result = await deletePlanItem(ctx, patientId, itemId);
+  if (result === "NOT_FOUND") {
+    return NextResponse.json({ error: "البند غير موجود" }, { status: 404 });
+  }
+  if (result === "LOCKED") {
+    return NextResponse.json(
+      { error: "البند المنفذ نهائي ولا يُحذف" },
+      { status: 409 },
+    );
+  }
+  return NextResponse.json({ ok: true }, { status: 200 });
 }

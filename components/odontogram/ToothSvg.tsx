@@ -41,6 +41,9 @@ const CROWN_PAINT: Record<ToothStatusKey, CrownPaint> = {
   CROWN: { fill: "var(--color-warning-300)", innerRing: true },
   IMPLANT: { fill: "var(--color-primary-300)", pattern: "threads" },
   WATCH: { fill: "transparent", dashed: true },
+  // حالتان إضافيتان — برتقالي المكسور وزيتي الحساسية كما في المخطط المرجعي
+  BROKEN: { fill: "var(--color-warning-500)" },
+  SENSITIVITY: { fill: "var(--color-warning-300)" },
 };
 
 function PatternDefs({

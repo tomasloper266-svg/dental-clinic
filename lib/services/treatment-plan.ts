@@ -10,6 +10,8 @@ export type PlanItemStatus = "PROPOSED" | "ACCEPTED" | "DONE";
 
 export type PlanItemDto = {
   id: string;
+  /** بلا خطة = بند غير مُخطط ضمن خطة — undefined يحتفظ بنفس المعنى */
+  planId?: string | null;
   toothFdi: number;
   procedure: string;
   priceSyp: number;
@@ -17,18 +19,32 @@ export type PlanItemDto = {
   priority: number;
 };
 
+/** كيان خطة — الاسم والتاريخ والملاحظات وحالة النهاية، مع بنودها */
+export type PlanDto = {
+  id: string;
+  name: string;
+  planDate: Date;
+  doctorName: string | null;
+  notes: string | null;
+  endedAt: Date | null;
+  items: PlanItemDto[];
+};
+
 export type CreatePlanItemInput = {
   toothFdi: number;
   procedure: string;
   priceSyp: number;
   priority?: number;
+  // ربط مباشر بخطة قائمة — البنود بلا خطة تظهر «بدون خطة محفوظة»
+  planId?: string | null;
 };
 
 export type UpdatePlanItemInput = {
   procedure?: string;
   priceSyp?: number;
   priority?: number;
-  status?: "PROPOSED" | "ACCEPTED";
+  status?: "PROPOSED" | "ACCEPTED" | "DONE";
+  toothFdi?: number;
 };
 
 export async function listPlan(
@@ -41,6 +57,7 @@ export async function listPlan(
     orderBy: [{ priority: "desc" }, { id: "asc" }],
     select: {
       id: true,
+      planId: true,
       toothFdi: true,
       procedure: true,
       priceSyp: true,
@@ -65,10 +82,12 @@ export async function createPlanItem(
       procedure: input.procedure,
       priceSyp: input.priceSyp,
       priority: input.priority ?? 0,
+      planId: input.planId ?? null,
       status: "PROPOSED",
     },
     select: {
       id: true,
+      planId: true,
       toothFdi: true,
       procedure: true,
       priceSyp: true,
@@ -80,6 +99,29 @@ export async function createPlanItem(
 }
 
 // التعديل مسموح للبنود غير المنفذة فقط — updateMany يضمن النطاق والحالة معاً.
+
+/** حذف بند غير منفذ — البند المنفذ نهائي ولا يُحذف عبر هذه الواجهة */
+export async function deletePlanItem(
+  ctx: TenantContext,
+  patientId: string,
+  itemId: string,
+): Promise<"DELETED" | "NOT_FOUND" | "LOCKED"> {
+  const db = clinicScope(ctx.clinicId);
+  const removed = await db.treatmentPlanItem.deleteMany({
+    where: {
+      id: itemId,
+      patientId,
+      status: { not: "DONE" },
+    },
+  });
+  if (removed.count > 0) return "DELETED";
+  const locked = await db.treatmentPlanItem.findFirst({
+    where: { id: itemId, patientId },
+    select: { id: true },
+  });
+  return locked ? "LOCKED" : "NOT_FOUND";
+}
+
 export async function updatePlanItem(
   ctx: TenantContext,
   patientId: string,
@@ -101,6 +143,7 @@ export async function updatePlanItem(
     where: { id: itemId },
     select: {
       id: true,
+      planId: true,
       toothFdi: true,
       procedure: true,
       priceSyp: true,
@@ -175,6 +218,7 @@ async function updatePlanItemStatus(
     where: { id: itemId },
     select: {
       id: true,
+      planId: true,
       toothFdi: true,
       procedure: true,
       priceSyp: true,
@@ -195,9 +239,14 @@ export function parseCreatePlanItem(
   }
   const b = body as Record<string, unknown>;
 
+  // 0 = بلا سن محدد («—» في الجدول) — الترقيم FDI يبدأ من 11
   const toothFdi = b.toothFdi;
-  if (typeof toothFdi !== "number" || !isValidToothFdi(toothFdi)) {
-    return { ok: false, error: "رقم السن يجب أن يكون بترقيم FDI الدائم (11–48)" };
+  if (
+    typeof toothFdi !== "number" ||
+    !Number.isInteger(toothFdi) ||
+    (toothFdi !== 0 && !isValidToothFdi(toothFdi))
+  ) {
+    return { ok: false, error: "رقم السن يجب أن يكون بترقيم FDI الدائم (11–48) أو 0 لبلا سن" };
   }
 
   const procedure = typeof b.procedure === "string" ? b.procedure.trim() : "";
@@ -219,9 +268,12 @@ export function parseCreatePlanItem(
       ? b.priority
       : undefined;
 
+  const planId =
+    typeof b.planId === "string" && b.planId.length > 0 ? b.planId : null;
+
   return {
     ok: true,
-    value: { toothFdi, procedure, priceSyp, priority },
+    value: { toothFdi, procedure, priceSyp, priority, planId },
   };
 }
 
@@ -258,13 +310,25 @@ export function parseUpdatePlanItem(
     value.priority = b.priority;
   }
   if (b.status !== undefined) {
+    // «مكتمل» لا يُحدَّث مباشرة — التنفيذ عبر مسار بدء التنفيذ فقط
     if (b.status !== "PROPOSED" && b.status !== "ACCEPTED") {
       return {
         ok: false,
-        error: "الحالة تُحدَّث إلى مخطط أو مقبول فقط — التنفيذ عبر بدء البند",
+        error: "الحالة يجب أن تكون مخطط أو جاري — التنفيذ عبر مسار البدء فقط",
       };
     }
     value.status = b.status;
+  }
+  if (b.toothFdi !== undefined) {
+    const toothFdi = b.toothFdi;
+    if (
+      typeof toothFdi !== "number" ||
+      !Number.isInteger(toothFdi) ||
+      (toothFdi !== 0 && !isValidToothFdi(toothFdi))
+    ) {
+      return { ok: false, error: "رقم السن يجب أن يكون بترقيم FDI الدائم (11–48) أو 0 لبلا سن" };
+    }
+    value.toothFdi = toothFdi;
   }
 
   if (Object.keys(value).length === 0) {
@@ -292,6 +356,7 @@ export function parseResultStatus(
 
 function serialize(row: {
   id: string;
+  planId: string | null;
   toothFdi: number;
   procedure: string;
   priceSyp: number;
@@ -300,10 +365,174 @@ function serialize(row: {
 }): PlanItemDto {
   return {
     id: row.id,
+    planId: row.planId,
     toothFdi: row.toothFdi,
     procedure: row.procedure,
     priceSyp: row.priceSyp,
     status: row.status as PlanItemStatus,
     priority: row.priority,
   };
+}
+
+// ─── كيان الخطة — إنشاء وقراءة وإنهاء وحذف ────────────────────────────────────
+
+export type CreatePlanInput = {
+  name?: string | null;
+  doctorName?: string | null;
+  planDate?: Date | null;
+  notes?: string | null;
+  /** بنود قائمة بلا خطة تُربط بالخطة الجديدة عند الإنشاء */
+  itemIds?: string[];
+};
+
+export type CreatePlanParsed = {
+  name: string | null;
+  doctorName: string | null;
+  planDate: Date | null;
+  notes: string | null;
+  itemIds: string[];
+};
+
+/** تحقق نقي من جسم طلب إنشاء خطة — قبل أي لمس لقاعدة البيانات */
+export function parseCreatePlan(body: unknown): { ok: true; value: CreatePlanParsed } | { ok: false; error: string } {
+  if (typeof body !== "object" || body === null) {
+    return { ok: false, error: "طلب غير صالح" };
+  }
+  const b = body as Record<string, unknown>;
+
+  const name =
+    typeof b.name === "string" && b.name.trim().length > 0
+      ? b.name.trim().slice(0, 200)
+      : null;
+  const doctorName =
+    typeof b.doctorName === "string" && b.doctorName.trim().length > 0
+      ? b.doctorName.trim().slice(0, 200)
+      : null;
+  const notes =
+    typeof b.notes === "string" && b.notes.trim().length > 0
+      ? b.notes.trim().slice(0, 1000)
+      : null;
+  const planDate =
+    typeof b.planDate === "string" && !Number.isNaN(new Date(b.planDate).getTime())
+      ? new Date(b.planDate)
+      : null;
+  const itemIds = Array.isArray(b.itemIds)
+    ? b.itemIds.filter((id): id is string => typeof id === "string")
+    : [];
+
+  return { ok: true, value: { name, doctorName, planDate, notes, itemIds } };
+}
+
+const PLAN_ITEM_SELECT = {
+  id: true,
+  planId: true,
+  toothFdi: true,
+  procedure: true,
+  priceSyp: true,
+  status: true,
+  priority: true,
+} as const;
+
+/** قراءة خطط المريض مع بنودها — الأحدث أولاً */
+export async function listPlans(
+  ctx: TenantContext,
+  patientId: string,
+): Promise<PlanDto[]> {
+  const db = clinicScope(ctx.clinicId);
+  const plans = await db.treatmentPlan.findMany({
+    where: { patientId },
+    orderBy: [{ createdAt: "desc" }],
+    select: {
+      id: true,
+      name: true,
+      planDate: true,
+      doctorName: true,
+      notes: true,
+      endedAt: true,
+      items: { select: PLAN_ITEM_SELECT, orderBy: [{ priority: "desc" }, { id: "asc" }] },
+    },
+  });
+  return plans.map((plan) => ({
+    id: plan.id,
+    name: plan.name,
+    planDate: plan.planDate,
+    doctorName: plan.doctorName,
+    notes: plan.notes,
+    endedAt: plan.endedAt,
+    items: plan.items.map(serialize),
+  }));
+}
+
+/** إنشاء خطة جديدة — الاسم الافتراضي «خطة العلاج»، وربط البنود بلا خطة المختارة */
+export async function createPlan(
+  ctx: TenantContext,
+  patientId: string,
+  input: CreatePlanInput,
+): Promise<PlanDto | { error: string }> {
+  const db = clinicScope(ctx.clinicId);
+  const plan = await db.treatmentPlan.create({
+    data: {
+      clinicId: ctx.clinicId,
+      patientId,
+      name: input.name ?? "خطة العلاج",
+      planDate: input.planDate ?? new Date(),
+      doctorName: input.doctorName ?? null,
+      notes: input.notes ?? null,
+    },
+    select: { id: true, name: true, planDate: true, doctorName: true, notes: true, endedAt: true },
+  });
+
+  if (input.itemIds && input.itemIds.length > 0) {
+    // ربط البنود محصوراً بمريض المناولة وببنود بلا خطة — لا سرقة بنود من مريض آخر
+    await db.treatmentPlanItem.updateMany({
+      where: { id: { in: input.itemIds }, patientId, planId: null },
+      data: { planId: plan.id },
+    });
+  }
+
+  const items = await db.treatmentPlanItem.findMany({
+    where: { planId: plan.id, patientId },
+    select: PLAN_ITEM_SELECT,
+    orderBy: [{ priority: "desc" }, { id: "asc" }],
+  });
+  return {
+    id: plan.id,
+    name: plan.name,
+    planDate: plan.planDate,
+    doctorName: plan.doctorName,
+    notes: plan.notes,
+    endedAt: plan.endedAt,
+    items: items.map(serialize),
+  };
+}
+
+/** إنهاء الخطة — طابع زمني على endedAt، والبنود تبقى كما هي */
+export async function endPlan(
+  ctx: TenantContext,
+  patientId: string,
+  planId: string,
+): Promise<boolean> {
+  const db = clinicScope(ctx.clinicId);
+  const result = await db.treatmentPlan.updateMany({
+    where: { id: planId, patientId, endedAt: null },
+    data: { endedAt: new Date() },
+  });
+  return result.count > 0;
+}
+
+/** حذف خطة مع بنودها — قيود الدفتر غير مرتبطة بعلاقات خارجية فتبقى سليمة */
+export async function deletePlan(
+  ctx: TenantContext,
+  patientId: string,
+  planId: string,
+): Promise<boolean> {
+  const db = clinicScope(ctx.clinicId);
+  const plan = await db.treatmentPlan.findFirst({
+    where: { id: planId, patientId },
+    select: { id: true },
+  });
+  if (!plan) return false;
+  await db.treatmentPlanItem.deleteMany({ where: { planId: plan.id, patientId } });
+  await db.treatmentPlan.delete({ where: { id: plan.id } });
+  return true;
 }

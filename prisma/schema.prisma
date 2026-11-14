@@ -50,6 +50,8 @@ enum ToothStatus {
   CROWN
   IMPLANT
   WATCH
+  BROKEN
+  SENSITIVITY
 }
 
 enum TreatmentItemStatus {
@@ -123,6 +125,7 @@ model Clinic {
   appointmentStatusChanges AppointmentStatusChange[]
   toothFindings        ToothFinding[]
   treatmentPlanItems   TreatmentPlanItem[]
+  treatmentPlans       TreatmentPlan[]
   ledgerEntries        LedgerEntry[]
   expenses             Expense[]
   materials            Material[]
@@ -237,6 +240,7 @@ model Patient {
   waitlistEntries    WaitlistEntry[]
   toothFindings      ToothFinding[]
   treatmentPlanItems TreatmentPlanItem[]
+  treatmentPlans     TreatmentPlan[]
   ledgerEntries      LedgerEntry[]
   materialUsages     MaterialUsage[]
   instructionSends   InstructionSend[]
@@ -372,20 +376,45 @@ model ToothFinding {
   @@index([clinicId, patientId, toothFdi])
 }
 
+// ─── خطط العلاج — كيان خطة يحتوي بنوداً، وبدونه البنود عناصر غير مخططة ───────
+
+model TreatmentPlan {
+  id        String   @id @default(cuid())
+  clinicId  String
+  patientId String
+  name       String
+  planDate   DateTime @default(now())
+  doctorName String?
+  notes      String?
+  // نهاية الخطة — null يعني نشطة؛ «إنهاء الخطة» يطابع هذا الحقل
+  endedAt   DateTime?
+  createdAt DateTime @default(now())
+
+  clinic  Clinic             @relation(fields: [clinicId], references: [id])
+  patient Patient            @relation(fields: [patientId], references: [id])
+  items   TreatmentPlanItem[]
+
+  @@index([clinicId, patientId])
+}
+
 model TreatmentPlanItem {
   id        String              @id @default(cuid())
   clinicId  String
   patientId String
+  // ربط اختياري بخطة — البنود بلا خطة تظهر «بدون خطة محفوظة»
+  planId    String?
   toothFdi  Int
   procedure String
   priceSyp  Int
   status    TreatmentItemStatus @default(PROPOSED)
   priority  Int                 @default(0)
 
-  clinic  Clinic  @relation(fields: [clinicId], references: [id])
-  patient Patient @relation(fields: [patientId], references: [id])
+  clinic  Clinic         @relation(fields: [clinicId], references: [id])
+  patient Patient        @relation(fields: [patientId], references: [id])
+  plan    TreatmentPlan? @relation(fields: [planId], references: [id])
 
   @@index([clinicId, patientId, status])
+  @@index([planId])
 }
 
 // ─── الحسابات (دفتر غير قابل للتعديل — التصحيح بقيد عكسي) ───────────────────

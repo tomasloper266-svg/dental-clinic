@@ -70,6 +70,94 @@ export function deriveInvoices(
 
 export type PaymentLogKind = "PAYMENT" | "MATERIAL";
 
+export type DetailedInvoiceView = InvoiceView & {
+  /** إجمالي الخصومات المخصصة لهذه الفاتورة — تسويات سالبة بقيد الدفتر */
+  discountSyp: number;
+  /** الدفعات المسجلة المخصصة لهذه الفاتورة بالتسلسل */
+  payments: Array<{ date: string; note: string; amountSyp: number }>;
+};
+
+/**
+ * نقي — الفواتير كما في deriveInvoices، مع تخصيص الخصومات (تسويات سالبة)
+ * بالتسلسل نفسه: الدفعات والخصم كلاهما يخفض المتبقي، لكنهما يُعرضان منفصلين.
+ */
+export function deriveInvoicesDetailed(
+  entries: ReadonlyArray<LedgerEntryDto>,
+): DetailedInvoiceView[] {
+  const charges = entries
+    .filter((e) => e.type === "CHARGE")
+    .sort((a, b) => timeOf(a.createdAt) - timeOf(b.createdAt));
+
+  // رصيد التخفيض: الدفعات بقيمها المطلقة والتسويات السالبة (خصم) — بالترتيب الزمني
+  type Credit = {
+    amount: number;
+    isDiscount: boolean;
+    time: number;
+    date: string;
+    note: string;
+  };
+  const dateOf = (value: LedgerEntryDto["createdAt"]) =>
+    value instanceof Date ? value.toISOString() : String(value);
+  const credits: Credit[] = [
+    ...entries
+      .filter((e) => e.type === "PAYMENT")
+      .map((e) => ({
+        amount: Math.abs(e.amountSyp),
+        isDiscount: false,
+        time: timeOf(e.createdAt),
+        date: dateOf(e.createdAt),
+        note: e.note ?? "",
+      })),
+    ...entries
+      .filter((e) => e.type === "ADJUSTMENT" && e.amountSyp < 0)
+      .map((e) => ({
+        amount: Math.abs(e.amountSyp),
+        isDiscount: true,
+        time: timeOf(e.createdAt),
+        date: dateOf(e.createdAt),
+        note: e.note ?? "",
+      })),
+  ].sort((a, b) => a.time - b.time);
+
+  let cursor = 0;
+  return charges.map((charge, index) => {
+    let paidSyp = 0;
+    let discountSyp = 0;
+    let remaining = charge.amountSyp;
+    const payments: DetailedInvoiceView["payments"] = [];
+    while (cursor < credits.length && remaining > 0) {
+      const take = Math.min(credits[cursor].amount, remaining);
+      if (credits[cursor].isDiscount) discountSyp += take;
+      else {
+        paidSyp += take;
+        payments.push({
+          date: credits[cursor].date,
+          note: credits[cursor].note,
+          amountSyp: take,
+        });
+      }
+      credits[cursor].amount -= take;
+      remaining -= take;
+      if (credits[cursor].amount === 0) cursor += 1;
+    }
+    const status: InvoiceStatus =
+      remaining === 0 ? "PAID" : paidSyp + discountSyp > 0 ? "PARTIAL" : "UNPAID";
+    return {
+      number: `INV-${new Date(charge.createdAt).getFullYear()}-${String(index + 1).padStart(3, "0")}`,
+      date:
+        charge.createdAt instanceof Date
+          ? charge.createdAt.toISOString()
+          : String(charge.createdAt),
+      totalSyp: charge.amountSyp,
+      paidSyp,
+      discountSyp,
+      remainingSyp: remaining,
+      status,
+      payments,
+    };
+  });
+}
+
 export type PaymentLogRow = {
   date: string;
   /** الوصف — ملاحظة الدفعة أو اسم المادة المستهلكة */
@@ -78,6 +166,29 @@ export type PaymentLogRow = {
   amountSyp: number;
   kind: PaymentLogKind;
 };
+
+export type LedgerSummary = {
+  /** مجموع قيود الرسوم — الإجمالي في بطاقة الملخص المالي */
+  chargesSyp: number;
+  /** مجموع الدفعات بقيمها المطلقة */
+  paidSyp: number;
+  /** الرصيد — رسوم ناقص دفعات وتسويات (خصم) */
+  balanceSyp: number;
+};
+
+/** نقي — ملخص الدفتر المالي: رسوم ودفعات ورصيد بلا فواتير */
+export function summarizeLedger(entries: ReadonlyArray<LedgerEntryDto>): LedgerSummary {
+  const chargesSyp = entries
+    .filter((e) => e.type === "CHARGE")
+    .reduce((sum, e) => sum + e.amountSyp, 0);
+  const paidSyp = entries
+    .filter((e) => e.type === "PAYMENT")
+    .reduce((sum, e) => sum + Math.abs(e.amountSyp), 0);
+  const adjustmentsSyp = entries
+    .filter((e) => e.type === "ADJUSTMENT")
+    .reduce((sum, e) => sum + e.amountSyp, 0);
+  return { chargesSyp, paidSyp, balanceSyp: chargesSyp - paidSyp + adjustmentsSyp };
+}
 
 /** نقي — سجل الدفعات/المخزون: دفعات الدفتر + استهلاك المواد للمريض */
 export function buildPaymentLog(

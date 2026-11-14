@@ -4,7 +4,7 @@ import { Loader2 } from "lucide-react";
 import { forwardRef } from "react";
 import { cn } from "./cn";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "gold";
 export type ButtonSize = "sm" | "md";
 /** شكل الزر — field الحقل القياسي، pill حبة الإجراء البارزة في رؤوس الصفحات */
 export type ButtonShape = "field" | "pill";
@@ -26,6 +26,9 @@ const variantClasses: Record<ButtonVariant, string> = {
     "bg-transparent text-ink-900 border border-transparent hover:bg-surface-hover active:bg-surface-sunken",
   danger:
     "bg-danger-500 text-white hover:bg-danger-600 active:bg-danger-700 border border-transparent",
+  // ذهبي — أزرار الإجراء البارز في مخطط الأسنان المستقل (فتح الملف الكامل، إضافة)
+  gold:
+    "bg-warning-500 text-white hover:bg-warning-600 active:bg-warning-700 border border-transparent",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {

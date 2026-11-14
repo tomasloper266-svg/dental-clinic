@@ -17,6 +17,36 @@ export type PlanTotals = {
   acceptedTotal: number;
 };
 
+/** ألفاظ حالات بند الخطة في الواجهة — التسميات كما في المرجع البصري */
+export type PlanItemStatusMeta = {
+  status: PlanItemStatus;
+  labelAr: string;
+  toneClass: string;
+};
+
+const PLAN_ITEM_STATUS_META: Record<PlanItemStatus, PlanItemStatusMeta> = {
+  PROPOSED: {
+    status: "PROPOSED",
+    labelAr: "مخطط",
+    toneClass: "bg-warm-100 text-steel-600",
+  },
+  ACCEPTED: {
+    status: "ACCEPTED",
+    labelAr: "جاري",
+    toneClass: "bg-primary-50 text-primary-800",
+  },
+  DONE: {
+    status: "DONE",
+    labelAr: "مكتمل",
+    toneClass: "bg-success-50 text-success-700",
+  },
+};
+
+/** بيانات عرض حالة بند الخطة — تسمية عربية ودرجة لون الشارة. نقي — آمن للعميل */
+export function planStatusMeta(status: PlanItemStatus): PlanItemStatusMeta {
+  return PLAN_ITEM_STATUS_META[status];
+}
+
 const EMPTY_COUNT = (): Record<PlanItemStatus, PlanStatusSummary> => ({
   PROPOSED: { status: "PROPOSED", count: 0, total: 0 },
   ACCEPTED: { status: "ACCEPTED", count: 0, total: 0 },

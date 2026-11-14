@@ -61,6 +61,30 @@ export function toothNameAr(fdi: number): string | null {
   return `${POSITION_NAMES_AR[position - 1]} — ${QUADRANT_NAMES_AR[quadrant]}`;
 }
 
+// أسماء العرض المختصرة تحت السن في مخطط الأسنان — كما في المرجع
+const DISPLAY_NAMES_AR = [
+  "القاطع المركزي",
+  "القاطع الجانبي",
+  "الناب",
+  "الضاحك الأول",
+  "الضاحك الثاني",
+  "الرحى الأول",
+  "الرحى الثاني",
+  "ضرس العقل",
+] as const;
+
+/** اسم العرض المختصر للسن — بلا اسم الربع، كما في المخطط المرجعي */
+export function toothDisplayNameAr(fdi: number): string | null {
+  if (!isValidToothFdi(fdi)) return null;
+  return DISPLAY_NAMES_AR[(fdi % 10) - 1];
+}
+
+/** تسمية السن في القوائم والمنسدلات — «18 — ضرس العقل» */
+export function toothLabelAr(fdi: number): string {
+  const name = toothNameAr(fdi);
+  return name ? `${fdi} — ${name}` : String(fdi);
+}
+
 // الأسنان الدائمة الـ32 كاملة، مرتبة ضمن كل ربع من المنتصف إلى الخلف.
 export function allTeeth(): ToothCell[] {
   const teeth: ToothCell[] = [];
