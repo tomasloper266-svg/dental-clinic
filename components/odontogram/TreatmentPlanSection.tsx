@@ -239,7 +239,7 @@ export default function TreatmentPlanSection({
               </div>
             );
           })}
-          <div className="border-warm-200 border-r pr-3">
+          <div className="border-warm-200 border-e pe-3">
             <p className="text-ink-700 text-[11px] font-semibold">
               الإجمالي الكلي
             </p>

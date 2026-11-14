@@ -128,6 +128,27 @@ export function outstandingDuesSyp(
   return dues;
 }
 
+/**
+ * نقي — عدد المرضى ذوي رصيد موجب (عليهم مستحقات) — شارة عنصر «المستحقات»
+ * في التنقل حتى تبقى إشارة المستحقات ظاهرة حتى مع الشريط المطوي.
+ */
+export function patientsWithDuesCount(
+  entries: ReadonlyArray<{ patientId: string; amountSyp: number }>,
+): number {
+  const perPatient = new Map<string, number>();
+  for (const entry of entries) {
+    perPatient.set(
+      entry.patientId,
+      (perPatient.get(entry.patientId) ?? 0) + entry.amountSyp,
+    );
+  }
+  let count = 0;
+  for (const balance of perPatient.values()) {
+    if (balance > 0) count += 1;
+  }
+  return count;
+}
+
 
 // ─── حالة السداد (الهيكل المرجعي) ───────────────────────────────────────────
 // تصنيف عرض فقط يُشتق نقياً من الرصيد الجاري لكل مريض — لا يخزَّن ولا يغيّر

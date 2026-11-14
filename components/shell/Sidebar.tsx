@@ -158,7 +158,24 @@ function DuesAlertCard({
   usdRate: number;
   collapsed: boolean;
 }) {
-  if (collapsed || dues <= 0) return null;
+  if (dues <= 0) return null;
+  // الوضع المطوي — البطاقة لا تتسع، فتُستبدل بنقطة حمراء (نمط شارة التنقل)
+  // كي لا يختفي تنبيه المستحقات كلياً في الوضع المطوي الافتراضي.
+  if (collapsed) {
+    return (
+      <Link
+        href="/dues"
+        aria-label="مستحقات غير مسددة"
+        title={`مستحقات غير مسددة: ${formatDualFromSyp(dues, usdRate)}`}
+        className="mx-auto grid size-8 place-items-center rounded-full border border-danger-300/40 bg-danger-500/15 transition-colors hover:bg-danger-500/25"
+      >
+        <span
+          aria-hidden
+          className="size-2.5 rounded-full bg-danger-400"
+        />
+      </Link>
+    );
+  }
   return (
     <Link
       href="/dues"

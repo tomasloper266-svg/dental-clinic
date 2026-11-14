@@ -6,7 +6,10 @@ import { tenantContextFromSession } from "@/lib/tenant/context";
 import { listWaitlist } from "@/lib/services/waitlist";
 import { lowStockMaterials } from "@/lib/services/inventory";
 import { listClinicLedgerEntries } from "@/lib/services/ledger";
-import { outstandingDuesSyp } from "@/lib/finance-view";
+import {
+  outstandingDuesSyp,
+  patientsWithDuesCount,
+} from "@/lib/finance-view";
 import {
   getClinicCurrency,
   getClinicName,
@@ -57,7 +60,11 @@ export default async function AppLayout({
       <AppShell
         userName={session.name}
         clinicName={clinicName}
-        badges={{ waitlist: waitlist.length, lowStock: lowStock.length }}
+        badges={{
+          waitlist: waitlist.length,
+          lowStock: lowStock.length,
+          dues: patientsWithDuesCount(ledgerEntries),
+        }}
         outstandingDuesSyp={outstandingDuesSyp(ledgerEntries)}
         usdRate={usdRate}
         lockEnabled={session.lockEnabled}

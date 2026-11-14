@@ -17,7 +17,7 @@ import { ToothIcon } from "./icons/ToothIcon";
 /** أيقونة عنصر تنقل — أيقونات lucide أو رسوم الريبو الخاصة (ToothIcon) */
 export type NavIcon = LucideIcon | typeof ToothIcon;
 
-export type BadgeKey = "waitlist" | "lowStock";
+export type BadgeKey = "waitlist" | "lowStock" | "dues";
 
 export type NavItem = {
   href: string;
@@ -74,7 +74,7 @@ export const navGroups: NavGroup[] = [
     label: "مالي",
     items: [
       { href: "/invoices", label: "الفواتير والمدفوعات", icon: BookOpen },
-      { href: "/dues", label: "المستحقات", icon: Clock },
+      { href: "/dues", label: "المستحقات", icon: Clock, badge: "dues" },
       { href: "/reports", label: "التقارير", icon: BarChart3 },
     ],
   },
