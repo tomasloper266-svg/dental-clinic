@@ -115,3 +115,54 @@ describe("اتساق المسدد والمتبقي مع التصحيح", () => {
     expect(canonical.balanceSyp).toBe(8_000);
   });
 });
+
+describe("انحدار عرض صف الفاتورة مع تسوية سالبة (tc-15)", () => {
+  // سيناريو سجل art_yHnC9AAM بند 14: فاتورة 100 عليها تسوية −3 — عمود
+  // الخصم يجب أن يظهر كي يتوازن الصف: الإجمالي = المدفوع + الخصم + المتبقي.
+  const tc15: LedgerEntryDto[] = [
+    entry("charge", "CHARGE", 100, 0),
+    entry("adjustment", "ADJUSTMENT", -3, 30),
+  ];
+
+  it("تسوية −3 بلا دفعات: 100 = خصم 3 + مدفوع 0 + متبقي 97 والحالة جزئية", () => {
+    const [invoice] = deriveInvoicesDetailed(tc15);
+    expect(invoice.totalSyp).toBe(100);
+    expect(invoice.discountSyp).toBe(3);
+    expect(invoice.paidSyp).toBe(0);
+    expect(invoice.remainingSyp).toBe(97);
+    // المعادلة التي يعرضها صف الجدول — يجب أن تجمع للإجمالي
+    expect(invoice.paidSyp + invoice.discountSyp + invoice.remainingSyp).toBe(
+      invoice.totalSyp,
+    );
+    // (ج) مقصود في الكود — لا يُلمس: جزئية مع صفر مدفوعات
+    expect(invoice.status).toBe("PARTIAL");
+  });
+
+  it("تسوية −3 مع دفعة جزئية 40: 100 = مدفوع 40 + خصم 3 + متبقي 57", () => {
+    const withPayment: LedgerEntryDto[] = [
+      entry("charge", "CHARGE", 100, 0),
+      entry("payment", "PAYMENT", -40, 20),
+      entry("adjustment", "ADJUSTMENT", -3, 30),
+    ];
+    const [invoice] = deriveInvoicesDetailed(withPayment);
+    expect(invoice.paidSyp).toBe(40);
+    expect(invoice.discountSyp).toBe(3);
+    expect(invoice.remainingSyp).toBe(57);
+    expect(invoice.paidSyp + invoice.discountSyp + invoice.remainingSyp).toBe(
+      invoice.totalSyp,
+    );
+    expect(invoice.status).toBe("PARTIAL");
+  });
+
+  it("فاتورة بلا خصم — عمود الخصم صفر والصف متوازن", () => {
+    const noDiscount: LedgerEntryDto[] = [
+      entry("charge", "CHARGE", 100, 0),
+      entry("payment", "PAYMENT", -40, 20),
+    ];
+    const [invoice] = deriveInvoicesDetailed(noDiscount);
+    expect(invoice.discountSyp).toBe(0);
+    expect(invoice.paidSyp + invoice.discountSyp + invoice.remainingSyp).toBe(
+      invoice.totalSyp,
+    );
+  });
+});

@@ -35,9 +35,13 @@ export type LinkedLedgerEntry = LedgerEntryDto & {
 export type PatientLedgerSummary = {
   /** إجمالي قيود الرسوم (CHARGE) */
   chargesSyp: number;
-  /** المسدد من الرسوم = الرسوم − الرصيد الجاري الموجب */
+  /** المسدد من الرسوم = الرسوم − الرصيد الجاري الموجب — يشمل الدفعات والخصومات */
   paidSyp: number;
   balanceSyp: number;
+  /** مجموع دفعات الدفتر (PAYMENT) بقيمها المطلقة — بلا خصومات */
+  paymentsSyp: number;
+  /** مجموع الخصومات (تسويات ADJUSTMENT سالبة) بقيمها المطلقة — ليست دفعات */
+  discountSyp: number;
 };
 
 /**
@@ -49,14 +53,22 @@ export function summarizePatientLedger(
   balanceSyp: number,
 ): PatientLedgerSummary {
   let chargesSyp = 0;
+  let paymentsSyp = 0;
+  let discountSyp = 0;
   for (const entry of entries) {
     if (entry.type === "CHARGE") chargesSyp += entry.amountSyp;
+    else if (entry.type === "PAYMENT") paymentsSyp += Math.abs(entry.amountSyp);
+    // التصنيف نفسه المعتمد في deriveInvoicesDetailed: التسوية السالبة خصم
+    else if (entry.type === "ADJUSTMENT" && entry.amountSyp < 0)
+      discountSyp += Math.abs(entry.amountSyp);
   }
   const remainingSyp = Math.max(balanceSyp, 0);
   return {
     chargesSyp,
     paidSyp: chargesSyp - remainingSyp,
     balanceSyp,
+    paymentsSyp,
+    discountSyp,
   };
 }
 
