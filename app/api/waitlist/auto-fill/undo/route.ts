@@ -6,6 +6,12 @@ import { undoWaitlistAutoFill } from "@/lib/services/waitlist";
 // نتيجة PATCH الحالة (waitlistFill) فيتحقق الخادم من صحة كلٍّ منها قبل التنفيذ.
 export async function POST(req: NextRequest) {
   const ctx = await requireTenant(req);
+  if (ctx === "LOCKED") {
+    return NextResponse.json(
+      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
+      { status: 423 },
+    );
+  }
   if (!ctx) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }

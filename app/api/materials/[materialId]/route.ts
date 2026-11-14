@@ -13,6 +13,12 @@ type Params = { params: Promise<{ materialId: string }> };
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   const ctx = await requireTenant(req);
+  if (ctx === "LOCKED") {
+    return NextResponse.json(
+      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
+      { status: 423 },
+    );
+  }
   if (!ctx) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
@@ -48,6 +54,12 @@ export async function DELETE(
   { params }: Params,
 ) {
   const ctx = await requireTenant(req);
+  if (ctx === "LOCKED") {
+    return NextResponse.json(
+      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
+      { status: 423 },
+    );
+  }
   if (!ctx) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }

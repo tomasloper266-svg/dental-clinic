@@ -10,6 +10,12 @@ type Params = { params: Promise<{ patientId: string; entryId: string }> };
 
 export async function DELETE(req: NextRequest, { params }: Params) {
   const ctx = await requireTenant(req);
+  if (ctx === "LOCKED") {
+    return NextResponse.json(
+      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
+      { status: 423 },
+    );
+  }
   if (!ctx) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }

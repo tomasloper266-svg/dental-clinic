@@ -7,6 +7,12 @@ import { dayStart } from "@/lib/dates";
 
 export async function GET(req: NextRequest) {
   const ctx = await requireTenant(req);
+  if (ctx === "LOCKED") {
+    return NextResponse.json(
+      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
+      { status: 423 },
+    );
+  }
   if (!ctx) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
@@ -24,6 +30,12 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const ctx = await requireTenant(req);
+  if (ctx === "LOCKED") {
+    return NextResponse.json(
+      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
+      { status: 423 },
+    );
+  }
   if (!ctx) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }

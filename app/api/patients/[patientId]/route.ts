@@ -14,6 +14,12 @@ type RouteContext = { params: Promise<{ patientId: string }> };
 
 export async function GET(_req: NextRequest, ctx: RouteContext) {
   const tenant = await requireTenant(_req);
+  if (tenant === "LOCKED") {
+    return NextResponse.json(
+      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
+      { status: 423 },
+    );
+  }
   if (!tenant) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
@@ -28,6 +34,12 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
 
 export async function PATCH(req: NextRequest, ctx: RouteContext) {
   const tenant = await requireTenant(req);
+  if (tenant === "LOCKED") {
+    return NextResponse.json(
+      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
+      { status: 423 },
+    );
+  }
   if (!tenant) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
@@ -59,6 +71,12 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
 
 export async function DELETE(_req: NextRequest, ctx: RouteContext) {
   const tenant = await requireTenant(_req);
+  if (tenant === "LOCKED") {
+    return NextResponse.json(
+      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
+      { status: 423 },
+    );
+  }
   if (!tenant) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
