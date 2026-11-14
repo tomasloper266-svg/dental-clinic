@@ -1,0 +1,115 @@
+import { describe, expect, it } from "vitest";
+import {
+  deriveInvoices,
+  deriveInvoicesDetailed,
+} from "@/lib/patient-finance";
+import { deriveClinicInvoices, summarizeInvoices } from "@/lib/invoices-view";
+import { summarizeLedger } from "@/lib/finance-view";
+import { buildDuesRows } from "@/lib/dues-view";
+import type { LedgerEntryDto } from "@/lib/services/ledger";
+import type { LedgerEntryType } from "@/lib/services/ledger";
+
+// اتساق المسدد والمتبقي مع التصحيحات — فاتورة واحدة عليها دفعة وتصحيح سالب
+// (خصم) يجب أن يظهر لها نفس المتبقي في كل المستهلكين: تبويب ملف المريض
+// (deriveInvoices)، قائمة وتفاصيل الفواتير (deriveInvoicesDetailed و
+// summarizeInvoices)، رصيد الدفتر القانوني (summarizeLedger)، وصفوف
+// المستحقات (buildDuesRows).
+
+function entry(
+  id: string,
+  type: LedgerEntryType,
+  amountSyp: number,
+  minutes: number,
+): LedgerEntryDto {
+  const base = new Date("2026-11-10T08:00:00.000Z").getTime();
+  return {
+    id,
+    patientId: "p1",
+    type,
+    amountSyp,
+    note: null,
+    treatmentItemId: null,
+    invoiceSeq: type === "CHARGE" ? 1 : null,
+    createdAt: new Date(base + minutes * 60_000),
+  };
+}
+
+/** فاتورة 10,000 عليها دفعة 4,000 وتصحيح سالب 2,000 — المتبقي 4,000 */
+const LEDGER: LedgerEntryDto[] = [
+  entry("charge", "CHARGE", 10_000, 0),
+  entry("payment", "PAYMENT", -4_000, 30),
+  entry("adjustment", "ADJUSTMENT", -2_000, 60),
+];
+
+describe("اتساق المسدد والمتبقي مع التصحيح", () => {
+  it("deriveInvoices وderiveInvoicesDetailed يتوافقان على المسدد والمتبقي", () => {
+    const simple = deriveInvoices(LEDGER);
+    const detailed = deriveInvoicesDetailed(LEDGER);
+    expect(simple).toHaveLength(1);
+    expect(detailed).toHaveLength(1);
+    expect(simple[0].paidSyp).toBe(4_000);
+    expect(simple[0].remainingSyp).toBe(4_000);
+    expect(detailed[0].paidSyp).toBe(simple[0].paidSyp);
+    expect(detailed[0].remainingSyp).toBe(simple[0].remainingSyp);
+    // الخصم يظهر منفصلاً في العرض التفصيلي والمتبقي يخصمه مع الدفعات
+    expect(detailed[0].discountSyp).toBe(2_000);
+    expect(detailed[0].totalSyp).toBe(simple[0].totalSyp);
+  });
+
+  it("حالة السداد تعكس الخصم والدفعة معاً كما في الدفتر", () => {
+    const [invoice] = deriveInvoicesDetailed(LEDGER);
+    // 4,000 دفعة + 2,000 خصم على فاتورة 10,000 — جزئية
+    expect(invoice.status).toBe("PARTIAL");
+    expect(invoice.paidSyp + invoice.discountSyp + invoice.remainingSyp).toBe(
+      invoice.totalSyp,
+    );
+  });
+
+  it("رصيد الدفتر القانوني يساوي المتبقي في كل العروض", () => {
+    const canonical = summarizeLedger(LEDGER);
+    const [invoice] = deriveInvoices(LEDGER);
+    expect(canonical.balanceSyp).toBe(4_000);
+    expect(invoice.remainingSyp).toBe(canonical.balanceSyp);
+  });
+
+  it("مجاميع صفحة الفواتير تجمع نفس المتبقي", () => {
+    const rows = deriveClinicInvoices(
+      LEDGER.map((e) => ({ ...e, patientName: "مريض", patientPhone: null })),
+    );
+    const summary = summarizeInvoices(rows);
+    expect(summary.remainingSyp).toBe(4_000);
+    expect(summary.totalSyp).toBe(10_000);
+  });
+
+  it("صف المستحقات يعطي نفس الرصيد والمسدد الكلي = دفعات + خصم", () => {
+    const rows = buildDuesRows(
+      LEDGER.map((e) => ({
+        ...e,
+        patientName: "مريض",
+        patientPhone: null,
+      })),
+      new Date("2026-11-14T00:00:00.000Z"),
+    );
+    expect(rows).toHaveLength(1);
+    const [row] = rows;
+    expect(row.dueSyp).toBe(4_000);
+    // المسدد من الرسوم = الدفعة 4,000 + الخصم 2,000
+    expect(row.paidSyp).toBe(6_000);
+    expect(row.paidSyp + row.dueSyp).toBe(row.chargesSyp);
+  });
+
+  it("تصحيح موجب ليس خصماً — يبقى رصيداً على الدفتر خارج تخصيص الفاتورة", () => {
+    const withPositiveAdjustment: LedgerEntryDto[] = [
+      entry("charge", "CHARGE", 10_000, 0),
+      entry("payment", "PAYMENT", -4_000, 30),
+      entry("adjustment+", "ADJUSTMENT", 2_000, 60),
+    ];
+    const [invoice] = deriveInvoicesDetailed(withPositiveAdjustment);
+    const canonical = summarizeLedger(withPositiveAdjustment);
+    // الفاتورة: متبقيها = القيد ناقص الدفعة حصراً — التصحيح الموجب بلا خصم
+    expect(invoice.discountSyp).toBe(0);
+    expect(invoice.remainingSyp).toBe(6_000);
+    // رصيد الدفتر يعكس التصحيح الموجب كلياً (تصحيح رصيد خارج الفاتورة)
+    expect(canonical.balanceSyp).toBe(8_000);
+  });
+});

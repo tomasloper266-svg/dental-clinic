@@ -49,38 +49,22 @@ function invoiceNumber(
 }
 
 /**
- * نقي — فواتير من قيود الرسوم مع تخصيص الدفعات FIFO. القيود وردة بأي ترتيب،
- * والرسوم بالتاريخ التصاعدي تُرقّم تسلسلياً. الدفعات تجاوزت الرسوم تبقى
- * رصيداً مقدماً ولا تظهر فاتورة لها.
+ * نقي — فواتير من قيود الرسوم. الاشتقاق القانوني الوحيد هو deriveInvoicesDetailed
+ * (الدفعات والتسويات السالبة كلها تُخصم بالتسلسل الزمني) — هذه النسخة تُنزع حقول
+ * الخصم وسجل الدفعات فقط كي يبقى المسدد والمتبقي متطابقين في كل مكان يعرض
+ * فاتورة: تبويب ملف المريض وقائمة الفواتير وتفاصيلها وصفوف المستحقات.
  */
 export function deriveInvoices(
   entries: ReadonlyArray<LedgerEntryDto>,
 ): InvoiceView[] {
-  const charges = entries
-    .filter((e) => e.type === "CHARGE")
-    .sort((a, b) => timeOf(a.createdAt) - timeOf(b.createdAt));
-  let credit = entries
-    .filter((e) => e.type === "PAYMENT")
-    .reduce((sum, e) => sum + Math.abs(e.amountSyp), 0);
-
-  return charges.map((charge, index) => {
-    const paidSyp = Math.min(credit, charge.amountSyp);
-    credit -= paidSyp;
-    const remainingSyp = charge.amountSyp - paidSyp;
-    const status: InvoiceStatus =
-      remainingSyp === 0 ? "PAID" : paidSyp > 0 ? "PARTIAL" : "UNPAID";
-    return {
-      number: invoiceNumber(charge, index),
-      date:
-        charge.createdAt instanceof Date
-          ? charge.createdAt.toISOString()
-          : String(charge.createdAt),
-      totalSyp: charge.amountSyp,
-      paidSyp,
-      remainingSyp,
-      status,
-    };
-  });
+  return deriveInvoicesDetailed(entries).map((invoice) => ({
+    number: invoice.number,
+    date: invoice.date,
+    totalSyp: invoice.totalSyp,
+    paidSyp: invoice.paidSyp,
+    remainingSyp: invoice.remainingSyp,
+    status: invoice.status,
+  }));
 }
 
 export type PaymentLogKind = "PAYMENT" | "MATERIAL";
@@ -93,8 +77,9 @@ export type DetailedInvoiceView = InvoiceView & {
 };
 
 /**
- * نقي — الفواتير كما في deriveInvoices، مع تخصيص الخصومات (تسويات سالبة)
- * بالتسلسل نفسه: الدفعات والخصم كلاهما يخفض المتبقي، لكنهما يُعرضان منفصلين.
+ * نقي — الاشتقاق القانوني الوحيد للفاتورة: تخصيص الدفعات والخصومات (تسويات
+ * سالبة) على الرسوم بالتسلسل الزمني — الدفعات والخصم كلاهما يخفض المتبقي،
+ * لكنهما يُعرضان منفصلين. deriveInvoices يبني عليها بإزاحة حقول العرض فقط.
  */
 export function deriveInvoicesDetailed(
   entries: ReadonlyArray<LedgerEntryDto>,
