@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import type { StaffMemberDto } from "@/lib/services/staff";
+import { doctorDisplayName } from "@/lib/staff-name";
 import { STATUS_META, formatTime, timeRangeLabel } from "@/lib/appointment-ui";
 import { addDays, toDateInputValue } from "@/lib/dates";
 import {
@@ -211,7 +212,7 @@ export default function AppointmentsCalendar({
             <option value="">كل الأطباء</option>
             {staff.map((d) => (
               <option key={d.id} value={d.id}>
-                د. {d.name}
+                {doctorDisplayName(d.name)}
               </option>
             ))}
           </Select>
@@ -375,7 +376,9 @@ function AppointmentCard({
   const meta = STATUS_META[appointment.status];
   const settled = appointment.status === "COMPLETED" || appointment.status === "CANCELLED";
   // سطر الطبيب وسطر الخدمة منفصلان كما في المرجع، وكل منهما اختياري.
-  const doctorLine = appointment.staffName ? `د. ${appointment.staffName}` : null;
+  const doctorLine = appointment.staffName
+    ? doctorDisplayName(appointment.staffName)
+    : null;
 
   return (
     <button

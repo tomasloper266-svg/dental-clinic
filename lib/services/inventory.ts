@@ -370,20 +370,37 @@ export async function createMaterial(
   input: CreateMaterialInput,
 ): Promise<MaterialDto> {
   const db = clinicScope(ctx.clinicId);
-  const row = await db.material.create({
-    data: {
-      clinicId: ctx.clinicId,
-      name: input.name,
-      unit: input.unit,
-      category: input.category ?? null,
-      supplier: input.supplier ?? null,
-      minQuantity: input.minQuantity,
-      costSyp: input.costSyp,
-      quantityOnHand: 0,
-    },
-    select: MATERIAL_SELECT,
+  // الرصيد الافتتاحي يُحفظ بقيمته المحلّلة لا بصفر ثابت، ويُسجَّل معه سطر حركة
+  // تأسيس داخل المعاملة نفسها (بنمط التوريد) — فلا كمية بلا سطر يفسّرها الدفتر.
+  const openingQuantity = input.quantity ?? 0;
+  return db.$transaction(async (tx) => {
+    const row = await tx.material.create({
+      data: {
+        clinicId: ctx.clinicId,
+        name: input.name,
+        unit: input.unit,
+        category: input.category ?? null,
+        supplier: input.supplier ?? null,
+        minQuantity: input.minQuantity,
+        costSyp: input.costSyp,
+        quantityOnHand: openingQuantity,
+      },
+      select: MATERIAL_SELECT,
+    });
+    if (openingQuantity !== 0) {
+      await tx.materialMovement.create({
+        data: {
+          clinicId: ctx.clinicId,
+          materialId: row.id,
+          quantityChange: openingQuantity,
+          note: "رصيد افتتاحي عند إنشاء المادة",
+          recordedById: ctx.userId,
+        },
+        select: { id: true },
+      });
+    }
+    return toMaterialDto(row);
   });
-  return toMaterialDto(row);
 }
 
 export async function updateMaterial(
