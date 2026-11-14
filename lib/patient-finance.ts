@@ -1,4 +1,6 @@
 import type { LedgerEntryDto } from "@/lib/services/ledger";
+// المعادلة القانونية الوحيدة للرصيد — تُعرَّف مرة واحدة في finance-view.
+import { summarizeLedger as summarizeLedgerCanonical } from "@/lib/finance-view";
 
 // دوال عرض مالية نقية لتبويب «الحساب والسجل المالي» في ملف المريض.
 // لا فواتير مخزّنة في المخطط — كل قيد رسوم (CHARGE) يُعرض كفاتورة، وتُخصم
@@ -176,18 +178,19 @@ export type LedgerSummary = {
   balanceSyp: number;
 };
 
-/** نقي — ملخص الدفتر المالي: رسوم ودفعات ورصيد بلا فواتير */
-export function summarizeLedger(entries: ReadonlyArray<LedgerEntryDto>): LedgerSummary {
-  const chargesSyp = entries
-    .filter((e) => e.type === "CHARGE")
-    .reduce((sum, e) => sum + e.amountSyp, 0);
-  const paidSyp = entries
-    .filter((e) => e.type === "PAYMENT")
-    .reduce((sum, e) => sum + Math.abs(e.amountSyp), 0);
-  const adjustmentsSyp = entries
-    .filter((e) => e.type === "ADJUSTMENT")
-    .reduce((sum, e) => sum + e.amountSyp, 0);
-  return { chargesSyp, paidSyp, balanceSyp: chargesSyp - paidSyp + adjustmentsSyp };
+/** نقي — ملخص الدفتر المالي: رسوم ودفعات ورصيد بلا فواتير.
+ * الرصيد يُحسب بالمعادلة القانونية الوحيدة (Σ المبالغ الموقّعة — نفس معادلة
+ * computeBalance في الخدمة وfinance-view) حتى يطابق بطاقة المريض لوحة الفواتير
+ * بعد أي استرداد — لا معادلة ثانية للرصيد في المشروع. */
+export function summarizeLedger(
+  entries: ReadonlyArray<LedgerEntryDto>,
+): LedgerSummary {
+  const canonical = summarizeLedgerCanonical(entries);
+  return {
+    chargesSyp: canonical.chargesSyp,
+    paidSyp: canonical.paymentsSyp,
+    balanceSyp: canonical.balanceSyp,
+  };
 }
 
 /** نقي — سجل الدفعات/المخزون: دفعات الدفتر + استهلاك المواد للمريض */

@@ -5,6 +5,7 @@ import {
   LEDGER_ENTRY_TYPE_META,
   ledgerEntriesWithPlan,
 } from "@/lib/ledger-view";
+import { summarizeLedger } from "@/lib/patient-finance";
 
 // اختبارات دوال عرض دفتر المريض في الملف المتكامل — نقية وبلا قاعدة بيانات.
 
@@ -70,6 +71,17 @@ describe("ledgerEntriesWithPlan", () => {
       [planItem()],
     );
     expect(rows[0].planItem).toBeNull();
+  });
+
+  it("الرصيد على صفحة المريض يحسب الاسترداد — نفس معادلة لوحة الفواتير", () => {
+    // قيد الاسترداد موجب ويرفع ما على المريض — كان يُسقط من المعادلة سابقاً
+    // فتباين رصيد صفحة المريض مع لوحة الفواتير بعد أي استرداد.
+    const summary = summarizeLedger([
+      entry({ type: "CHARGE", amountSyp: 400_000 }),
+      entry({ type: "PAYMENT", amountSyp: -150_000 }),
+      entry({ type: "REFUND", amountSyp: 30_000 }),
+    ]);
+    expect(summary.balanceSyp).toBe(400_000 - 150_000 + 30_000);
   });
 
   it("يرتب الأحدث أولًا بغضّ ترتيب الإدخال", () => {
