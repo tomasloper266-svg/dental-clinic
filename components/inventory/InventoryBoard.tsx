@@ -310,7 +310,7 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
                         </TD>
                         <TD>
                           {m.costSyp !== null ? (
-                            <DualAmount syp={m.costSyp} usdRate={usdRate} />
+                            <DualAmount syp={m.costSyp} usdRate={usdRate} precise />
                           ) : (
                             <span className="text-warm-300">—</span>
                           )}
