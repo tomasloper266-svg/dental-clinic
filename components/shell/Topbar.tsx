@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/components/ui/cn";
+import { clinicLogoLetter } from "@/lib/branding";
 import { breadcrumbsFromPath, navItemByHref } from "./nav-items";
 
 /** زر رجوع ذكي: يعود للتاريخ إن وُجد، وإلا للرئيسية — ويختفي في الرئيسية */
@@ -104,10 +105,16 @@ function ManualLock() {
 export function Topbar({
   className,
   lockEnabled = false,
+  logoLetter,
+  clinicName,
 }: {
   className?: string;
   /** يظهر زر القفل اليدوي فقط حين يكون قفل حساب الجلسة مفعّلاً */
   lockEnabled?: boolean;
+  /** حرف الشعار المخصّص — يظهر على الموبايل حيث السايدبار مخفي */
+  logoLetter?: string;
+  /** اسم العيادة — مصدر الحرف البديل عند غياب الحرف المخزّن */
+  clinicName?: string;
 }) {
   const pathname = usePathname() ?? "/";
   const current = navItemByHref(pathname);
@@ -119,6 +126,13 @@ export function Topbar({
         className,
       )}
     >
+      {/* مربع الشعار المصغّر — على الموبايل فقط، حيث يغيب السايدبار وصاحبه الحرف */}
+      <span
+        aria-hidden
+        className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-primary-500 font-display text-sm font-bold text-white shadow-xs md:hidden"
+      >
+        {clinicLogoLetter(logoLetter, clinicName)}
+      </span>
       <SmartBack pathname={pathname} />
       <Breadcrumbs pathname={pathname} />
       {current && !lockEnabled && (

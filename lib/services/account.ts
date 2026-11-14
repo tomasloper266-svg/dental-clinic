@@ -13,6 +13,7 @@ import { describeChannelConfig } from "@/lib/notifications/delivery";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { hashToken } from "@/lib/auth/session";
 import { type DisplayCurrency } from "@/lib/currency";
+import { clinicLogoLetter } from "@/lib/branding";
 import type { RecoveryError } from "@/lib/auth/recovery";
 import type { TenantContext } from "@/lib/tenant/context";
 
@@ -355,6 +356,16 @@ export async function getClinicName(ctx: TenantContext): Promise<string> {
     select: { name: true },
   });
   return clinic.name;
+}
+
+// حرف الشعار المخصّص من إعدادات العيادة — يُفسَّر من اسم العيادة عند غيابه
+// في lib/branding.ts (نقي قابل للاختبار مباشرة).
+export async function getClinicLogoLetter(ctx: TenantContext): Promise<string> {
+  const clinic = await prisma.clinic.findUniqueOrThrow({
+    where: { id: ctx.clinicId },
+    select: { logoLetter: true, name: true },
+  });
+  return clinicLogoLetter(clinic.logoLetter, clinic.name);
 }
 
 // لمحة الحساب لصفحة الإعدادات — بيانات العيدة وحالتها وحالة البريد

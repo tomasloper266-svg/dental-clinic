@@ -310,7 +310,7 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
                         </TD>
                         <TD>
                           {m.costSyp !== null ? (
-                            <DualAmount syp={m.costSyp} usdRate={usdRate} />
+                            <DualAmount syp={m.costSyp} usdRate={usdRate} precise />
                           ) : (
                             <span className="text-warm-300">—</span>
                           )}
@@ -829,8 +829,8 @@ function MaterialFormModal({
       setError("حد التنبيه رقم غير سالب");
       return null;
     }
-    if (cost !== null && (!Number.isInteger(cost) || cost < 0)) {
-      setError("السعر رقماً صحيحاً غير سالب أو اتركه فارغاً");
+    if (cost !== null && (!Number.isFinite(cost) || cost < 0)) {
+      setError("السعر رقماً غير سالب بحد منزلتين أو اتركه فارغاً");
       return null;
     }
     setError(null);
@@ -842,7 +842,10 @@ function MaterialFormModal({
       // الرصيد الافتتاحي يُرسل عند الإنشاء أيضاً — يُسجَّل معه سطر حركة توريد أولى
       quantity: qty,
       minQuantity: min,
-      ...(cost !== null || editing ? { costSyp: cost } : {}),
+      // التكلفة بعشريات منذ ترحيل Decimal(12,2) — تُقرَّب لمنزلتين قبل الإرسال
+      ...(cost !== null || editing
+        ? { costSyp: cost === null ? null : Math.round(cost * 100) / 100 }
+        : {}),
     };
   }
 

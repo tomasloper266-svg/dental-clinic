@@ -1,4 +1,7 @@
-import { displayPartsFromSyp } from "@/lib/currency";
+import {
+  displayPartsFromSyp,
+  displayCostPartsFromSyp,
+} from "@/lib/currency";
 import { cn } from "./cn";
 import { useDisplayCurrency } from "./CurrencyContext";
 
@@ -11,6 +14,8 @@ type DualAmountProps = {
   currency?: "USD" | "SYP";
   /** نبرة القيمة — danger للمستحقات الحمراء */
   tone?: "default" | "danger";
+  /** دقة عشرية محفوظة لتكاليف المواد — الكسرية تُعرض بمنزلتين ثابتتين */
+  precise?: boolean;
   /** صنف إضافي لسطر العملة المعروضة */
   valueClassName?: string;
   className?: string;
@@ -25,11 +30,14 @@ export function DualAmount({
   usdRate,
   currency,
   tone = "default",
+  precise = false,
   valueClassName,
   className,
 }: DualAmountProps) {
   const contextCurrency = useDisplayCurrency();
-  const parts = displayPartsFromSyp(syp, usdRate, currency ?? contextCurrency);
+  const parts = precise
+    ? displayCostPartsFromSyp(syp, usdRate, currency ?? contextCurrency)
+    : displayPartsFromSyp(syp, usdRate, currency ?? contextCurrency);
   return (
     <span className={cn("inline-flex flex-col items-end leading-tight", className)}>
       <span

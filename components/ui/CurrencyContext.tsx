@@ -35,6 +35,11 @@ export function useDisplayCurrency(): DisplayCurrency {
   return useContext(MoneyContext).currency;
 }
 
+/** سعر صرف الدولار من سياق إعدادات العيادة — لمنسّقات التكلفة الدقيقة */
+export function useUsdRate(): number {
+  return useContext(MoneyContext).usdRate;
+}
+
 /**
  * مُنسِّق المبالغ المرتبط بسياق العملة وسعر صرف العيادة — البديل الموحّد
  * لـ formatSyp وsypToUsd المبعثرين: كل مبلغ يعرضه المكون يمر عبر هنا

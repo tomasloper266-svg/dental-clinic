@@ -13,6 +13,8 @@ type AppShellProps = {
   userName: string;
   /** اسم العيادة كما أدخله الطبيب عند التسجيل — لترويسة السايدبار */
   clinicName?: string;
+  /** حرف الشعار المخصّص — يُفسَّر من اسم العيادة في الخدمة عند غيابه */
+  logoLetter?: string;
   badges: Record<BadgeKey, number>;
   /** المستحقات غير المسددة — بطاقة التنبيه المثبتة في السايدبار */
   outstandingDuesSyp?: number;
@@ -32,6 +34,7 @@ const COLLAPSE_KEY = "sidebar-collapsed";
 export function AppShell({
   userName,
   clinicName,
+  logoLetter,
   badges,
   outstandingDuesSyp = 0,
   usdRate = DEFAULT_USD_RATE,
@@ -59,6 +62,7 @@ export function AppShell({
         onToggle={toggleCollapsed}
         userName={userName}
         clinicName={clinicName}
+        logoLetter={logoLetter}
         badges={badges}
         outstandingDuesSyp={outstandingDuesSyp}
         usdRate={usdRate}
@@ -69,7 +73,11 @@ export function AppShell({
           collapsed ? "md:ps-16" : "md:ps-60",
         )}
       >
-        <Topbar lockEnabled={lockEnabled} />
+        <Topbar
+          lockEnabled={lockEnabled}
+          logoLetter={logoLetter}
+          clinicName={clinicName}
+        />
         <main className="flex-1 pb-20 md:pb-8">{children}</main>
       </div>
       <BottomNav badges={badges} />
