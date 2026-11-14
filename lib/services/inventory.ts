@@ -91,14 +91,19 @@ function parseQuantity(value: unknown, error: string): number | string {
   return rounded;
 }
 
-// نص وصفي اختياري (الفئة والمورد) — نص قصير أو لا شيء
-function parseOptionalText(value: unknown, error: string): string | null | string {
-  if (value === undefined || value === null) return null;
-  if (typeof value !== "string") return error;
+// نص وصفي اختياري (الفئة والمورد) — نتيجة متمايزة: النص القصير الصالح نجاح
+// لا رسالة، ورسالة الخطأ تُعاد في فرعها فقط. الشكل القديم (نص = خطأ) جعل
+// أي فئة أو مورد غير فارغ يُرفض رسالة خطأ هي نص المستخدم نفسه.
+function parseOptionalText(
+  value: unknown,
+  error: string,
+): { ok: true; value: string | null } | { ok: false; error: string } {
+  if (value === undefined || value === null) return { ok: true, value: null };
+  if (typeof value !== "string") return { ok: false, error };
   const trimmed = value.trim();
-  if (trimmed.length === 0) return null;
-  if (trimmed.length > 120) return error;
-  return trimmed;
+  if (trimmed.length === 0) return { ok: true, value: null };
+  if (trimmed.length > 120) return { ok: false, error };
+  return { ok: true, value: trimmed };
 }
 
 export type CreateMaterialInput = {
@@ -108,6 +113,8 @@ export type CreateMaterialInput = {
   supplier?: string | null;
   minQuantity: number;
   costSyp?: number;
+  /** الرصيد الافتتاحي — يُسجَّل معه سطر حركة توريد أولى داخل المعاملة نفسها */
+  quantity?: number;
 };
 
 export function parseCreateMaterial(
@@ -148,19 +155,40 @@ export function parseCreateMaterial(
     costSyp = b.costSyp;
   }
 
+  // الرصيد الافتتاحي اختياري — رقم غير سالب بحد منزلتين، وصفر هو الافتراض
+  let quantity = 0;
+  if (b.quantity !== undefined && b.quantity !== null) {
+    if (
+      typeof b.quantity !== "number" ||
+      !Number.isFinite(b.quantity) ||
+      b.quantity < 0
+    ) {
+      return { ok: false, error: "الكمية يجب أن تكون رقماً غير سالب" };
+    }
+    quantity = Math.round(b.quantity * 100) / 100;
+  }
+
   const category = parseOptionalText(b.category, "الفئة نص حتى 120 حرفاً");
-  if (typeof category === "string") {
-    return { ok: false, error: category };
+  if (!category.ok) {
+    return { ok: false, error: category.error };
   }
 
   const supplier = parseOptionalText(b.supplier, "المورد نص حتى 120 حرفاً");
-  if (typeof supplier === "string") {
-    return { ok: false, error: supplier };
+  if (!supplier.ok) {
+    return { ok: false, error: supplier.error };
   }
 
   return {
     ok: true,
-    value: { name, unit, category, supplier, minQuantity, costSyp },
+    value: {
+      name,
+      unit,
+      category: category.value,
+      supplier: supplier.value,
+      minQuantity,
+      costSyp,
+      quantity,
+    },
   };
 }
 
@@ -203,18 +231,18 @@ export function parseUpdateMaterial(
 
   if (b.category !== undefined) {
     const category = parseOptionalText(b.category, "الفئة نص حتى 120 حرفاً");
-    if (typeof category === "string") {
-      return { ok: false, error: category };
+    if (!category.ok) {
+      return { ok: false, error: category.error };
     }
-    value.category = category;
+    value.category = category.value;
   }
 
   if (b.supplier !== undefined) {
     const supplier = parseOptionalText(b.supplier, "المورد نص حتى 120 حرفاً");
-    if (typeof supplier === "string") {
-      return { ok: false, error: supplier };
+    if (!supplier.ok) {
+      return { ok: false, error: supplier.error };
     }
-    value.supplier = supplier;
+    value.supplier = supplier.value;
   }
 
   if (b.quantity !== undefined) {
@@ -368,8 +396,14 @@ export async function updateMaterial(
   return db.$transaction(async (tx) => {
     // الكمية تتغير بالتوريد والاستعمال حصراً — إن عدّلها المستخدم من نافذة
     // التعديل يُسجّل الفرق سطر حركة تسوية في الدفتر فيبقى الرصيد مفهوماً دائماً.
+    // الرصيد الحالي يُقرأ داخل المعاملة حصراً — قراءته قبلها يسمح لتوريد متوازٍ
+    // أن يُبتلع بقيمة مطلقة قديمة (lost update).
     if (input.quantity !== undefined) {
-      const current = Number(existing.quantityOnHand);
+      const currentRow = await tx.material.findUnique({
+        where: { id: materialId },
+        select: { quantityOnHand: true },
+      });
+      const current = Number(currentRow?.quantityOnHand ?? existing.quantityOnHand);
       if (input.quantity !== current) {
         const adjustment = Math.round((input.quantity - current) * 100) / 100;
         await tx.material.update({
@@ -430,8 +464,8 @@ export function parseSupplyInput(
   }
 
   const note = parseOptionalText(b.note, "الملاحظات نص حتى 120 حرفاً");
-  if (typeof note === "string") {
-    return { ok: false, error: note };
+  if (!note.ok) {
+    return { ok: false, error: note.error };
   }
 
   let movedAt: Date | undefined;
@@ -442,7 +476,7 @@ export function parseSupplyInput(
     }
   }
 
-  return { ok: true, value: { quantity, note: note ?? undefined, movedAt } };
+  return { ok: true, value: { quantity, note: note.value ?? undefined, movedAt } };
 }
 
 // توريد كمية — زيادة صافية على الرصيد الحالي مع سطر حركة في الدفتر داخل معاملة واحدة.

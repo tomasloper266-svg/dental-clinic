@@ -46,7 +46,7 @@ import { cn } from "@/components/ui/cn";
 // حصراً: التوريد يزيد الرصيد ويسجل حركة، والاستعمال والتعديل اليدوي يسجلان
 // حركة سالبة أو تسوية في الدفتر.
 
-type EditSubmit = (body: Record<string, unknown>) => Promise<boolean>;
+type EditSubmit = (body: Record<string, unknown>) => Promise<string | null>;
 
 export default function InventoryBoard({ usdRate }: { usdRate: number }) {
   const { toast } = useToast();
@@ -87,7 +87,7 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
     method: "POST" | "PATCH" | "DELETE",
     body?: Record<string, unknown>,
     successNote?: string,
-  ): Promise<boolean> {
+  ): Promise<string | null> {
     setBusyId(materialId);
     try {
       const res = await fetch(`/api/materials${path}`, {
@@ -97,15 +97,16 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        toast(data.error ?? "تعذر تنفيذ العملية، أعد المحاولة", "danger");
-        return false;
+        const failure = data.error ?? "تعذر تنفيذ العملية، أعد المحاولة";
+        toast(failure, "danger");
+        return failure;
       }
       if (successNote) toast(successNote);
       await refresh();
-      return true;
+      return null;
     } catch {
       toast("تعذر الاتصال بالخادم، حاول مرة أخرى", "danger");
-      return false;
+      return "تعذر الاتصال بالخادم، حاول مرة أخرى";
     } finally {
       setBusyId(null);
     }
@@ -391,19 +392,19 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
           onClose={() => setFormTarget(null)}
           onSubmit={async (body) => {
             if (formTarget.mode === "edit") {
-              const ok = await apply(
+              const failure = await apply(
                 formTarget.material.id,
                 `/${formTarget.material.id}`,
                 "PATCH",
                 body,
                 "حُفظت التعديلات",
               );
-              if (ok) setFormTarget(null);
-              return ok;
+              if (!failure) setFormTarget(null);
+              return failure;
             }
-            const ok = await apply("new", "", "POST", body, "أُضيفت المادة إلى المخزون");
-            if (ok) setFormTarget(null);
-            return ok;
+            const failure = await apply("new", "", "POST", body, "أُضيفت المادة إلى المخزون");
+            if (!failure) setFormTarget(null);
+            return failure;
           }}
         />
       )}
@@ -415,15 +416,15 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
           busy={busyId === supplying.id}
           onClose={() => setSupplying(null)}
           onSubmit={async (body) => {
-            const ok = await apply(
+            const failure = await apply(
               supplying.id,
               `/${supplying.id}/supply`,
               "POST",
               body,
               "سُجل التوريد وأُضيفت الكمية",
             );
-            if (ok) setSupplying(null);
-            return ok;
+            if (!failure) setSupplying(null);
+            return failure;
           }}
         />
       )}
@@ -445,14 +446,14 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
         loading={deleting !== null && busyId === deleting.id}
         onConfirm={async () => {
           if (!deleting) return;
-          const ok = await apply(
+          const failure = await apply(
             deleting.id,
             `/${deleting.id}`,
             "DELETE",
             undefined,
             "حُذفت المادة من المخزون",
           );
-          if (ok) setDeleting(null);
+          if (!failure) setDeleting(null);
         }}
       />
     </>
@@ -564,7 +565,7 @@ function SupplyModal({
   material: MaterialDto;
   busy: boolean;
   onClose: () => void;
-  onSubmit: (body: Record<string, unknown>) => Promise<boolean>;
+  onSubmit: (body: Record<string, unknown>) => Promise<string | null>;
 }) {
   const [value, setValue] = useState("");
   const [date, setDate] = useState(() => toDateInputValue(new Date()));
@@ -604,12 +605,12 @@ function SupplyModal({
                 return;
               }
               setError(null);
-              const ok = await onSubmit({
+              const failure = await onSubmit({
                 quantity,
                 ...(note.trim() ? { note: note.trim() } : {}),
                 ...(date ? { movedAt: new Date(`${date}T00:00:00.000Z`) } : {}),
               });
-              if (!ok) return;
+              if (failure) setError(failure);
             }}
           >
             تسجيل
@@ -838,7 +839,8 @@ function MaterialFormModal({
       unit: unit.trim(),
       ...(category.trim() ? { category: category.trim() } : { category: null }),
       ...(supplier.trim() ? { supplier: supplier.trim() } : { supplier: null }),
-      ...(editing ? { quantity: qty } : {}),
+      // الرصيد الافتتاحي يُرسل عند الإنشاء أيضاً — يُسجَّل معه سطر حركة توريد أولى
+      quantity: qty,
       minQuantity: min,
       ...(cost !== null || editing ? { costSyp: cost } : {}),
     };
@@ -856,7 +858,9 @@ function MaterialFormModal({
             loading={busy}
             onClick={async () => {
               const body = buildBody();
-              if (body) await onSubmit(body);
+              if (!body) return;
+              const failure = await onSubmit(body);
+              if (failure) setError(failure);
             }}
           >
             {editing ? "حفظ" : "إضافة"}
