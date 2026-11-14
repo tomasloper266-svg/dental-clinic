@@ -150,3 +150,89 @@ export function composePaymentNote(
   const trimmed = note.trim();
   return trimmed ? `دفعة ${method} — ${trimmed}` : `دفعة ${method}`;
 }
+
+/** بند فاتورة مهيكل بالصيغة التي يفهمها مسار الدفتر — الوصف إلزامي والتصنيف نص حر */
+export type InvoiceItemPayload = {
+  description: string;
+  category?: string;
+  amountSyp: number;
+};
+
+/**
+ * نقي — جسم طلب قيد رسوم واحد ببنود مهيكلة (فجوة 2 في الواجهة): مبلغ القيد هو
+ * مجموع البنود حصراً، فتأخذ الفاتورة متعددة البنود رقماً واحداً من تسلسل
+ * العيادة وتُصنَّف بنودها في تجميع الإيراد حسب نوع العلاج.
+ */
+export function buildChargeWithItemsBody({
+  items,
+  note,
+  createdAt,
+}: {
+  items: ReadonlyArray<InvoiceItemPayload>;
+  note?: string;
+  createdAt?: string;
+}): {
+  type: "CHARGE";
+  amountSyp: number;
+  note?: string;
+  createdAt?: string;
+  items: InvoiceItemPayload[];
+} {
+  if (items.length === 0) {
+    throw new Error("أدخل بنداً واحداً على الأقل (الإجراء والمبلغ)");
+  }
+  return {
+    type: "CHARGE",
+    amountSyp: items.reduce((sum, item) => sum + item.amountSyp, 0),
+    ...(note !== undefined ? { note } : {}),
+    ...(createdAt !== undefined ? { createdAt } : {}),
+    items: items.map((item) => ({
+      description: item.description,
+      ...(item.category !== undefined ? { category: item.category } : {}),
+      amountSyp: item.amountSyp,
+    })),
+  };
+}
+
+/** نقي — وصف بند فاتورة يدوية كما كان يُكتب بالملاحظة: الإجراء مع السن إن وُجد */
+export function invoiceItemDescription(
+  procedure: string,
+  tooth?: string,
+): string {
+  const trimmedTooth = tooth?.trim();
+  return trimmedTooth
+    ? `${procedure.trim()} (السن ${trimmedTooth})`
+    : procedure.trim();
+}
+
+/**
+ * نقي — جسم طلب الدفعة: appliedChargeId المختار من قائمة «على الفاتورة» يُرسل
+ * في الجسم فعلياً (وليس في الملاحظة حصراً) — ترشيح عرض حصراً لا يدخل في معادلة
+ * الرصيد إطلاقاً (التخصيص الزمني FIFO يبقى هو المعتمد محاسبياً).
+ */
+export function buildPaymentBody({
+  amountSyp,
+  note,
+  createdAt,
+  appliedChargeId,
+}: {
+  amountSyp: number;
+  note: string;
+  createdAt?: string;
+  appliedChargeId?: string;
+}): {
+  type: "PAYMENT";
+  amountSyp: number;
+  note: string;
+  createdAt?: string;
+  appliedChargeId?: string;
+} {
+  return {
+    type: "PAYMENT",
+    amountSyp,
+    note,
+    ...(createdAt !== undefined ? { createdAt } : {}),
+    ...(appliedChargeId ? { appliedChargeId } : {}),
+  };
+}
+

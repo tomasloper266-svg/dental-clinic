@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Undo2 } from "lucide-react";
 import { ALLOWED_TRANSITIONS } from "@/lib/appointment-state";
 import type { AppointmentStatus } from "@/lib/appointment-state";
+import { doctorDisplayName } from "@/lib/staff-name";
 import {
   STATUS_LABEL,
   STATUS_META,
@@ -180,7 +181,9 @@ export function AppointmentDetailsDrawer({
             <div className="flex items-center justify-between gap-3">
               <dt className="text-warm-500">الطبيب</dt>
               <dd className="font-medium text-ink-900">
-                {appointment.staffName ? `د. ${appointment.staffName}` : "بلا طبيب"}
+                {appointment.staffName
+                  ? doctorDisplayName(appointment.staffName)
+                  : "بلا طبيب"}
               </dd>
             </div>
             {appointment.note && (

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { StaffMemberDto } from "@/lib/services/staff";
+import { doctorDisplayName } from "@/lib/staff-name";
 import { STATUS_META } from "@/lib/appointment-ui";
 import { APPOINTMENT_STATUSES, type AppointmentStatus } from "@/lib/appointment-state";
 import { Button } from "@/components/ui/Button";
@@ -196,7 +197,7 @@ export default function BookingModal({
               <option value="">— حدد —</option>
               {doctors.map((d) => (
                 <option key={d.id} value={d.id}>
-                  د. {d.name}
+                  {doctorDisplayName(d.name)}
                 </option>
               ))}
             </Select>

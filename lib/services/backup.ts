@@ -114,6 +114,28 @@ const TABLES: {
       }),
   },
   {
+    key: "ledgerEntryItems",
+    // بنود الفاتورة المهيكلة (فجوة 2) — بلا عمود clinicId: العزل موروث
+    // من قيد الأب عبر entryId (نفس نمط إصلاح العزل في PR #3)، فيُقرأ
+    // ويُحذف عبر علاقة الأب ويُضاف بأرقام أبيها كما هي.
+    list: (db, c) =>
+      db.ledgerEntryItem.findMany({ where: { entry: { clinicId: c } } }),
+    clear: (db, c) =>
+      db.ledgerEntryItem.deleteMany({ where: { entry: { clinicId: c } } }),
+    insert: (db, rows) =>
+      db.ledgerEntryItem.createMany({
+        // حلقة الاستعادة تضيف clinicId لكل صف من الملف — بلا عمود كهذا
+        // هنا، فيُحذف من نسخة كل صف قبل الإضافة (العزل يأتي من الأب
+        // المعاد بمعرف الجلسة).
+        data: rows.map(
+          (row) =>
+            Object.fromEntries(
+              Object.entries(row).filter(([key]) => key !== "clinicId"),
+            ) as Prisma.LedgerEntryItemCreateManyInput,
+        ),
+      }),
+  },
+  {
     key: "expenses",
     list: (db, c) => db.expense.findMany({ where: { clinicId: c } }),
     clear: (db, c) => db.expense.deleteMany({ where: { clinicId: c } }),

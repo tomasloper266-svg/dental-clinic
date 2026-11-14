@@ -15,6 +15,9 @@ export const SNAPSHOT_TABLES = [
   "treatmentPlans",
   "treatmentPlanItems",
   "ledgerEntries",
+  // بنود الفاتورة المهيكلة — تابعة لقيود الرسوم (بلا عمود clinicId؛ العزل
+  // موروث من قيد الأب). بعد ledgerEntries كي تُحذف أولاً وتُضاف بعد أبيها.
+  "ledgerEntryItems",
   "expenses",
   "materials",
   "materialMovements",
@@ -61,7 +64,11 @@ export function validateSnapshot(input: unknown): SnapshotCheck {
   }
   const tables = {} as Record<SnapshotTable, Record<string, unknown>[]>;
   for (const table of SNAPSHOT_TABLES) {
-    const rows = input[table];
+    // بنود الفاتورة أُضيفت للعقد لاحقاً — النسخ الأقدم (v1 قبلها) بلا هذا
+    // المفتاح، وتُعامَل كقائمة فارغة كي تبقى قابلة للاستعادة (كانت بنودها
+    // مفقودة أصلاً فلا شيء يُعاد).
+    const fallback = table === "ledgerEntryItems" ? [] : undefined;
+    const rows = input[table] ?? fallback;
     if (!Array.isArray(rows)) {
       return { ok: false, error: `جدول «${table}» ناقص أو تالف في الملف` };
     }
