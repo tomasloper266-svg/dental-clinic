@@ -11,6 +11,7 @@ import {
   TriangleAlert,
   User,
   UserPlus,
+  Wallet,
 } from "lucide-react";
 import { sypToUsd } from "@/lib/currency";
 import { useMoney } from "@/components/ui/CurrencyContext";
@@ -161,6 +162,11 @@ export default function ReportsBoard({
     summary && summary.invoiceCount > 0
       ? Math.round(summary.totalChargesSyp / summary.invoiceCount)
       : 0;
+  // متوسط الدفعة لتعريف «محصّل الفترة» — التعريفان منفصلان لا يجتمعان في رقم
+  const avgPaymentSyp =
+    summary && summary.paymentCount > 0
+      ? Math.round(summary.totalPaymentsSyp / summary.paymentCount)
+      : 0;
 
   return (
     <>
@@ -218,8 +224,8 @@ export default function ReportsBoard({
           </Button>
         </div>
       ) : summary === null ? (
-        <div aria-busy="true" className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {[0, 1, 2, 3].map((index) => (
+        <div aria-busy="true" className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {[0, 1, 2, 3, 4].map((index) => (
             <div
               key={index}
               className="h-20 animate-pulse rounded-panel bg-surface-sunken"
@@ -227,7 +233,7 @@ export default function ReportsBoard({
           ))}
         </div>
       ) : (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <StatCard
             value={usd(summary.totalChargesSyp)}
             label="إجمالي الفواتير"
@@ -241,6 +247,12 @@ export default function ReportsBoard({
             icon={ReceiptText}
             iconClassName="bg-warning-500/10 text-warning-600"
             className="border-warning-500/50"
+          />
+          <StatCard
+            value={usd(summary.totalPaymentsSyp)}
+            label="محصّل الفترة"
+            subLabel={`متوسط ${usd(avgPaymentSyp)} · ${summary.paymentCount} دفعة`}
+            icon={Wallet}
           />
           <StatCard
             value={String(summary.paymentCount)}

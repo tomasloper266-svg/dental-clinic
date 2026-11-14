@@ -68,9 +68,11 @@ export async function getReportsPeriodSummary(
     db.ledgerEntry.findMany({
       where: { createdAt: { gte: from, lt: to } },
       select: {
+        id: true,
         type: true,
         amountSyp: true,
         patientId: true,
+        doctorId: true,
         treatmentItemId: true,
         createdAt: true,
         patient: { select: { name: true } },
@@ -101,7 +103,24 @@ export async function getReportsPeriodSummary(
     select: { id: true, procedure: true },
   });
 
+  // بنود الفواتير (LedgerEntryItem) لقيود رسوم الفترة — أساس تجميع الإيراد
+  // حسب نوع العلاج، والقيود بلا بنود ترجع لربط بند الخطة أو «بدون تصنيف».
   const charges = ledgerRows.filter((row) => row.type === "CHARGE");
+  const chargeIds = charges.map((row) => row.id);
+  const invoiceItemRows =
+    chargeIds.length > 0
+      ? await db.ledgerEntryItem.findMany({
+          where: { entryId: { in: chargeIds } },
+          select: { entryId: true, category: true, amountSyp: true },
+        })
+      : [];
+  const itemsByEntryId = new Map<string, { category: string | null; amountSyp: number }[]>();
+  for (const row of invoiceItemRows) {
+    const list = itemsByEntryId.get(row.entryId) ?? [];
+    list.push({ category: row.category, amountSyp: row.amountSyp });
+    itemsByEntryId.set(row.entryId, list);
+  }
+
   const staffNames = new Map(staffRows.map((s) => [s.id, s.name] as const));
   const procedureByItemId = new Map(
     itemRows.map((item) => [item.id, item.procedure] as const),
@@ -121,6 +140,7 @@ export async function getReportsPeriodSummary(
         patientId: row.patientId,
         amountSyp: row.amountSyp,
         createdAt: row.createdAt,
+        doctorId: row.doctorId,
       })),
       appointmentRows.map((row) => ({
         patientId: row.patientId,
@@ -133,6 +153,7 @@ export async function getReportsPeriodSummary(
       charges.map((row) => ({
         treatmentItemId: row.treatmentItemId,
         amountSyp: row.amountSyp,
+        items: itemsByEntryId.get(row.id),
       })),
       procedureByItemId,
     ),

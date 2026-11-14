@@ -92,12 +92,20 @@ export function monthLabel(month: string): string {
   );
 }
 
-/** ملخص قيود الفترة — فواتير ومدفوعات، بلا أي تفسير جديد للرصيد */
+/** ملخص قيود الفترة — فواتير ومدفوعات، بلا أي تفسير جديد للرصيد.
+ * التعريفان منفصلان عمداً: «فواتير صادرة» = مجموع الرسوم، و«محصّل الفترة» =
+ * مجموع قيمة الدفعات — الدمج بينهما هو مصدر سوء الفهم الوحيد مع المرجع. */
 export function summarizePeriodLedger(entries: ReadonlyArray<{
   type: string;
   amountSyp: number;
-}>): { totalChargesSyp: number; invoiceCount: number; paymentCount: number } {
+}>): {
+  totalChargesSyp: number;
+  totalPaymentsSyp: number;
+  invoiceCount: number;
+  paymentCount: number;
+} {
   let totalChargesSyp = 0;
+  let totalPaymentsSyp = 0;
   let invoiceCount = 0;
   let paymentCount = 0;
   for (const entry of entries) {
@@ -105,10 +113,11 @@ export function summarizePeriodLedger(entries: ReadonlyArray<{
       totalChargesSyp += entry.amountSyp;
       invoiceCount += 1;
     } else if (entry.type === "PAYMENT") {
+      totalPaymentsSyp += Math.abs(entry.amountSyp);
       paymentCount += 1;
     }
   }
-  return { totalChargesSyp, invoiceCount, paymentCount };
+  return { totalChargesSyp, totalPaymentsSyp, invoiceCount, paymentCount };
 }
 
 /** حالات المواعيد الست — الترتيب الثابت للعرض في الدونات والأسطورة */
@@ -150,12 +159,19 @@ export function appointmentOutcomeCounts(
 const NO_DOCTOR_LABEL = "بدون طبيب محدد";
 
 /**
- * نقي — نسبة قيود الرسوم إلى الأطباء عبر أحدث موعد للمريض الذي له طبيب
- * مسند وقبل قيد الرسم (المخطط لا يربط القيد بالطبيب مباشرة). القيود بلا
- * موعد مسند تجتمع تحت «بدون طبيب محدد». النتيجة تنازلية بالمبلغ.
+ * نقي — نسبة قيود الرسوم إلى الأطباء. الطبيب المخزّن على القيد (doctorId)
+ * هو الأولوية دائماً — قيمته محفوظة لحظة الإنشاء فتتقدم على أي استنتاج.
+ * لقيود الدفتر القديمة بلا طبيب مخزّن يُستنتج الطبيب من أحدث موعد للمريض
+ * الذي له طبيب مسند وقبل القيد. القيود بلا طبيب مخزّن ولا موعد مسند تجتمع
+ * تحت «بدون طبيب محدد». النتيجة تنازلية بالمبلغ.
  */
 export function revenueByDoctor(
-  charges: ReadonlyArray<{ patientId: string; amountSyp: number; createdAt: string | Date }>,
+  charges: ReadonlyArray<{
+    patientId: string;
+    amountSyp: number;
+    createdAt: string | Date;
+    doctorId?: string | null;
+  }>,
   appointments: ReadonlyArray<{
     patientId: string;
     staffId: string | null;
@@ -176,17 +192,22 @@ export function revenueByDoctor(
 
   const totals = new Map<string, number>();
   for (const charge of charges) {
-    const chargeTime = new Date(charge.createdAt).getTime();
-    let doctor: string | undefined;
-    let best = -Infinity;
-    for (const appointment of byPatient.get(charge.patientId) ?? []) {
-      if (appointment.startsAt <= chargeTime && appointment.startsAt > best) {
-        best = appointment.startsAt;
-        doctor = staffName(appointment.staffId) ?? NO_DOCTOR_LABEL;
+    let key: string | undefined;
+    // الطبيب المخزّن على القيد يُقدَّم على الاستنتاج الاحتياطي من المواعيد.
+    if (charge.doctorId) {
+      key = staffName(charge.doctorId) ?? NO_DOCTOR_LABEL;
+    }
+    if (key === undefined) {
+      const chargeTime = new Date(charge.createdAt).getTime();
+      let best = -Infinity;
+      for (const appointment of byPatient.get(charge.patientId) ?? []) {
+        if (appointment.startsAt <= chargeTime && appointment.startsAt > best) {
+          best = appointment.startsAt;
+          key = staffName(appointment.staffId) ?? NO_DOCTOR_LABEL;
+        }
       }
     }
-    const key = doctor ?? NO_DOCTOR_LABEL;
-    totals.set(key, (totals.get(key) ?? 0) + charge.amountSyp);
+    totals.set(key ?? NO_DOCTOR_LABEL, (totals.get(key ?? NO_DOCTOR_LABEL) ?? 0) + charge.amountSyp);
   }
 
   return [...totals.entries()]
@@ -196,17 +217,38 @@ export function revenueByDoctor(
 
 const NO_PROCEDURE_LABEL = "بدون تصنيف";
 
-/** نقي — إيراد الرسوم حسب إجراء بند خطة العلاج المرتبط بالقيد، تنازلياً */
+/** بند فاتورة كما يجمعه التقرير — تصنيف نصي حر ومبلغه */
+type ChargeItemInput = { category: string | null; amountSyp: number };
+
+/**
+ * نقي — إيراد الرسوم حسب نوع العلاج، تنازلياً. مصدر التجميع بنود الفاتورة
+ * (LedgerEntryItem): كل بند يقع تحت تصنيفه النصي الحر، والبند بلا تصنيف
+ * تحت «بدون تصنيف». قيد بلا بنود (قيود يدوية مفردة) يرجع لربط بند خطة
+ * العلاج، وقيد بلا بنود ولا ربط يظهر كاملاً تحت «بدون تصنيف».
+ */
 export function revenueByProcedure(
-  charges: ReadonlyArray<{ treatmentItemId: string | null; amountSyp: number }>,
+  charges: ReadonlyArray<{
+    treatmentItemId: string | null;
+    amountSyp: number;
+    items?: ReadonlyArray<ChargeItemInput>;
+  }>,
   procedureByItemId: ReadonlyMap<string, string>,
 ): { procedure: string; chargesSyp: number }[] {
   const totals = new Map<string, number>();
+  const add = (procedure: string, amountSyp: number) => {
+    totals.set(procedure, (totals.get(procedure) ?? 0) + amountSyp);
+  };
   for (const charge of charges) {
+    if (charge.items && charge.items.length > 0) {
+      for (const item of charge.items) {
+        add(item.category?.trim() || NO_PROCEDURE_LABEL, item.amountSyp);
+      }
+      continue;
+    }
     const procedure =
       (charge.treatmentItemId && procedureByItemId.get(charge.treatmentItemId)) ??
       NO_PROCEDURE_LABEL;
-    totals.set(procedure, (totals.get(procedure) ?? 0) + charge.amountSyp);
+    add(procedure, charge.amountSyp);
   }
   return [...totals.entries()]
     .map(([procedure, chargesSyp]) => ({ procedure, chargesSyp }))
@@ -317,6 +359,21 @@ export function buildPeriodCsv(
           "",
         ],
         ["عدد الدفعات المستلمة", summary.paymentCount, ""],
+        [
+          "محصّل الفترة",
+          usdCell(summary.totalPaymentsSyp, usdRate),
+          summary.totalPaymentsSyp,
+        ],
+        [
+          "متوسط الدفعة",
+          usdCell(
+            summary.paymentCount > 0
+              ? summary.totalPaymentsSyp / summary.paymentCount
+              : 0,
+            usdRate,
+          ),
+          "",
+        ],
         ["مستحقات حالية", usdCell(summary.outstandingSyp, usdRate), summary.outstandingSyp],
       ],
     ),
@@ -390,6 +447,8 @@ export type ReportsPeriodSummaryJson = {
   from: string;
   to: string;
   totalChargesSyp: number;
+  /** مجموع قيمة دفعات الفترة — تعريف «محصّل الفترة» المستقل عن الرسوم */
+  totalPaymentsSyp: number;
   invoiceCount: number;
   paymentCount: number;
   outstandingSyp: number;

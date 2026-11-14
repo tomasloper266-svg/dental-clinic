@@ -71,6 +71,7 @@ describeDb("عزل العيادات — integration", () => {
     await prisma.toothFinding.deleteMany();
     await prisma.ledgerEntry.deleteMany();
     await prisma.treatmentPlanItem.deleteMany();
+    await prisma.treatmentPlan.deleteMany();
     await prisma.appointment.deleteMany();
     await prisma.staffMember.deleteMany();
     await prisma.waitlistEntry.deleteMany();
@@ -317,5 +318,62 @@ role: "DENTIST",
       { params: Promise.resolve({ patientId: patientAId }) },
     );
     expect(res.status).toBe(400);
+  });
+
+  it("بنود الفاتورة بلا clinicId تُعزل عبر علاقة القيد الأب", async () => {
+    // قيد رسوم لكل عيادة ببنود متداخلة — النموذج الابن بلا عمود clinicId
+    // وعزله يكون عبر entry.clinicId حصراً.
+    const [userA, userB] = await Promise.all([
+      prisma.user.findFirstOrThrow({ where: { clinicId: clinicAId } }),
+      prisma.user.findFirstOrThrow({ where: { clinicId: clinicBId } }),
+    ]);
+    const [entryA, entryB] = await Promise.all([
+      prisma.ledgerEntry.create({
+        data: {
+          clinicId: clinicAId,
+          patientId: patientAId,
+          type: "CHARGE",
+          amountSyp: 100,
+          createdById: userA.id,
+          items: {
+            create: [
+              { description: "تنظيف", category: "تنظيف جير", amountSyp: 100 },
+            ],
+          },
+        },
+      }),
+      prisma.ledgerEntry.create({
+        data: {
+          clinicId: clinicBId,
+          patientId: patientBId,
+          type: "CHARGE",
+          amountSyp: 200,
+          createdById: userB.id,
+          items: {
+            create: [
+              { description: "زراعة", category: "زراعة", amountSyp: 200 },
+            ],
+          },
+        },
+      }),
+    ]);
+
+    // القراءة عبر العميل المحصور بعيادة أ: بنود عيادة أ حصراً
+    const scoped = clinicScope(clinicAId);
+    const items = await scoped.ledgerEntryItem.findMany();
+    expect(items).toHaveLength(1);
+    expect(items[0].entryId).toBe(entryA.id);
+    expect(items[0].category).toBe("تنظيف جير");
+
+    // والقيد ببنوده يُحصى في تقرير الفترة عبر نفس العلاقة
+    const entryForItems = await scoped.ledgerEntry.findUniqueOrThrow({
+      where: { id: entryA.id },
+      select: { items: true },
+    });
+    expect(entryForItems.items).toHaveLength(1);
+
+    await prisma.ledgerEntry.deleteMany({
+      where: { id: { in: [entryA.id, entryB.id] } },
+    });
   });
 });

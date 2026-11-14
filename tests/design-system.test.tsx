@@ -187,20 +187,14 @@ describe("EmptyState", () => {
 
 describe("RevenueChart helpers", () => {
   it("يحسب الارتفاعات نسبةً من الأعلى مع أرضية للأصفار", () => {
-    const heights = barHeights([
-      { collectedSyp: 0 },
-      { collectedSyp: 500 },
-      { collectedSyp: 1000 },
-    ]);
+    const heights = barHeights([0, 500, 1000]);
     expect(heights[0]).toBe(4);
     expect(heights[1]).toBe(50);
     expect(heights[2]).toBe(100);
   });
 
   it("يعيد أرضية ثابتة حين لا مدخول إطلاقاً", () => {
-    expect(barHeights([{ collectedSyp: 0 }, { collectedSyp: 0 }])).toEqual([
-      4, 4,
-    ]);
+    expect(barHeights([0, 0])).toEqual([4, 4]);
   });
 
   it("يرجم مفتاح اليوم إلى تسمية يوم قصيرة", () => {

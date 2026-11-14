@@ -29,6 +29,14 @@ const CREATE_OPERATIONS = new Set([
   "createManyAndReturn",
 ]);
 
+// نماذج بلا عمود clinicId — عزلها عبر علاقتها بالأب المحصور حصراً. كل قراءة
+// مباشرة عليها تُفلتر بـ clinicId الأب، وإنشاؤها متداخل تحت الأب دائماً
+// فيحمل نطاق العيادة من قيد الأب نفسه.
+const TRANSITIVE_CHILD_SCOPES: Record<string, { parent: string; field: string }> = {
+  // بنود الفاتورة أبناء قيد رسوم — عزلها عبر entry.clinicId
+  LedgerEntryItem: { parent: "entry", field: "clinicId" },
+};
+
 function injectClinicId(
   operation: string,
   args: RawArgs,
@@ -56,17 +64,40 @@ function injectClinicId(
   return next;
 }
 
+/**
+ * حقن نطاق العيادة لنموذج ابن بلا عمود clinicId — عبر علاقة الأب، للقراءة
+ * فقط. فلاتر علاقة الأب القادمة من المستدعي تُدمج مع فلتر العيادة لا تستبدل.
+ * الكتابة المباشرة على نموذج ابن غير مساندة (تُنشأ متداخلة تحت الأب دائماً).
+ */
+function injectChildScope(
+  operation: string,
+  args: RawArgs,
+  parent: string,
+  clinicId: string,
+): RawArgs {
+  if (!WHERE_OPERATIONS.has(operation)) return args;
+  const next = { ...args };
+  const where = (next.where ?? {}) as RawArgs;
+  const relation = (where[parent] ?? {}) as RawArgs;
+  next.where = { ...where, [parent]: { ...relation, clinicId } };
+  return next;
+}
+
 // العميل المُرجع يوفّر نفس نماذج Prisma لكن كل عملية عليه محصورة بالعيادة.
 export function clinicScope(clinicId: string) {
   return prisma.$extends({
     query: {
       $allModels: {
-        async $allOperations({ operation, args, query }) {
-          const scoped = injectClinicId(
-            operation,
-            (args ?? {}) as RawArgs,
-            clinicId,
-          );
+        async $allOperations({ model, operation, args, query }) {
+          const childScope = TRANSITIVE_CHILD_SCOPES[model ?? ""];
+          const scoped = childScope
+            ? injectChildScope(
+                operation,
+                (args ?? {}) as RawArgs,
+                childScope.parent,
+                clinicId,
+              )
+            : injectClinicId(operation, (args ?? {}) as RawArgs, clinicId);
           return query(scoped as typeof args);
         },
       },
