@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticate } from "@/lib/auth/login";
 import {
+  clearLoginAttempts,
+  loginLockRemainingSec,
+  recordLoginFailure,
+} from "@/lib/auth/rate-limit";
+import {
   SESSION_COOKIE,
   createSession,
   purgeExpiredSessions,
@@ -26,13 +31,27 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const user = await authenticate(phone.trim(), password);
+  // تحديد المحاولات — الهاتف المغلق مؤقتاً يُرد بـ429 حتى قبل فحص كلمة السر
+  const trimmedPhone = phone.trim();
+  const lockRemainingSec = loginLockRemainingSec(trimmedPhone);
+  if (lockRemainingSec > 0) {
+    return NextResponse.json(
+      {
+        error: `تجاوزت عدد المحاولات — أعد المحاولة بعد ${Math.ceil(lockRemainingSec / 60)} دقيقة`,
+      },
+      { status: 429 },
+    );
+  }
+
+  const user = await authenticate(trimmedPhone, password);
   if (!user) {
+    recordLoginFailure(trimmedPhone);
     return NextResponse.json(
       { error: "رقم الهاتف أو كلمة السر غير صحيحة" },
       { status: 401 },
     );
   }
+  clearLoginAttempts(trimmedPhone);
 
   const rememberMe = (body as Record<string, unknown>).rememberMe === true;
   const { token, expiresAt } = await createSession(user.userId, rememberMe);
