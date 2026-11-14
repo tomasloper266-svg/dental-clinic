@@ -8,6 +8,7 @@ import {
   weekDays,
   weekRangeLabel,
   dayDateLabel,
+  headerDateLabel,
   hourToTimeInput,
 } from "@/lib/calendar-view";
 
@@ -26,6 +27,12 @@ describe("مساعدات التقويم — أيام الأسبوع", () => {
     const days = weekDays("2026-06-16"); // ثلاثاء
     expect(days[0]).toBe(SAT);
     expect(days[6]).toBe("2026-06-19");
+  });
+});
+
+describe("تسمية ترويسة الصفحة", () => {
+  it("تُرجع اسم اليوم والتاريخ الرقمي بفاصلة عربية — «السبت، 2026/06/13»", () => {
+    expect(headerDateLabel(SAT)).toBe("السبت، 2026/06/13");
   });
 });
 

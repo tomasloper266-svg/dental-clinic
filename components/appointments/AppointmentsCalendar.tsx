@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import type { StaffMemberDto } from "@/lib/services/staff";
-import { STATUS_META, formatTime } from "@/lib/appointment-ui";
+import { STATUS_META, formatTime, timeRangeLabel } from "@/lib/appointment-ui";
 import { addDays, toDateInputValue } from "@/lib/dates";
 import {
   WEEKDAY_HEADERS,
   dayDateLabel,
   groupByDay,
   groupByStartHour,
+  headerDateLabel,
   hourToTimeInput,
   timeGridWindow,
   weekDays,
@@ -86,7 +87,10 @@ export default function AppointmentsCalendar({
         const res = await fetch("/api/staff");
         if (!res.ok) return;
         const data = (await res.json()) as { staff: StaffMemberDto[] };
-        if (alive) setStaff(data.staff.filter((s) => s.isActive));
+        // الأطباء فقط — فلتر «كل الأطباء» كما في المرجع.
+        if (alive) {
+          setStaff(data.staff.filter((s) => s.isActive && s.role === "DENTIST"));
+        }
       } catch {
         // بلا قائمة أطباء تبقى الصفحة تعمل بلا تصفية ولا تلوين حواف.
       }
@@ -134,6 +138,7 @@ export default function AppointmentsCalendar({
     <>
       <PageHeader
         title="المواعيد"
+        description={headerDateLabel(dateValue)}
         actions={
           <Button shape="pill" onClick={() => openBooking()}>
             <Plus size={16} aria-hidden />
@@ -206,7 +211,7 @@ export default function AppointmentsCalendar({
             <option value="">كل الأطباء</option>
             {staff.map((d) => (
               <option key={d.id} value={d.id}>
-                {d.name}
+                د. {d.name}
               </option>
             ))}
           </Select>
@@ -369,12 +374,8 @@ function AppointmentCard({
 }) {
   const meta = STATUS_META[appointment.status];
   const settled = appointment.status === "COMPLETED" || appointment.status === "CANCELLED";
-  const doctorLine = [
-    appointment.staffName ? `د. ${appointment.staffName}` : null,
-    appointment.reason,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  // سطر الطبيب وسطر الخدمة منفصلان كما في المرجع، وكل منهما اختياري.
+  const doctorLine = appointment.staffName ? `د. ${appointment.staffName}` : null;
 
   return (
     <button
@@ -391,7 +392,7 @@ function AppointmentCard({
     >
       <span className="flex items-center justify-between gap-2">
         <span className="numeric text-xs font-bold text-ink-900">
-          {formatTime(appointment.startsAt)} · {appointment.durationMin} د
+          {timeRangeLabel(appointment.startsAt, appointment.durationMin)}
         </span>
         <StatusPill tone={meta.tone} className="shrink-0">
           {meta.label}
@@ -403,6 +404,11 @@ function AppointmentCard({
       {doctorLine && (
         <span className="block truncate text-[11px] text-warm-500">
           {doctorLine}
+        </span>
+      )}
+      {appointment.reason && (
+        <span className="block truncate text-[11px] text-warm-500">
+          {appointment.reason}
         </span>
       )}
     </button>

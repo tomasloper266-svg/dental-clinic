@@ -20,7 +20,7 @@ const STATUS_TONES: Record<AppointmentStatus, BadgeTone> = {
 };
 
 const STATUS_LABELS: Record<AppointmentStatus, string> = {
-  SCHEDULED: "محجوز",
+  SCHEDULED: "مجدول",
   CONFIRMED: "مؤكد",
   IN_TREATMENT: "قيد العلاج",
   COMPLETED: "مكتمل",
@@ -73,6 +73,8 @@ export const STATUS_LABEL = (status: AppointmentStatus): string =>
 const TIME_FMT = new Intl.DateTimeFormat("ar-SY-u-nu-latn", {
   hour: "2-digit",
   minute: "2-digit",
+  // ساعات كاملة بلا فترة ص/م — «09:00» و«13:00» بنمط المرجع.
+  hourCycle: "h23",
 });
 
 const DATE_FMT = new Intl.DateTimeFormat("ar-SY-u-nu-latn", {
@@ -83,6 +85,16 @@ const DATE_FMT = new Intl.DateTimeFormat("ar-SY-u-nu-latn", {
 
 export function formatTime(date: Date | string): string {
   return TIME_FMT.format(new Date(date));
+}
+
+/** نطاق وقت الموعد «10:30 – 11:00» — من بدايته ومدته بالدقائق. */
+export function timeRangeLabel(
+  startsAt: Date | string,
+  durationMin: number,
+): string {
+  const start = new Date(startsAt);
+  const end = new Date(start.getTime() + durationMin * 60_000);
+  return `${formatTime(start)} – ${formatTime(end)}`;
 }
 
 export function formatDayLabel(date: Date | string): string {

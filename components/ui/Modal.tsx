@@ -8,6 +8,8 @@ type ModalProps = {
   open: boolean;
   onClose: () => void;
   title: string;
+  /** ترويسة النافذة بخط العرض الزخرفي — نوافذ الإنشاء الجديد على شكل المرجع */
+  titleClassName?: string;
   children: React.ReactNode;
   /** أزرار/إجراءات أسفل النافذة */
   footer?: React.ReactNode;
@@ -15,7 +17,7 @@ type ModalProps = {
 };
 
 /** نافذة حوارية — إغلاق بـ Escape أو بالنقر على الخلفية، بتركيز داخل الحوار */
-export function Modal({ open, onClose, title, children, footer, className }: ModalProps) {
+export function Modal({ open, onClose, title, titleClassName, children, footer, className }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -49,7 +51,7 @@ export function Modal({ open, onClose, title, children, footer, className }: Mod
         )}
       >
         <div className="flex items-center justify-between border-b border-warm-200 px-5 py-3">
-          <h2 className="text-sm font-semibold text-ink-900">{title}</h2>
+          <h2 className={cn("text-sm font-semibold text-ink-900", titleClassName)}>{title}</h2>
           <button
             type="button"
             onClick={onClose}

@@ -98,6 +98,24 @@ describe("parseCreateAppointment", () => {
     expect(r.ok).toBe(true);
   });
 
+  it("يقبل حالة ابتدائية صالحة ويرفض غير معروفة", () => {
+    const ok = parseCreateAppointment({
+      patientId: "p1",
+      startsAt: "2026-06-15T10:00:00Z",
+      status: "CONFIRMED",
+    });
+    expect(ok.ok).toBe(true);
+    if (ok.ok) expect(ok.value.status).toBe("CONFIRMED");
+
+    expect(
+      parseCreateAppointment({
+        patientId: "p1",
+        startsAt: "2026-06-15T10:00:00Z",
+        status: "NOT_A_STATUS",
+      }).ok,
+    ).toBe(false);
+  });
+
   it("يرفض غياب المريض أو تاريخاً غير صالح", () => {
     expect(
       parseCreateAppointment({ startsAt: "2026-06-15T10:00:00Z" }).ok,

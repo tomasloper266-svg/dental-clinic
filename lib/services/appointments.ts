@@ -1,6 +1,9 @@
 import { clinicScope } from "@/lib/tenant/clinic-client";
 import type { TenantContext } from "@/lib/tenant/context";
-import type { AppointmentStatus } from "@/lib/appointment-state";
+import {
+  APPOINTMENT_STATUSES,
+  type AppointmentStatus,
+} from "@/lib/appointment-state";
 
 // خدمة المواعيد — نفس نمط خدمة المرضى: كل استعلام عبر clinicScope بمعرّف
 // العيادة من سياق الجلسة. قاعدة منع التعارض: فترة جديدة تتقاطع مع موعد
@@ -31,6 +34,8 @@ export type CreateAppointmentInput = {
   reason?: string;
   note?: string;
   staffId?: string;
+  /** حالة ابتدائية اختيارية — الافتراضي «مجدول» */
+  status?: AppointmentStatus;
 };
 
 export type ServiceError =
@@ -78,10 +83,14 @@ export function parseCreateAppointment(
   const reason = typeof b.reason === "string" ? b.reason.trim() : undefined;
   const note = typeof b.note === "string" ? b.note.trim() : undefined;
   const staffId = typeof b.staffId === "string" && b.staffId.trim() ? b.staffId.trim() : undefined;
+  const status = APPOINTMENT_STATUSES.find((s) => s === b.status);
+  if (b.status !== undefined && !status) {
+    return { ok: false, error: "حالة الموعد غير صالحة" };
+  }
 
   return {
     ok: true,
-    value: { patientId, startsAt, durationMin, reason, note, staffId },
+    value: { patientId, startsAt, durationMin, reason, note, staffId, status },
   };
 }
 
@@ -145,7 +154,7 @@ export async function createAppointment(
       patientId: input.patientId,
       startsAt: input.startsAt,
       durationMin: input.durationMin,
-      status: "SCHEDULED",
+      status: input.status ?? "SCHEDULED",
       reason: input.reason,
       note: input.note,
       staffId: input.staffId,

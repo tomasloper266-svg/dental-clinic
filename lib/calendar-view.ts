@@ -96,6 +96,11 @@ const WEEKDAY_FMT = new Intl.DateTimeFormat("ar-SY-u-nu-latn", {
   timeZone: "UTC",
 });
 
+/** تسمية ترويسة الصفحة — «السبت، 2026/11/14» باسم اليوم والتاريخ الرقمي. */
+export function headerDateLabel(date: string): string {
+  return `${WEEKDAY_FMT.format(parseIsoDate(date))}، ${numericDate(date)}`;
+}
+
 /** تسمية اليوم المفرد بأسلوب المرجع، مع لاحقة (اليوم) إذا كان تاريخ اليوم. */
 export function dayDateLabel(date: string, today: string): string {
   const base = `${WEEKDAY_FMT.format(parseIsoDate(date))} ${numericDate(date)}`;
