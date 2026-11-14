@@ -3,7 +3,7 @@ import { pageWrapClass } from "@/lib/page-width";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
 import { tenantContextFromSession } from "@/lib/tenant/context";
-import { getDailyReport, getDailySeries } from "@/lib/services/reports";
+import { getDailyReport } from "@/lib/services/reports";
 import { listAppointments } from "@/lib/services/appointments";
 import { lowStockMaterials } from "@/lib/services/inventory";
 import { listPatients } from "@/lib/services/patients";
@@ -14,6 +14,12 @@ import {
   greetingForDate,
 } from "@/lib/dashboard-view";
 import { outstandingDuesSyp } from "@/lib/finance-view";
+import {
+  currentMonthRevenue,
+  dailyRevenueDual,
+  monthlyRevenueDual,
+} from "@/lib/revenue-views";
+import { localDayOf } from "@/lib/local-day";
 import { getClinicUsdRate } from "@/lib/services/account";
 import { formatDualFromSyp } from "@/lib/currency";
 import { formatDayLabel } from "@/lib/appointment-ui";
@@ -49,7 +55,6 @@ export default async function DashboardPage() {
     weekAppointments,
     lowStock,
     patients,
-    series,
     clinicEntries,
     usdRate,
   ] = await Promise.all([
@@ -57,7 +62,6 @@ export default async function DashboardPage() {
     listAppointments(ctx, fetchWindowStart, fetchWindowEnd),
     lowStockMaterials(ctx),
     listPatients(ctx),
-    getDailySeries(ctx, now, 7),
     listClinicLedgerEntries(ctx),
     getClinicUsdRate(ctx),
   ]);
@@ -71,6 +75,13 @@ export default async function DashboardPage() {
   const recentPayments = clinicEntries
     .filter((entry) => entry.type === "PAYMENT")
     .slice(0, 5);
+
+  // عرضات الإيراد — من قيود العيادة المجلوبة أصلاً: بطاقة الشهر بالتعريفين،
+  // وسلسلتا الرسم (أيام/أشهر) بمبدّلَي النافذة والمقياس داخل الرسم نفسه.
+  const todayKey = localDayOf(now);
+  const monthRevenue = currentMonthRevenue(clinicEntries, now);
+  const dailySeries = dailyRevenueDual(clinicEntries, now, 7);
+  const monthlySeries = monthlyRevenueDual(clinicEntries, todayKey, 6);
 
   return (
     <div className={pageWrapClass("wide")}>
@@ -95,6 +106,12 @@ export default async function DashboardPage() {
         <StatCard
           value={formatDualFromSyp(report.collectedSyp, usdRate)}
           label="دخل اليوم"
+          icon={Coins}
+        />
+        <StatCard
+          value={formatDualFromSyp(monthRevenue.collectedSyp, usdRate)}
+          label="إيراد هذا الشهر (تحصيل)"
+          subLabel={`رسوم الشهر: ${formatDualFromSyp(monthRevenue.chargesSyp, usdRate)}`}
           icon={Coins}
         />
         <StatCard
@@ -128,10 +145,10 @@ export default async function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>الدخل الحالي - آخر 7 أيام</CardTitle>
+            <CardTitle>الإيراد — مبدّل نافذة ومقياس</CardTitle>
           </CardHeader>
           <CardBody>
-            <RevenueChart points={series} />
+            <RevenueChart daily={dailySeries} monthly={monthlySeries} />
           </CardBody>
         </Card>
       </div>
