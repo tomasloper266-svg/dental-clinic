@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import type { PlanItemDto } from "@/lib/services/treatment-plan";
 import { planStatusMeta } from "@/lib/treatment-plan-view";
+import {
+  buildChargeWithItemsBody,
+  type InvoiceItemPayload,
+} from "@/lib/invoices-view";
 import type { StaffMemberDto } from "@/lib/services/staff";
 import { useMoney } from "@/components/ui/CurrencyContext";
 import { Button } from "@/components/ui/Button";
@@ -10,8 +14,9 @@ import { Field, Input } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 
-// إصدار فاتورة من بنود الخطة — كل بند مختار يصبح قيد رسم (CHARGE) مربوطاً
-// برقم البند عبر مسار الدفتر القائم، والخصم قيد تسوية سالبة. الفاتورة المعروضة
+// إصدار فاتورة من بنود الخطة — قيد رسوم واحد (CHARGE) ببنود مهيكلة للبنود
+// المختارة كلها، فتأخذ الفاتورة رقماً واحداً من تسلسل العيادة وتُصنَّف بنودها
+// في تجميع الإيراد حسب الإجراء. الخصم قيد تسوية سالبة منفصل، والفاتورة المعروضة
 // لاحقاً مشتقة من هذه القيود نفسها (لا نموذج فواتير منفصل).
 
 type Props = {
@@ -26,11 +31,6 @@ type Props = {
 };
 
 type IssueResult = { entry: { id: string } };
-
-/** خطأ صادق جزئياً — بعض القيود سُجلت وبعضها فشل */
-function partialError(created: number, total: number): string {
-  return `سُجلت ${created} من ${total} بنوداً قبل حدوث الخطأ — البنود المسجلة ظاهرة في الفاتورة`;
-}
 
 export default function IssueInvoiceModal({
   open,
@@ -87,30 +87,40 @@ export default function IssueInvoiceModal({
     setError(null);
     setSaving(true);
     try {
-      const chargeIds: string[] = [];
-      for (const item of selectedItems) {
-        const res = await fetch(`/api/patients/${encodeURIComponent(patientId)}/ledger`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: "CHARGE",
-            amountSyp: item.priceSyp,
-            note: item.procedure,
-            treatmentItemId: item.id,
+      // بنود الفاتورة من بنود الخطة المختارة — الوصف هو الإجراء نفسه
+      // والتصنيف نص حر أساس تجميع الإيراد حسب نوع العلاج.
+      const payloadItems: InvoiceItemPayload[] = selectedItems.map((item) => ({
+        description: item.procedure,
+        category: item.procedure,
+        amountSyp: item.priceSyp,
+      }));
+      const res = await fetch(`/api/patients/${encodeURIComponent(patientId)}/ledger`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...buildChargeWithItemsBody({
+            items: payloadItems,
+            note:
+              notes.trim() ||
+              `فاتورة خطة — ${payloadItems.length} بنود`,
           }),
-        });
-        if (!res.ok) {
-          if (chargeIds.length > 0) {
-            setError(partialError(chargeIds.length, selectedItems.length));
-            onIssued(chargeIds);
-          } else {
-            setError("تعذر إصدار الفاتورة، لم يُسجَّل أي قيد");
-          }
-          return;
-        }
-        const data = (await res.json()) as IssueResult;
-        chargeIds.push(data.entry.id);
+          // بند واحد مختار يبقى مربوطاً برقم بند الخطة — حاجز التكرار مع
+          // القيد التلقائي (recordTreatmentCharge) كما هو. متعدد البنود لا
+          // يحمل ربطاً لكل بند على القيد — البنود نفسها تحمل أوصافها.
+          ...(selectedItems.length === 1
+            ? { treatmentItemId: selectedItems[0].id }
+            : {}),
+        }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        setError(data?.error ?? "تعذر إصدار الفاتورة، لم يُسجَّل أي قيد");
+        return;
       }
+      const data = (await res.json()) as IssueResult;
+      const chargeIds = [data.entry.id];
       if (discount > 0) {
         const res = await fetch(`/api/patients/${encodeURIComponent(patientId)}/ledger`, {
           method: "POST",
@@ -122,7 +132,7 @@ export default function IssueInvoiceModal({
           }),
         });
         if (!res.ok) {
-          setError("سُجلت البنود لكن تعذر تسجيل الخصم");
+          setError("صدرت الفاتورة لكن تعذر تسجيل الخصم");
           onIssued(chargeIds);
           return;
         }
