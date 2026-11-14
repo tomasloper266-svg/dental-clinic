@@ -30,7 +30,11 @@ const SYSTEM_SUBTITLE = "نظام إدارة العيادات";
  */
 export function clinicHeaderName(clinicName?: string): string {
   const trimmed = clinicName?.trim();
-  return trimmed ? `${trimmed} لطب الأسنان` : SYSTEM_NAME;
+  if (!trimmed) return SYSTEM_NAME;
+  // الاسم المسجل قد ينتهي بلاقة اللاحق نفسها — لا تُضف مرتين
+  return trimmed.endsWith("لطب الأسنان")
+    ? trimmed
+    : `${trimmed} لطب الأسنان`;
 }
 
 function isItemActive(pathname: string, href: string): boolean {
