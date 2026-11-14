@@ -368,6 +368,21 @@ describe("topPatientsByCharges", () => {
       { patientId: "p2", patientName: "ليلى مرعي", chargesSyp: 965 },
     ]);
   });
+
+  it("الحد الافتراضي 25 — قائمة أعلى المرضى لا تقصّ قيم فترة حقيقية (خطأ 13)", () => {
+    const charges = Array.from({ length: 30 }, (_, i) => ({
+      patientId: `p${i + 1}`,
+      patientName: `مريض ${i + 1}`,
+      amountSyp: 100 + i,
+    }));
+    const top = topPatientsByCharges(charges);
+    expect(top).toHaveLength(25);
+    expect(top[0]).toEqual({
+      patientId: "p30",
+      patientName: "مريض 30",
+      chargesSyp: 129,
+    });
+  });
 });
 
 describe("patientGrowthMonthly", () => {

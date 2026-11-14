@@ -262,7 +262,8 @@ export function topPatientsByCharges(
     patientName: string;
     amountSyp: number;
   }>,
-  limit = 7,
+  // سقف عرض كبير بلا اقتصاص عملي — حدّ 7 كان يقصّ مرضي فترة حقيقية
+  limit = 25,
 ): { patientId: string; patientName: string; chargesSyp: number }[] {
   const totals = new Map<string, { name: string; total: number }>();
   for (const charge of charges) {

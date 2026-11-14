@@ -20,6 +20,7 @@ import {
 import { PATCH as materialPATCH } from "@/app/api/materials/[materialId]/route";
 import { POST as supplyPOST } from "@/app/api/materials/[materialId]/supply/route";
 import { POST as usagePOST } from "@/app/api/materials/[materialId]/usage/route";
+import { GET as movementsGET } from "@/app/api/materials/[materialId]/movements/route";
 import { POST as loginPOST } from "@/app/api/auth/login/route";
 import type { TenantContext } from "@/lib/tenant/context";
 
@@ -309,6 +310,29 @@ role: "DENTIST",
     });
     expect(status).toBe(201);
     expect(body.material?.id).toBeTruthy();
+  });
+
+  it("الرصيد الافتتاحي يُحفظ من الإنشاء وتُسجّل حركة تأسيس بقيمته (خطأ 7)", async () => {
+    const token = await loginToken(PHONE_A, PASSWORD);
+    const { status, body } = await createMaterialApi(token, {
+      name: "مادة برصيد افتتاحي",
+      unit: "علبة",
+      minQuantity: 5,
+      quantity: 25,
+    });
+    expect(status).toBe(201);
+    expect(body.material?.quantityOnHand).toBe(25);
+
+    // حركة التأسيس في الدفتر — نفس نمط سطر التوريد
+    const mvRes = await movementsGET(
+      authedRequest(`/api/materials/${body.material!.id}/movements`, token),
+      routeParams(body.material!.id),
+    );
+    expect(mvRes.status).toBe(200);
+    const movements = (await mvRes.json()).movements;
+    expect(movements).toHaveLength(1);
+    expect(Number(movements[0].quantityChange)).toBe(25);
+    expect(movements[0].note).toBe("رصيد افتتاحي عند إنشاء المادة");
   });
 
   it("التوريد يزيد الكمية والمواد تبقى معزولة بمرحلة الإنشاء", async () => {
