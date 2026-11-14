@@ -1,4 +1,5 @@
 import { toCsv } from "@/lib/csv";
+import { localMonthKeyOf } from "@/lib/local-day";
 
 // بيانات عرض تقرير الفترة — نقية بلا I/O وتُختبر وحدوياً. كل الدوال تأخذ
 // الصفوف الخام (قيود الدفتر، المواعيد، المرضى) وتعيد أرقام العرض، فلا
@@ -257,8 +258,8 @@ export function patientGrowthMonthly(
   const index = new Map(months.map((m, i) => [m, i] as const));
   const counts = months.map((month) => ({ month, count: 0 }));
   for (const createdAt of createdAts) {
-    const at = new Date(createdAt).toISOString().slice(0, 7);
-    const position = index.get(at);
+    // شهر التسجيل بتوقيت العيادة لا UTC — تسجيل منتصف الليل المحلي يبقى في شهره
+    const position = index.get(localMonthKeyOf(createdAt));
     if (position !== undefined) counts[position].count += 1;
   }
   return counts;
@@ -272,7 +273,8 @@ export function monthlyRevenue(
   const buckets = monthsCovered(range).map((month) => ({ month, chargesSyp: 0 }));
   const index = new Map(buckets.map((b, i) => [b.month, i] as const));
   for (const charge of charges) {
-    const position = index.get(new Date(charge.createdAt).toISOString().slice(0, 7));
+    // شهر القيد بتوقيت العيادة لا UTC — حركة منتصف الليل المحلي تبقى في شهرها
+    const position = index.get(localMonthKeyOf(charge.createdAt));
     if (position !== undefined) buckets[position].chargesSyp += charge.amountSyp;
   }
   return buckets;

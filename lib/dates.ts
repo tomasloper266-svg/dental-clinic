@@ -32,9 +32,23 @@ const WEEKDAY_DATE_FMT = new Intl.DateTimeFormat("ar-SY-u-nu-latn", {
   year: "numeric",
 });
 
-/** تاريخ مع اليوم — «السبت 2026/11/14» لترويسة الصفحات وبطاقة الفاتورة */
-export function formatWeekdayDateCell(date: Date | string): string {
-  return WEEKDAY_DATE_FMT.format(new Date(date));
+/** تاريخ مع اليوم — «السبت 2026/11/14» لترويسة الصفحات وبطاقة الفاتورة.
+ * timeZone اختياري — تقارير الفترة تُمرّر توقيت العيادة كي يطابق الترويسة
+ * «اليوم» المُستعمل في حدود الفترة */
+export function formatWeekdayDateCell(
+  date: Date | string,
+  timeZone?: string,
+): string {
+  return (timeZone === undefined
+    ? WEEKDAY_DATE_FMT
+    : new Intl.DateTimeFormat("ar-SY-u-nu-latn", {
+        weekday: "long",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        timeZone,
+      })
+  ).format(new Date(date));
 }
 
 // أول الشهر حتى أول الشهر التالي — بتوقيت UTC مثل بقية حدود الأيام.

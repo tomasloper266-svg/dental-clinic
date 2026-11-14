@@ -1,6 +1,7 @@
 import type { TenantContext } from "@/lib/tenant/context";
 import { clinicScope } from "@/lib/tenant/clinic-client";
 import { outstandingDuesSyp } from "@/lib/finance-view";
+import { localDayOf, localDayStartUtc } from "@/lib/local-day";
 import {
   appointmentOutcomeCounts,
   monthlyRevenue,
@@ -19,10 +20,7 @@ import {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** بداية اليوم بتوقيت UTC من يوم YYYY-MM-DD */
-function utcDay(day: string): Date {
-  return new Date(`${day}T00:00:00Z`);
-}
+// بداية اليوم بتوقيت العيادة (دمشق) — حركة منتصف الليل المحلي تبقى في يومها.
 
 export async function getReportsPeriodSummary(
   ctx: TenantContext,
@@ -43,20 +41,21 @@ export async function getReportsPeriodSummary(
     patientMin._min.createdAt,
   ]
     .filter((value): value is Date => value !== null)
-    .map((value) => value.toISOString().slice(0, 10))
+    .map((value) => localDayOf(value))
     .sort();
   const rangeStart = rangeStartCandidates[0] ?? range.to;
 
-  // نطاق زمني [من بداية from، بداية اليوم التالي لـ to) — شامل الطرفين يومياً
+  // نطاق زمني [من بداية from بتوقيت العيادة، بداية اليوم التالي لـ to) —
+  // شامل الطرفين يومياً حسب أيام دمشق لا أيام UTC
   const effectiveFrom =
     range.from > rangeStart ? range.from : rangeStart;
   const effectiveRange: DayRange = { from: effectiveFrom, to: range.to };
-  const from = utcDay(effectiveFrom);
-  const to = new Date(utcDay(range.to).getTime() + DAY_MS);
+  const from = localDayStartUtc(effectiveFrom);
+  const to = new Date(localDayStartUtc(range.to).getTime() + DAY_MS);
 
   // نافذة نمو سجل المرضى: 12 شهراً منتهية بشهر نهاية الفترة
   const growthFrom = new Date(
-    utcDay(range.to).getTime() - 365 * DAY_MS,
+    localDayStartUtc(range.to).getTime() - 365 * DAY_MS,
   );
 
   const [

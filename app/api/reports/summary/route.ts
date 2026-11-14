@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenant } from "@/lib/tenant/require-tenant";
 import { getReportsPeriodSummary } from "@/lib/services/reports-period";
+import { localDayOf } from "@/lib/local-day";
 
 // ملخص تقرير الفترة — ?from=YYYY-MM-DD&to=YYYY-MM-DD (شاملان). بلا معاملات
 // تُعاد فترة «الكل»: من أقدم يوم حركة حتى اليوم. كل التجميعات من خدمة
@@ -34,7 +35,8 @@ export async function GET(req: NextRequest) {
   if (!fromParam && !toParam) {
     const summary = await getReportsPeriodSummary(ctx, {
       from: "1970-01-01",
-      to: new Date().toISOString().slice(0, 10),
+      // اليوم بتوقيت العيادة لا UTC — وإلا وقعت حركة منتصف الليل المحلي في اليوم السابق
+      to: localDayOf(new Date()),
     });
     return NextResponse.json({ summary }, { status: 200 });
   }

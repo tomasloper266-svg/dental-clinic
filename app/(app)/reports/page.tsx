@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
 import { tenantContextFromSession } from "@/lib/tenant/context";
 import { getClinicUsdRate } from "@/lib/services/account";
-import { formatWeekdayDateCell, toDateInputValue } from "@/lib/dates";
+import { formatWeekdayDateCell } from "@/lib/dates";
+import { localDayOf } from "@/lib/local-day";
 import ReportsBoard from "@/components/reports/ReportsBoard";
 
 // صفحة التقارير — تقرير فترة كامل (خيارات جاهزة ومدى مخصص من/إلى وتصدير
@@ -19,12 +20,15 @@ export default async function ReportsPage() {
   const ctx = tenantContextFromSession(session);
   const usdRate = await getClinicUsdRate(ctx);
   const now = new Date();
+  // «اليوم» بتوقيت العيادة (دمشق) لا UTC — خيارات الفترة والمدى المخصص
+  // ينبغي أن ينتهيا بيوم دمشق الحالي مهما كان توقيت الخادم
+  const todayValue = localDayOf(now);
 
   return (
     <div className={pageWrapClass("wide")}>
       <ReportsBoard
-        todayValue={toDateInputValue(now)}
-        todayLabel={formatWeekdayDateCell(now)}
+        todayValue={todayValue}
+        todayLabel={formatWeekdayDateCell(now, "Asia/Damascus")}
         usdRate={usdRate}
       />
     </div>

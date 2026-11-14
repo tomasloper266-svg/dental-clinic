@@ -13,9 +13,57 @@ import {
   shiftMonthDay,
   summarizePeriodLedger,
   topPatientsByCharges,
+  type DayRange,
 } from "@/lib/reports-period-view";
+import { localDayStartUtc } from "@/lib/local-day";
 
 // اختبارات عرض تقرير الفترة — كل الدوال نقية بلا قاعدة بيانات.
+
+describe("حدود الأيام المحلية للنطاقات", () => {
+  const DAY = "2026-11-15";
+  // 00:30 دمشق يوم 15 = 21:30 يوم 14 بتوقيت UTC
+  const AT_0030 = "2026-11-14T21:30:00.000Z";
+  // 23:30 دمشق يوم 15 = 20:30 يوم 15 بتوقيت UTC
+  const AT_2330 = "2026-11-15T20:30:00.000Z";
+  // 00:30 دمشق يوم 16 = 21:30 يوم 15 بتوقيت UTC
+  const AT_0030_NEXT = "2026-11-15T21:30:00.000Z";
+
+  /** نفس نافذة الاستعلام في خدمة التقرير: [بداية from، بداية اليوم التالي لـ to) */
+  function rangeWindow(range: DayRange): { from: number; to: number } {
+    return {
+      from: localDayStartUtc(range.from).getTime(),
+      to: localDayStartUtc(range.to).getTime() + 24 * 60 * 60 * 1000,
+    };
+  }
+
+  it("نطاق جاهز (30d): حركة 00:30 وحركة 23:30 من اليوم X تعدّان في اليوم X", () => {
+    const range = presetRange("30d", DAY, "2020-01-01");
+    const window = rangeWindow(range);
+    expect(range.to).toBe(DAY);
+    expect(new Date(AT_0030).getTime()).toBeGreaterThanOrEqual(window.from);
+    expect(new Date(AT_2330).getTime()).toBeLessThan(window.to);
+  });
+
+  it("نطاق مخصص (from=to=اليوم X): حركة 00:30 وحركة 23:30 تعدّان في اليوم X", () => {
+    const window = rangeWindow({ from: DAY, to: DAY });
+    expect(new Date(AT_0030).getTime()).toBeGreaterThanOrEqual(window.from);
+    expect(new Date(AT_2330).getTime()).toBeLessThan(window.to);
+  });
+
+  it("حركة 00:30 من اليوم التالي خارجة عن نافذة اليوم X بنوعي النطاق", () => {
+    const preset = rangeWindow(presetRange("30d", DAY, "2020-01-01"));
+    const custom = rangeWindow({ from: DAY, to: DAY });
+    for (const window of [preset, custom]) {
+      expect(new Date(AT_0030_NEXT).getTime()).toBeGreaterThanOrEqual(window.to);
+    }
+  });
+
+  it("حركة 00:30 من اليوم السابق خارجة عن النافذة المخصصة لليوم X", () => {
+    const custom = rangeWindow({ from: DAY, to: DAY });
+    // 00:30 دمشق يوم 14 = 21:30 يوم 13 بتوقيت UTC
+    expect(new Date("2026-11-13T21:30:00.000Z").getTime()).toBeLessThan(custom.from);
+  });
+});
 
 describe("shiftMonthDay", () => {
   it("يزيح الأشهر مع ثبات اليوم", () => {
@@ -96,6 +144,15 @@ describe("monthlyRevenue", () => {
     const months = monthlyRevenue(charges, { from: "2026-08-16", to: "2026-10-14" });
     expect(months.map((m) => m.chargesSyp)).toEqual([400, 1710, 1205]);
     expect(months.map((m) => m.month)).toEqual(["2026-08", "2026-09", "2026-10"]);
+  });
+
+  it("قيد منتصف الليل المحلي (00:30 دمشق من أول الشهر) يقع في شهره المحلي", () => {
+    // 00:30 دمشق يوم 1-11 = 21:30 يوم 31-10 بتوقيت UTC
+    const months = monthlyRevenue(
+      [{ amountSyp: 300, createdAt: "2026-10-31T21:30:00.000Z" }],
+      { from: "2026-11-01", to: "2026-11-30" },
+    );
+    expect(months.map((m) => m.chargesSyp)).toEqual([300]);
   });
 });
 
