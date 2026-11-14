@@ -2,9 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_USD_RATE,
   dualFromSypParts,
+  displayCostPartsFromSyp,
   formatDualFromSyp,
+  formatPrimaryCostFromSyp,
   formatSypAmount,
+  formatSypCost,
   formatUsd,
+  formatUsdCost,
   sypToUsd,
   usdToSyp,
 } from "@/lib/currency";
@@ -55,6 +59,27 @@ describe("sypToUsd", () => {
     expect(() => sypToUsd(750000, 0)).toThrow(RangeError);
     expect(() => sypToUsd(750000, -5)).toThrow(RangeError);
     expect(() => sypToUsd(750000, Number.NaN)).toThrow(RangeError);
+  });
+});
+
+describe("cost formatters", () => {
+  it("تكلفة كسرية تُعرض بمنزلتين ثابتتين لا تقريب صحيح", () => {
+    expect(formatSypCost(4.5)).toBe("4.50 ل.س");
+    expect(formatUsdCost(4.5)).toBe("$4.50");
+    expect(formatUsdCost(36.67)).toBe("$36.67");
+  });
+
+  it("تكلفة صحيحة تبقى بمنسّق المبالغ العادي", () => {
+    expect(formatSypCost(750000)).toBe("750,000 ل.س");
+    expect(formatUsdCost(50)).toBe("$50");
+  });
+
+  it("عرض التكلفة بالعملتين يحافظ على العشريات", () => {
+    expect(displayCostPartsFromSyp(67500, 15000)).toEqual({
+      primary: "$4.50",
+      secondary: "67,500 ل.س",
+    });
+    expect(formatPrimaryCostFromSyp(67500, 15000, "USD")).toBe("$4.50");
   });
 });
 

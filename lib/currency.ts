@@ -79,6 +79,56 @@ export function formatPrimaryFromSyp(
   return displayPartsFromSyp(syp, rate, currency).primary;
 }
 
+/** منزلتان ثابتتان — للقيم الكسرية التي يُلزم عرضها كما خُزّنت */
+function formatFixed2(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+/**
+ * تكلفة مادة بالليرة السورية — القيم الكسرية بمنزلتين ثابتتين («4.50 ل.س»)
+ * كي لا تُقرَّب عند العرض بعد الانتقال إلى Decimal(12,2)، والقيم الصحيحة
+ * كالمبالغ العادية بلا كسور.
+ */
+export function formatSypCost(syp: number): string {
+  return Number.isInteger(syp)
+    ? formatSypAmount(syp)
+    : `${formatFixed2(syp)} ل.س`;
+}
+
+/** تكلفة مادة بالدولار — الكسرية بمنزلتين ثابتتين («$4.50») لا تقريب صحيح */
+export function formatUsdCost(usd: number): string {
+  return Number.isInteger(usd) ? formatUsd(usd) : `$${formatFixed2(usd)}`;
+}
+
+/**
+ * جزءا عرض تكلفة مادة بالعملتين — نفس معادلة displayPartsFromSyp لكن
+ * بمنسّقات التكلفة التي تحافظ على العشريات المخزّنة.
+ */
+export function displayCostPartsFromSyp(
+  syp: number,
+  rate: number,
+  currency: DisplayCurrency = "USD",
+): { primary: string; secondary: string } {
+  assertRate(rate);
+  const usd = formatUsdCost(syp / rate);
+  const sypText = formatSypCost(syp);
+  return currency === "SYP"
+    ? { primary: sypText, secondary: usd }
+    : { primary: usd, secondary: sypText };
+}
+
+/** تكلفة مادة بالعملة المعروضة وحدها — لأسطر الجداول المختصرة */
+export function formatPrimaryCostFromSyp(
+  syp: number,
+  rate: number,
+  currency: DisplayCurrency = "USD",
+): string {
+  return displayCostPartsFromSyp(syp, rate, currency).primary;
+}
+
 /**
  * المبلغ بالعملتين معاً بالعربية: «$50 (750,000 ل.س)» — الدولار أولاً
  * (يُحسب بقسمة المبلغ على سعر الصرف) ثم الليرة بين قوسين.

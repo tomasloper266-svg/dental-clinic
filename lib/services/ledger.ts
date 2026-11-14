@@ -18,7 +18,18 @@ export type LedgerEntryDto = {
   treatmentItemId: string | null;
   /** تسلسل الرسوم على مستوى العيادة — أساس رقم الفاتورة، فارغ للقيود القديمة */
   invoiceSeq: number | null;
+  /** الطبيب المُسند المحفوظ لحظة القيد — فارغ للقيود القديمة */
+  doctorId: string | null;
+  /** ترشيح تخصيص الدفعة لفاتورة — للعرض حصراً ولا يدخل في معادلة الرصيد */
+  appliedChargeId: string | null;
   createdAt: Date;
+};
+
+export type LedgerEntryItemInput = {
+  description: string;
+  category?: string;
+  amountSyp: number;
+  sort?: number;
 };
 
 export type LedgerEntryInput = {
@@ -27,6 +38,12 @@ export type LedgerEntryInput = {
   amountSyp: number;
   note?: string;
   treatmentItemId?: string;
+  /** إسناد صريح للطبيب — غيابه في قيد رسوم يعني الاستنتاج من أحدث موعد مُسند */
+  doctorId?: string;
+  /** ترشيح تخصيص دفعة لفاتورة — ترشيح عرض فقط، لا يغيّر الرصيد */
+  appliedChargeId?: string;
+  /** بنود الفاتورة — لقيد الرسوم حصراً، ومجموعها يجب أن يساوي المبلغ */
+  items?: LedgerEntryItemInput[];
   /** تاريخ القيد الفعلي — يُدعم الاختياري لتسديدات وفواتير بتاريخ سابق؛
    *  غيابه يعني الآن (سلوك @default في المخطط) */
   createdAt?: Date;
@@ -66,6 +83,30 @@ export function validateEntrySign(
   return null;
 }
 
+// تحقق نقي من بنود الفاتورة — قاعدة الفجوة 2: مجموع البنود يجب أن يساوي مبلغ
+// قيد الرسوم بالضبط. القيد اليدوي المفرد بلا بنود مقبول (قائمة فارغة)، أما
+// البنود فأوصافها إلزامية ومبالغها موجبة صحيحة.
+export function validateLedgerEntryItems(
+  items: ReadonlyArray<LedgerEntryItemInput>,
+  amountSyp: number,
+): string | null {
+  if (items.length === 0) return null;
+
+  const itemsSum = items.reduce((sum, item) => sum + item.amountSyp, 0);
+  if (itemsSum !== amountSyp) {
+    return "مجموع البنود يجب أن يساوي مبلغ القيد";
+  }
+  for (const item of items) {
+    if (!item.description.trim()) {
+      return "وصف البند إلزامي";
+    }
+    if (!Number.isInteger(item.amountSyp) || item.amountSyp <= 0) {
+      return "مبلغ البند يجب أن يكون رقماً صحيحاً موجباً";
+    }
+  }
+  return null;
+}
+
 // تحقق نقي من جسم الطلب — يُختبر وحدوياً قبل أي لمس لقاعدة البيانات.
 // معرّف المريض ليس هنا — يأتي من المسار (source of truth) لا من جسم الطلب.
 export function parseCreateLedgerEntry(
@@ -90,6 +131,46 @@ export function parseCreateLedgerEntry(
   const note = typeof b.note === "string" ? b.note.trim() : undefined;
   const treatmentItemId =
     typeof b.treatmentItemId === "string" ? b.treatmentItemId : undefined;
+  const doctorId = typeof b.doctorId === "string" ? b.doctorId : undefined;
+  const appliedChargeId =
+    typeof b.appliedChargeId === "string" ? b.appliedChargeId : undefined;
+
+  // بنود الفاتورة — لقيد الرسوم حصراً، ومجموعها يجب أن يساوي مبلغ القيد.
+  let items: LedgerEntryItemInput[] | undefined;
+  if (b.items !== undefined && b.items !== null) {
+    if (!Array.isArray(b.items)) {
+      return { ok: false, error: "بنود الفاتورة غير صالحة" };
+    }
+    if (type !== "CHARGE") {
+      return { ok: false, error: "بنود الفاتورة لقيد الرسوم حصراً" };
+    }
+    items = [];
+    for (const raw of b.items) {
+      if (typeof raw !== "object" || raw === null) {
+        return { ok: false, error: "بنود الفاتورة غير صالحة" };
+      }
+      const item = raw as Record<string, unknown>;
+      if (
+        typeof item.description !== "string" ||
+        typeof item.amountSyp !== "number"
+      ) {
+        return { ok: false, error: "بنود الفاتورة غير صالحة" };
+      }
+      items.push({
+        description: item.description,
+        category:
+          typeof item.category === "string" && item.category.trim()
+            ? item.category.trim()
+            : undefined,
+        amountSyp: item.amountSyp,
+        sort: typeof item.sort === "number" ? item.sort : undefined,
+      });
+    }
+    const itemsError = validateLedgerEntryItems(items, amountSyp);
+    if (itemsError) {
+      return { ok: false, error: itemsError };
+    }
+  }
 
   // تاريخ القيد اختياري — نص ISO صالح ولا يقبل المستقبل (بتسامح دقيقة واحدة)
   let createdAt: Date | undefined;
@@ -106,7 +187,7 @@ export function parseCreateLedgerEntry(
 
   return {
     ok: true,
-    value: { type, amountSyp, note, treatmentItemId, createdAt },
+    value: { type, amountSyp, note, treatmentItemId, doctorId, appliedChargeId, items, createdAt },
   };
 }
 
@@ -126,6 +207,8 @@ export async function listLedgerEntries(
       note: true,
       treatmentItemId: true,
       invoiceSeq: true,
+      doctorId: true,
+      appliedChargeId: true,
       createdAt: true,
     },
   });
@@ -147,6 +230,8 @@ const CLINIC_ENTRY_SELECT = {
   note: true,
   treatmentItemId: true,
   invoiceSeq: true,
+  doctorId: true,
+  appliedChargeId: true,
   createdAt: true,
   patient: { select: { name: true, phone: true } },
 } as const;
@@ -172,6 +257,8 @@ export async function listClinicLedgerEntries(
     note: row.note,
     treatmentItemId: row.treatmentItemId,
     invoiceSeq: row.invoiceSeq,
+    doctorId: row.doctorId,
+    appliedChargeId: row.appliedChargeId,
     createdAt: row.createdAt,
     patientName: row.patient.name,
     patientPhone: row.patient.phone,
@@ -209,6 +296,51 @@ export async function createLedgerEntry(
     if (!item) return null;
   }
 
+  // إسناد الطبيب (فجوة 1): القيمة الصريحة تُتحقق من نطاق العيادة، وغيابها في
+  // قيد رسوم يعني الاستنتاج من أحدث موعد مُسند للطبيب قبل لحظة القيد — نفس
+  // أساس الاستنتاج الاحتياطي في التقارير، لكنه يُخزَّن هنا فلا يُستنتج ثانية.
+  const chargeAt = input.createdAt ?? new Date();
+  let doctorId: string | undefined = input.doctorId;
+  if (doctorId) {
+    const staff = await db.staffMember.findFirst({
+      where: { id: doctorId, clinicId: ctx.clinicId },
+      select: { id: true },
+    });
+    if (!staff) return null;
+  } else if (input.type === "CHARGE") {
+    const appointment = await db.appointment.findFirst({
+      where: { patientId: input.patientId, staffId: { not: null }, startsAt: { lte: chargeAt } },
+      orderBy: { startsAt: "desc" },
+      select: { staffId: true },
+    });
+    doctorId = appointment?.staffId ?? undefined;
+  }
+
+  // ترشيح تخصيص الدفعة (فجوة 3): الهدف يجب أن يكون قيد رسوم لنفس المريض في
+  // العيادة نفسها — ترشيح عرض فحسب، ولا يدخل في معادلة الرصيد إطلاقاً
+  // (التخصيص الزمني FIFO يبقى هو المعتمد محاسبياً).
+  if (input.appliedChargeId) {
+    if (input.type !== "PAYMENT") {
+      return null;
+    }
+    const charge = await db.ledgerEntry.findFirst({
+      where: {
+        id: input.appliedChargeId,
+        type: "CHARGE",
+        patientId: input.patientId,
+      },
+      select: { id: true },
+    });
+    if (!charge) return null;
+  }
+
+  // بنود الفاتورة (فجوة 2): مجموع البنود يجب أن يساوي مبلغ القيد — حاجز
+  // أخير قبل الكتابة (التحقق النقي ممرّ أيضاً في parseCreateLedgerEntry).
+  if (input.items?.length && input.type === "CHARGE") {
+    const itemsError = validateLedgerEntryItems(input.items, input.amountSyp);
+    if (itemsError) throw new Error(itemsError);
+  }
+
   // تسلسل الرسوم على مستوى العيادة — للرسوم حصراً: عدّ رسوم العيادة داخل
   // نفس المعاملة (حيث يمرّ المتصل بمعاملة) ثم إنشاء القيد بالتسلسل التالي؛
   // القيد الفريد (clinicId, invoiceSeq) حاجز أخير ضد سباق الإنشاء المتوازي.
@@ -231,6 +363,22 @@ export async function createLedgerEntry(
       invoiceSeq,
       createdAt: input.createdAt,
       createdById: ctx.userId,
+      doctorId,
+      appliedChargeId: input.appliedChargeId,
+      // بنود الفاتورة تُنشأ ذرّياً مع القيد — مجموعة البنود مساوية للمبلغ
+      // (تحقُّق سابق)، والترتيب كما أُدخل.
+      ...(input.items?.length
+        ? {
+            items: {
+              create: input.items.map((item, index) => ({
+                description: item.description,
+                category: item.category,
+                amountSyp: item.amountSyp,
+                sort: item.sort ?? index,
+              })),
+            },
+          }
+        : {}),
     },
     select: {
       id: true,
@@ -240,6 +388,8 @@ export async function createLedgerEntry(
       note: true,
       treatmentItemId: true,
       invoiceSeq: true,
+      doctorId: true,
+      appliedChargeId: true,
       createdAt: true,
     },
   });
@@ -271,6 +421,8 @@ export async function recordTreatmentCharge(
       note: true,
       treatmentItemId: true,
       invoiceSeq: true,
+      doctorId: true,
+      appliedChargeId: true,
       createdAt: true,
     },
   });
@@ -290,6 +442,11 @@ export async function recordTreatmentCharge(
       amountSyp: input.priceSyp,
       note: `علاج مكتمل: ${input.procedure}`,
       treatmentItemId: input.treatmentItemId,
+      // بند الفاتورة من بند الخطة (فجوة 2) — الوصف هو الإجراء نفسه،
+      // والتصنيف نص حر فارغ للبند المشتق من خطة.
+      items: [
+        { description: input.procedure, amountSyp: input.priceSyp, sort: 0 },
+      ],
     },
     db,
   );
@@ -337,6 +494,8 @@ export async function deleteUnallocatedCharge(
         note: true,
         treatmentItemId: true,
         invoiceSeq: true,
+        doctorId: true,
+        appliedChargeId: true,
         createdAt: true,
       },
     });
@@ -349,6 +508,20 @@ export async function deleteUnallocatedCharge(
       return {
         ok: false as const,
         error: "لا يمكن حذف فاتورة عليها دفعات أو خصم — صححها بقيد عكسي",
+        status: 409 as const,
+      };
+    }
+
+    // ترشيح التخصيص (appliedChargeId) ترشيح عرض فحسب — لكن قيد رسوم يشير
+    // إليه سطر دفعات لا يُحذف: قيد الـ RESTRICT في المخطط، والرسالة هنا أوضح
+    // من خطأ قيد قاعدة بيانات خام.
+    const applied = await tx.ledgerEntry.count({
+      where: { appliedChargeId: entry.id },
+    });
+    if (applied > 0) {
+      return {
+        ok: false as const,
+        error: "لا يمكن حذف فاتورة مخصَّصة من دفعة — صححها بقيد عكسي",
         status: 409 as const,
       };
     }

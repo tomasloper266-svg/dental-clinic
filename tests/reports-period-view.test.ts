@@ -157,7 +157,7 @@ describe("monthlyRevenue", () => {
 });
 
 describe("summarizePeriodLedger", () => {
-  it("يجمع الرسوم وعددها وعدد الدفعات فقط", () => {
+  it("يجمع الرسوم وعددها وعدد الدفعات وتحصيل الفترة منفصلاً", () => {
     const entries = [
       { type: "CHARGE", amountSyp: 1000 },
       { type: "CHARGE", amountSyp: 500 },
@@ -168,8 +168,18 @@ describe("summarizePeriodLedger", () => {
     ];
     expect(summarizePeriodLedger(entries)).toEqual({
       totalChargesSyp: 1500,
+      totalPaymentsSyp: 500,
       invoiceCount: 2,
       paymentCount: 2,
+    });
+  });
+
+  it("فترة بلا حركة تعيد أصفاراً للتعريفين", () => {
+    expect(summarizePeriodLedger([])).toEqual({
+      totalChargesSyp: 0,
+      totalPaymentsSyp: 0,
+      invoiceCount: 0,
+      paymentCount: 0,
     });
   });
 });
@@ -226,6 +236,58 @@ describe("revenueByDoctor", () => {
       { doctor: "بدون طبيب محدد", chargesSyp: 150 },
     ]);
   });
+
+  it("الطبيب المخزّن على القيد يتقدم على الاستنتاج من المواعيد", () => {
+    // موعد p1 الأحدث مسند لس1 لكن القيد مخزّن على س2 — القرار للمخزّن
+    const charges = [
+      {
+        patientId: "p1",
+        amountSyp: 400,
+        createdAt: "2026-09-10T10:00:00Z",
+        doctorId: "s2",
+      },
+    ];
+    const appointments = [
+      { patientId: "p1", staffId: "s1", startsAt: "2026-09-01T10:00:00Z" },
+    ];
+    expect(revenueByDoctor(charges, appointments, staffName)).toEqual([
+      { doctor: "د. رنا الحلقي", chargesSyp: 400 },
+    ]);
+  });
+
+  it("القيد بلا طبيب مخزّن يرجع للاستنتاج احتياطياً", () => {
+    const charges = [
+      {
+        patientId: "p1",
+        amountSyp: 400,
+        createdAt: "2026-09-10T10:00:00Z",
+        doctorId: null,
+      },
+    ];
+    const appointments = [
+      { patientId: "p1", staffId: "s1", startsAt: "2026-09-01T10:00:00Z" },
+    ];
+    expect(revenueByDoctor(charges, appointments, staffName)).toEqual([
+      { doctor: "د. سامر درويش", chargesSyp: 400 },
+    ]);
+  });
+
+  it("الطبيب المخزّن المحذوف من الطاقم يقع تحت بند مستقل دون استنتاج", () => {
+    const charges = [
+      {
+        patientId: "p1",
+        amountSyp: 200,
+        createdAt: "2026-09-10T10:00:00Z",
+        doctorId: "deleted",
+      },
+    ];
+    const appointments = [
+      { patientId: "p1", staffId: "s1", startsAt: "2026-09-01T10:00:00Z" },
+    ];
+    expect(revenueByDoctor(charges, appointments, staffName)).toEqual([
+      { doctor: "بدون طبيب محدد", chargesSyp: 200 },
+    ]);
+  });
 });
 
 describe("revenueByProcedure", () => {
@@ -244,6 +306,50 @@ describe("revenueByProcedure", () => {
       { procedure: "زراعة", chargesSyp: 800 },
       { procedure: "تنظيف", chargesSyp: 550 },
       { procedure: "بدون تصنيف", chargesSyp: 90 },
+    ]);
+  });
+
+  it("يجمع من بنود الفاتورة حسب تصنيفها النصي الحر", () => {
+    const procedureByItemId = new Map([["i1", "زراعة"]]);
+    const charges = [
+      {
+        treatmentItemId: null,
+        amountSyp: 500,
+        items: [
+          { category: "تبييض ليزر", amountSyp: 300 },
+          { category: "تنظيف جير", amountSyp: 200 },
+        ],
+      },
+      {
+        treatmentItemId: "i1",
+        amountSyp: 800,
+        items: [{ category: "زراعة", amountSyp: 800 }],
+      },
+    ];
+    expect(revenueByProcedure(charges, procedureByItemId)).toEqual([
+      { procedure: "زراعة", chargesSyp: 800 },
+      { procedure: "تبييض ليزر", chargesSyp: 300 },
+      { procedure: "تنظيف جير", chargesSyp: 200 },
+    ]);
+  });
+
+  it("بنود بلا تصنيف تقع تحت بند مستقل والقيد بلا بنود يرجع لربط الخطة", () => {
+    const procedureByItemId = new Map([["i1", "تنظيف"]]);
+    const charges = [
+      {
+        treatmentItemId: null,
+        amountSyp: 300,
+        items: [
+          { category: null, amountSyp: 180 },
+          { category: "  ", amountSyp: 120 },
+        ],
+      },
+      { treatmentItemId: "i1", amountSyp: 250, items: [] },
+      { treatmentItemId: null, amountSyp: 90 },
+    ];
+    expect(revenueByProcedure(charges, procedureByItemId)).toEqual([
+      { procedure: "بدون تصنيف", chargesSyp: 390 },
+      { procedure: "تنظيف", chargesSyp: 250 },
     ]);
   });
 });
@@ -292,6 +398,7 @@ describe("buildPeriodCsv", () => {
       from: "2026-08-16",
       to: "2026-11-14",
       totalChargesSyp: 66_975_000,
+      totalPaymentsSyp: 66_975_000,
       invoiceCount: 32,
       paymentCount: 41,
       outstandingSyp: 9_300_000,
