@@ -223,6 +223,8 @@ describe("summarizePatientLedger", () => {
       chargesSyp: 955_000,
       paidSyp: 655_000,
       balanceSyp: 300_000,
+      paymentsSyp: 655_000,
+      discountSyp: 0,
     });
   });
 
@@ -232,5 +234,36 @@ describe("summarizePatientLedger", () => {
       -20_000,
     );
     expect(summary.paidSyp).toBe(100_000);
+  });
+
+  it("الدفعة والدفع المنفصل — إجمالي المدفوع دفعات فقط والخصم بطاقة منفصلة", () => {
+    // سيناريو tc-15: رسوم 100، دفعة 40، تسوية -3 — المسدد المختلط 43
+    // لكن دفعات الدفتر 40 حصراً والخصم 3 (ليس دفعة).
+    const summary = summarizePatientLedger(
+      [
+        { type: "CHARGE", amountSyp: 100 },
+        { type: "PAYMENT", amountSyp: -40 },
+        { type: "ADJUSTMENT", amountSyp: -3 },
+      ],
+      57,
+    );
+    expect(summary.paymentsSyp).toBe(40);
+    expect(summary.discountSyp).toBe(3);
+    // الدفعة + الخصم + المستحق = الرسوم — الترويسة تتوازن كصف الفاتورة
+    expect(summary.paymentsSyp + summary.discountSyp + summary.balanceSyp).toBe(
+      summary.chargesSyp,
+    );
+  });
+
+  it("التسوية الموجبة ليست خصماً ولا دفعة", () => {
+    const summary = summarizePatientLedger(
+      [
+        { type: "CHARGE", amountSyp: 100 },
+        { type: "ADJUSTMENT", amountSyp: 5 },
+      ],
+      105,
+    );
+    expect(summary.paymentsSyp).toBe(0);
+    expect(summary.discountSyp).toBe(0);
   });
 });

@@ -278,8 +278,18 @@ export default function PatientRecord({
               <p className="text-warm-500 text-[11px] font-medium">
                 إجمالي المدفوع
               </p>
-              <DualAmount syp={summary.paidSyp} usdRate={usdRate} />
+              {/* دفعات الدفتر وحدها — الخصومات ليست دفعات ولذا تُعرض ببطاقة
+                  منفصلة بدل خلطها هنا تحت عنوان المدفوع (سجل art_yHnC9AAM بند 14ب) */}
+              <DualAmount syp={summary.paymentsSyp} usdRate={usdRate} />
             </div>
+            {summary.discountSyp > 0 && (
+              <div>
+                <p className="text-warm-500 text-[11px] font-medium">
+                  الخصومات
+                </p>
+                <DualAmount syp={summary.discountSyp} usdRate={usdRate} />
+              </div>
+            )}
             <div className="flex items-center gap-1.5">
               {dueSyp > 0 ? (
                 <>

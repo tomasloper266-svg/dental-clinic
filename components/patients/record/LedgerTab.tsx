@@ -6,7 +6,7 @@ import {
   INVOICE_STATUS_CHIP,
   INVOICE_STATUS_LABELS,
   buildPaymentLog,
-  deriveInvoices,
+  deriveInvoicesDetailed,
 } from "@/lib/patient-finance";
 import { formatDateCell } from "@/lib/dates";
 import { useMoney, useDisplayCurrency, useUsdRate } from "@/components/ui/CurrencyContext";
@@ -46,7 +46,9 @@ export default function LedgerTab({
   const money = useMoney();
   const currency = useDisplayCurrency();
   const usdRate = useUsdRate();
-  const invoices = deriveInvoices(entries);
+  // النسخة التفصيلية — بها discountSyp لعمود الخصم كي يتوازن الصف:
+  // الإجمالي = المدفوع + الخصم + المتبقي (سجل art_yHnC9AAM بند 14أ)
+  const invoices = deriveInvoicesDetailed(entries);
   const paymentLog = buildPaymentLog(entries, materialRows);
   const dueSyp = Math.max(balance, 0);
 
@@ -98,6 +100,7 @@ export default function LedgerTab({
                   <TH>التاريخ</TH>
                   <TH>الإجمالي</TH>
                   <TH>المدفوع</TH>
+                  <TH>الخصم</TH>
                   <TH>المتبقي</TH>
                   <TH>حالة الدفع</TH>
                 </TRow>
@@ -116,6 +119,16 @@ export default function LedgerTab({
                     </TD>
                     <TD className="numeric text-primary-700 text-sm">
                       {money(inv.paidSyp)}
+                    </TD>
+                    <TD
+                      className={cn(
+                        "numeric text-sm",
+                        inv.discountSyp > 0
+                          ? "text-warning-700"
+                          : "text-warm-400",
+                      )}
+                    >
+                      {money(inv.discountSyp)}
                     </TD>
                     <TD
                       className={cn(
