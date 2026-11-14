@@ -219,9 +219,9 @@ role: "DENTIST",
   it("لا endpoint يعدل أو يحدّث قيداً — ولا حذف إلا للفاتورة غير المخصَّصة", async () => {
     // في Next.js غياب الـ handler يعني 405 تلقائياً على مستوى الإطار؛
     // الاختبار يثبت غياب المُصدرين نفسهما فلا مسار تعديل أو تحديث أصلاً.
-    const routeModule = await import(
+    const routeModule = (await import(
       "@/app/api/patients/[patientId]/ledger/route"
-    );
+    )) as unknown as Record<string, unknown>;
     expect(routeModule.PUT).toBeUndefined();
     expect(routeModule.PATCH).toBeUndefined();
     // مسار القائمة بلا حذف — الحذف الوحيد على قيد واحد فقط.
@@ -229,9 +229,9 @@ role: "DENTIST",
 
     // والخدمة بلا أي دالة تحديث — التصحيح بقيد عكسي فقط. الاستثناء الوحيد
     // هو حذف فاتورة غير مخصَّصة (بلا دفعات ولا خصم)، والحذف على قيد واحد.
-    const entryRouteModule = await import(
+    const entryRouteModule = (await import(
       "@/app/api/patients/[patientId]/ledger/[entryId]/route"
-    );
+    )) as unknown as Record<string, unknown>;
     expect(entryRouteModule.PUT).toBeUndefined();
     expect(entryRouteModule.PATCH).toBeUndefined();
     expect(typeof entryRouteModule.DELETE).toBe("function");

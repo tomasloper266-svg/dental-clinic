@@ -1,9 +1,9 @@
 "use client";
 
 import { CheckCircle2 } from "lucide-react";
-import { formatSypAmount } from "@/lib/currency";
 import { INVOICE_STATUS_CHIP, INVOICE_STATUS_LABELS } from "@/lib/patient-finance";
 import type { DetailedInvoiceView } from "@/lib/patient-finance";
+import { useMoney } from "@/components/ui/CurrencyContext";
 import { Button } from "@/components/ui/Button";
 import { ToothIcon } from "@/components/shell/icons/ToothIcon";
 
@@ -25,6 +25,7 @@ export default function DentalFinancialCard({
   invoices,
   onOpenInvoice,
 }: Props) {
+  const money = useMoney();
   return (
     <aside className="space-y-4">
       <section className="rounded-panel border-warm-200 bg-surface-raised border p-4">
@@ -34,25 +35,25 @@ export default function DentalFinancialCard({
           <div className="flex items-center justify-between">
             <dt className="text-steel-600">الإجمالي/المستحق</dt>
             <dd className="numeric font-semibold text-danger-600">
-              {formatSypAmount(chargesTotalSyp)}
+              {money(chargesTotalSyp)}
             </dd>
           </div>
           <div className="flex items-center justify-between">
             <dt className="text-steel-600">إجمالي المدفوع</dt>
-            <dd className="numeric text-ink-900 font-semibold">{formatSypAmount(paidSyp)}</dd>
+            <dd className="numeric text-ink-900 font-semibold">{money(paidSyp)}</dd>
           </div>
           <div className="flex items-center justify-between">
             <dt className="text-steel-600">المسدد</dt>
             <dd className="numeric inline-flex items-center gap-1 font-semibold text-success-600">
               {remainingSyp === 0 && <CheckCircle2 size={15} aria-hidden />}
-              {formatSypAmount(paidSyp)}
+              {money(paidSyp)}
             </dd>
           </div>
           <div className="border-warm-200 border-t pt-2">
             <div className="flex items-center justify-between">
               <dt className="text-ink-900 font-medium">المتبقي</dt>
               <dd className="numeric font-semibold text-danger-600">
-                {formatSypAmount(remainingSyp)}
+                {money(remainingSyp)}
               </dd>
             </div>
           </div>
@@ -85,7 +86,7 @@ export default function DentalFinancialCard({
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="numeric text-sm font-semibold">
-                    {formatSypAmount(invoice.totalSyp)}
+                    {money(invoice.totalSyp)}
                   </span>
                   <Button
                     variant="secondary"

@@ -20,6 +20,7 @@ function entry(
     patientPhone: null,
     note: null,
     treatmentItemId: null,
+    invoiceSeq: null,
     createdAt: new Date("2026-11-14T10:00:00Z"),
     ...overrides,
   };

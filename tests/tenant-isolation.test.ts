@@ -215,7 +215,11 @@ role: "DENTIST",
 
   it("إنشاء مريض عبر عميل عيادة أ يُدخل clinicId الصحيح حتى لو أُهمل في البيانات", async () => {
     const db = clinicScope(clinicAId);
-    const created = await db.patient.create({ data: { name: "حقن-تلقائي" } });
+    // القصد إثبات حقن clinicId من الامتداد — لذا نُهمله صراحةً هنا؛
+    // تقييد Exact في Prisma 7 يتطلب صبّ صريح فوق مُدخلات الإنشاء.
+    const created = await db.patient.create({
+      data: { name: "حقن-تلقائي" },
+    } as Parameters<typeof db.patient.create>[0]);
     expect(created.clinicId).toBe(clinicAId);
     expect(created.clinicId).not.toBe(clinicBId);
   });

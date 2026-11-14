@@ -9,7 +9,7 @@ import { summarizeLedger } from "@/lib/patient-finance";
 
 // اختبارات دوال عرض دفتر المريض في الملف المتكامل — نقية وبلا قاعدة بيانات.
 
-function entry(overrides: Partial<LedgerEntryDto>): LedgerEntryDto {
+function entry(overrides: Partial<LedgerEntryDto> = {}): LedgerEntryDto {
   return {
     id: "e1",
     patientId: "p1",
@@ -17,12 +17,13 @@ function entry(overrides: Partial<LedgerEntryDto>): LedgerEntryDto {
     amountSyp: 100_000,
     note: null,
     treatmentItemId: null,
+    invoiceSeq: null,
     createdAt: new Date("2026-01-01T10:00:00Z"),
     ...overrides,
   };
 }
 
-function planItem(overrides: Partial<PlanItemDto>): PlanItemDto {
+function planItem(overrides: Partial<PlanItemDto> = {}): PlanItemDto {
   return {
     id: "t1",
     toothFdi: 24,

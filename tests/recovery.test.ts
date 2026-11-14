@@ -11,7 +11,17 @@ import {
   maskEmail,
 } from "@/lib/auth/otp";
 import { parseIdentifier, parseNewPassword } from "@/lib/auth/recovery";
+import type { Identifier, RecoveryError } from "@/lib/auth/recovery";
 import { describeChannelConfig } from "@/lib/notifications/delivery";
+
+/** نقي — رمز الخطأ من اتحاد النتيجة: فرعيّة الخطأ تحمل code حصراً */
+function errorCode(
+  result: Identifier | RecoveryError | string,
+): string | undefined {
+  return typeof result !== "string" && "code" in result
+    ? result.code
+    : undefined;
+}
 
 describe("رموز OTP", () => {
   it("يولّد رمزاً من 6 أرقام", () => {
@@ -84,11 +94,11 @@ describe("parseIdentifier", () => {
   });
 
   it("يرفض بريداً غير صالح وجسماً فارغاً", () => {
-    expect(parseIdentifier({ email: "not-an-email" }).code).toBe(
+    expect(errorCode(parseIdentifier({ email: "not-an-email" }))).toBe(
       "invalid-input",
     );
-    expect(parseIdentifier({}).code).toBe("invalid-input");
-    expect(parseIdentifier(null).code).toBe("invalid-input");
+    expect(errorCode(parseIdentifier({}))).toBe("invalid-input");
+    expect(errorCode(parseIdentifier(null))).toBe("invalid-input");
   });
 });
 
@@ -97,10 +107,10 @@ describe("parseNewPassword", () => {
     expect(parseNewPassword({ newPassword: "longenough1" })).toBe(
       "longenough1",
     );
-    expect(parseNewPassword({ newPassword: "short" }).code).toBe(
+    expect(errorCode(parseNewPassword({ newPassword: "short" }))).toBe(
       "invalid-input",
     );
-    expect(parseNewPassword({}).code).toBe("invalid-input");
+    expect(errorCode(parseNewPassword({}))).toBe("invalid-input");
   });
 });
 

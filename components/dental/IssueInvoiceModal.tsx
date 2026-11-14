@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatSypAmount } from "@/lib/currency";
 import type { PlanItemDto } from "@/lib/services/treatment-plan";
 import { planStatusMeta } from "@/lib/treatment-plan-view";
 import type { StaffMemberDto } from "@/lib/services/staff";
+import { useMoney } from "@/components/ui/CurrencyContext";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
@@ -43,6 +43,7 @@ export default function IssueInvoiceModal({
   onIssued,
 }: Props) {
   const { toast } = useToast();
+  const money = useMoney();
   const [doctorName, setDoctorName] = useState("");
   const [date, setDate] = useState("");
   const [discountStr, setDiscountStr] = useState("0");
@@ -212,7 +213,7 @@ export default function IssueInvoiceModal({
                 </span>
               </label>
               <span className="numeric text-sm font-semibold text-warning-500">
-                {formatSypAmount(item.priceSyp)}
+                {money(item.priceSyp)}
               </span>
             </li>
           );
