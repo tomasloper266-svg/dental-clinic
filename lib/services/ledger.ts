@@ -173,17 +173,36 @@ export async function listClinicLedgerEntries(
   }));
 }
 
+// نوع العميل المحصور — يقبل العميل الكامل أو عميل معاملة $transaction
+// (الذي يغيب عنه اتصال وأدوات الامتداد) حتى تُنجز الكتابات المرتبطة ذرّياً.
+type ScopedDb = Omit<
+  ReturnType<typeof clinicScope>,
+  "$connect" | "$disconnect" | "$extends" | "$on" | "$use" | "$transaction"
+>;
+
+export type ScopedClient = ScopedDb;
+
 export async function createLedgerEntry(
   ctx: TenantContext,
   input: LedgerEntryInput,
+  db: ScopedDb = clinicScope(ctx.clinicId),
 ): Promise<LedgerEntryDto | null> {
-  const db = clinicScope(ctx.clinicId);
   // المريض يجب أن يكون ضمن العيادة نفسها — مريض عيادة أخرى يُرفض بغض النظر عن المعرّف.
   const patient = await db.patient.findUnique({
     where: { id: input.patientId },
     select: { id: true },
   });
   if (!patient) return null;
+
+  // بند العلاج إن وُجد يجب أن يعود لمريض القيد نفسه ضمن العيادة — معرّف
+  // من عيادة أخرى أو مريض آخر يُرفض بغض النظر عن صحة شكله.
+  if (input.treatmentItemId) {
+    const item = await db.treatmentPlanItem.findFirst({
+      where: { id: input.treatmentItemId, patientId: input.patientId },
+      select: { id: true },
+    });
+    if (!item) return null;
+  }
 
   const entry = await db.ledgerEntry.create({
     data: {
@@ -222,9 +241,8 @@ export type TreatmentChargeInput = {
 export async function recordTreatmentCharge(
   ctx: TenantContext,
   input: TreatmentChargeInput,
+  db: ScopedDb = clinicScope(ctx.clinicId),
 ): Promise<{ entry: LedgerEntryDto | null; alreadyCharged: boolean }> {
-  const db = clinicScope(ctx.clinicId);
-
   const existing = await db.ledgerEntry.findFirst({
     where: { treatmentItemId: input.treatmentItemId, type: "CHARGE" },
     select: {
@@ -245,13 +263,17 @@ export async function recordTreatmentCharge(
     throw new Error("سعر العلاج غير صالح");
   }
 
-  const entry = await createLedgerEntry(ctx, {
-    patientId: input.patientId,
-    type: "CHARGE",
-    amountSyp: input.priceSyp,
-    note: `علاج مكتمل: ${input.procedure}`,
-    treatmentItemId: input.treatmentItemId,
-  });
+  const entry = await createLedgerEntry(
+    ctx,
+    {
+      patientId: input.patientId,
+      type: "CHARGE",
+      amountSyp: input.priceSyp,
+      note: `علاج مكتمل: ${input.procedure}`,
+      treatmentItemId: input.treatmentItemId,
+    },
+    db,
+  );
   return { entry, alreadyCharged: false };
 }
 
@@ -270,40 +292,48 @@ export async function deleteUnallocatedCharge(
   entryId: string,
 ): Promise<DeleteChargeResult> {
   const db = clinicScope(ctx.clinicId);
-  const entry = await db.ledgerEntry.findFirst({
-    where: { id: entryId, patientId, clinicId: ctx.clinicId, type: "CHARGE" },
-    select: { id: true },
-  });
-  if (!entry) {
-    return { ok: false, error: "الفاتورة غير موجودة", status: 404 };
-  }
+  // الاشتقاق والفحص والحذف داخل معاملة واحدة — قيد دفعة متوازٍ بين الفحص
+  // والحذف لا يجري توزيع الدفعات بأثر رجعي على فواتير أخرى.
+  return db.$transaction(async (tx) => {
+    const entry = await tx.ledgerEntry.findFirst({
+      where: { id: entryId, patientId, clinicId: ctx.clinicId, type: "CHARGE" },
+      select: { id: true },
+    });
+    if (!entry) {
+      return {
+        ok: false as const,
+        error: "الفاتورة غير موجودة",
+        status: 404 as const,
+      };
+    }
 
-  const entries = await db.ledgerEntry.findMany({
-    where: { patientId },
-    orderBy: { createdAt: "asc" },
-    select: {
-      id: true,
-      patientId: true,
-      type: true,
-      amountSyp: true,
-      note: true,
-      treatmentItemId: true,
-      createdAt: true,
-    },
-  });
-  const invoices = deriveInvoicesDetailed(entries);
-  const index = entries
-    .filter((e) => e.type === "CHARGE")
-    .findIndex((charge) => charge.id === entry.id);
-  const invoice = invoices[index];
-  if (invoice && invoice.paidSyp + invoice.discountSyp > 0) {
-    return {
-      ok: false,
-      error: "لا يمكن حذف فاتورة عليها دفعات أو خصم — صححها بقيد عكسي",
-      status: 409,
-    };
-  }
+    const entries = await tx.ledgerEntry.findMany({
+      where: { patientId },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        patientId: true,
+        type: true,
+        amountSyp: true,
+        note: true,
+        treatmentItemId: true,
+        createdAt: true,
+      },
+    });
+    const invoices = deriveInvoicesDetailed(entries);
+    const index = entries
+      .filter((e) => e.type === "CHARGE")
+      .findIndex((charge) => charge.id === entry.id);
+    const invoice = invoices[index];
+    if (invoice && invoice.paidSyp + invoice.discountSyp > 0) {
+      return {
+        ok: false as const,
+        error: "لا يمكن حذف فاتورة عليها دفعات أو خصم — صححها بقيد عكسي",
+        status: 409 as const,
+      };
+    }
 
-  await db.ledgerEntry.delete({ where: { id: entry.id } });
-  return { ok: true };
+    await tx.ledgerEntry.delete({ where: { id: entry.id } });
+    return { ok: true as const };
+  });
 }

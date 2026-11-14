@@ -465,8 +465,9 @@ model LedgerEntry {
   note        String?
   createdById String
   createdAt   DateTime @default(now())
-  // ربط اختياري ببند خطة علاج — لقيد الرسوم التلقائي عند اكتمال العلاج
-  treatmentItemId String?
+  // ربط اختياري ببند خطة علاج — لقيد الرسوم التلقائي عند اكتمال العلاج.
+  // فريد: البند الواحد له قيد رسوم واحد حصراً — حاجز التكرار الأخير تحت الخدمة.
+  treatmentItemId String? @unique
 
   clinic    Clinic  @relation(fields: [clinicId], references: [id])
   patient   Patient @relation(fields: [patientId], references: [id])

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenant } from "@/lib/tenant/require-tenant";
+import { Prisma } from "@/lib/generated/prisma/client";
 import {
   createLedgerEntry,
   listLedgerEntries,
@@ -13,6 +14,12 @@ type Params = { params: Promise<{ patientId: string }> };
 
 export async function GET(req: NextRequest, { params }: Params) {
   const ctx = await requireTenant(req);
+  if (ctx === "LOCKED") {
+    return NextResponse.json(
+      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
+      { status: 423 },
+    );
+  }
   if (!ctx) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
@@ -23,6 +30,12 @@ export async function GET(req: NextRequest, { params }: Params) {
 
 export async function POST(req: NextRequest, { params }: Params) {
   const ctx = await requireTenant(req);
+  if (ctx === "LOCKED") {
+    return NextResponse.json(
+      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
+      { status: 423 },
+    );
+  }
   if (!ctx) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
@@ -51,6 +64,17 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
     return NextResponse.json({ entry }, { status: 201 });
   } catch (err) {
+    // تعارض القيد الفريد على treatmentItemId — البند مُرحَّل مسبقاً (نقر مزدوج أو
+    // إعادة إرسال بعد استجابة فاقدة). يعالَج كطلب مكرر 409 لا كخطأ خادم.
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2002"
+    ) {
+      return NextResponse.json(
+        { error: "هذا البند العلاجي مُرحَّل مسبقاً — لا يمكن تكرار قيد الرسوم" },
+        { status: 409 },
+      );
+    }
     console.error("[ledger:create] failed:", err);
     return NextResponse.json({ error: "تعذر إنشاء القيد" }, { status: 500 });
   }
