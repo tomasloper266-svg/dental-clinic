@@ -15,6 +15,8 @@ type StatCardProps = {
   valueClassName?: string;
   /** تجاوز اختياري للون صندوق الأيقونة — أيقونة خضراء بين قيمة ذهبية */
   iconClassName?: string;
+  /** سطر ثانٍ تحت التسمية — «متوسط الفاتورة» في بطاقة الفواتير مثلاً */
+  subLabel?: string;
   className?: string;
 };
 
@@ -35,6 +37,7 @@ export function StatCard({
   tone = "primary",
   valueClassName,
   iconClassName,
+  subLabel,
   className,
 }: StatCardProps) {
   return (
@@ -55,6 +58,11 @@ export function StatCard({
           {value}
         </p>
         <p className="mt-0.5 truncate text-xs text-warm-500">{label}</p>
+        {subLabel && (
+          <p className="numeric mt-0.5 truncate text-[11px] text-warm-400">
+            {subLabel}
+          </p>
+        )}
       </div>
       <span
         aria-hidden

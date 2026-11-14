@@ -1,290 +1,209 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   BarChart3,
-  ChevronLeft,
-  ChevronRight,
+  Calendar,
   DollarSign,
-  Plus,
+  Info,
   ReceiptText,
   RotateCw,
   TriangleAlert,
-  Wallet,
+  User,
+  UserPlus,
 } from "lucide-react";
-import type { ExpenseCategory } from "@/lib/reports-view";
-import { EXPENSE_CATEGORIES } from "@/lib/reports-view";
-import { formatDualFromSyp } from "@/lib/currency";
-import { DualAmount } from "@/components/ui/DualAmount";
-import { toDateInputValue } from "@/lib/dates";
+import { formatUsdSpaced } from "@/lib/invoices-view";
+import { sypToUsd } from "@/lib/currency";
+import { downloadCsv } from "@/lib/csv";
 import {
-  EXPENSE_CATEGORY_LABELS,
-  EXPENSE_CATEGORY_TONES,
-  expenseCategoryLabel,
-  summarizeExpensesByCategory,
-} from "@/lib/reports-view";
+  PERIOD_PRESET_OPTIONS,
+  buildPeriodCsv,
+  monthLabel,
+  presetRange,
+  type DayRange,
+  type ReportsPeriodSelection,
+  type ReportsPeriodSummaryJson,
+} from "@/lib/reports-period-view";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { FilterPills } from "@/components/ui/Toolbar";
+import { Input } from "@/components/ui/Field";
 import { Table, THead, TRow, TH, TD } from "@/components/ui/Table";
-import { StatusPill } from "@/components/ui/Badge";
-import { Modal } from "@/components/ui/Modal";
-import { Field, Input, Select, Textarea } from "@/components/ui/Field";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { useToast } from "@/components/ui/Toast";
-import DailyBarsChart from "./DailyBarsChart";
+import VerticalBarsChart from "./VerticalBarsChart";
+import AppointmentOutcomesDonut from "./AppointmentOutcomesDonut";
+import HorizontalRevenueBars from "./HorizontalRevenueBars";
 
-// لوحة التقارير — تقرير الفترة (يومي أو شهري) من واجهة التقارير نفسها،
-// ورسم يومي للتحصيل مقابل المصاريف بآخر 14 يوماً، وتوزيع المصاريف على
-// الفئات مع تسجيل مصروف جديد. كل الحسابات من خدمة التقارير بلا إعادة تفسير.
+// لوحة التقارير — تقرير فترة كامل على شكل المرجع: خيارات فترة جاهزة
+// (الكل، آخر 30 يوم، 3 و6 أشهر، السنة كاملة) ومدى مخصص من/إلى يعيد حساب
+// كل البطاقات والرسوم، وتصدير CSV لبيانات الفترة نفسها. كل الأرقام من
+// خدمة ملخص الفترة بلا إعادة تفسير.
 
-type ReportJson = {
-  from: string;
-  to: string;
-  collectedSyp: number;
-  expensesSyp: number;
-  netSyp: number;
-  refundsSyp: number;
-};
+const usdFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 0,
+});
 
-type SeriesJson = {
-  date: string;
-  collectedSyp: number;
-  expensesSyp: number;
-  netSyp: number;
-  refundsSyp: number;
-}[];
-
-type ExpenseJson = {
-  id: string;
-  category: string;
-  amountSyp: number;
-  note: string | null;
-  spentAt: string;
-};
-
-type Mode = "day" | "month";
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-function monthUtcStart(year: number, month: number): Date {
-  return new Date(Date.UTC(year, month - 1, 1));
+/** بطاقة عنوان رسم بأيقونة ذهبية — شكل موحّد لكل بطاقات التقارير */
+function ChartTitle({
+  icon: Icon,
+  children,
+}: {
+  icon: typeof BarChart3;
+  children: React.ReactNode;
+}) {
+  return (
+    <CardTitle className="flex items-center gap-2">
+      <Icon size={16} className="text-warning-600" aria-hidden />
+      {children}
+    </CardTitle>
+  );
 }
 
-const monthLabelFmt = new Intl.DateTimeFormat("ar-SY-u-nu-latn", {
-  month: "long",
-  year: "numeric",
-});
-const expenseDateFmt = new Intl.DateTimeFormat("ar-SY-u-nu-latn", {
-  day: "numeric",
-  month: "short",
-});
+/** حقل مدى التاريخ المخصص — تسمية صغيرة فوق منتقي التقويم */
+function RangeField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="flex flex-col gap-0.5">
+      <span className="text-[11px] text-warm-500">{label}</span>
+      <Input
+        type="date"
+        value={value}
+        onChange={(event) => onChange(event.target.value || value)}
+        aria-label={label}
+        className="w-36 bg-surface-sunken text-xs"
+      />
+    </label>
+  );
+}
 
 export default function ReportsBoard({
-  initialDate,
+  todayValue,
+  todayLabel,
   usdRate,
 }: {
-  initialDate: string;
+  todayValue: string;
+  todayLabel: string;
   usdRate: number;
 }) {
-  const { toast } = useToast();
-  const now = new Date();
-  const [mode, setMode] = useState<Mode>("day");
-  const [dateValue, setDateValue] = useState(initialDate);
-  const [monthCursor, setMonthCursor] = useState({
-    year: now.getUTCFullYear(),
-    month: now.getUTCMonth() + 1,
-  });
+  // الفترة تبدأ بلا حدود — أول جلب بلا معاملات يعيد فترة «الكل» مع
+  // أقدم يوم حركة (rangeStart) أساس الخيارات الجاهزة.
+  const [range, setRange] = useState<DayRange | null>(null);
+  const [selection, setSelection] = useState<ReportsPeriodSelection>("all");
+  const [rangeStart, setRangeStart] = useState<string | null>(null);
+  const [summary, setSummary] = useState<ReportsPeriodSummaryJson | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [rangeInvalid, setRangeInvalid] = useState(false);
 
-  const [report, setReport] = useState<ReportJson | null>(null);
-  const [reportError, setReportError] = useState(false);
-  const [series, setSeries] = useState<SeriesJson | null>(null);
-  const [seriesError, setSeriesError] = useState(false);
-  const [expenses, setExpenses] = useState<ExpenseJson[] | null>(null);
-  const [expenseError, setExpenseError] = useState(false);
-
-  const [addOpen, setAddOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [category, setCategory] = useState<ExpenseCategory>("MATERIALS");
-  const [amountStr, setAmountStr] = useState("");
-  const [spentAt, setSpentAt] = useState(initialDate);
-  const [note, setNote] = useState("");
-
-  const refresh = useCallback(async () => {
-    setReportError(false);
-    setSeriesError(false);
-    setExpenseError(false);
+  const refresh = useCallback(async (signal?: AbortSignal) => {
+    setLoadError(false);
     try {
-      const seriesEnd = toDateInputValue(new Date());
-      const periodQuery =
-        mode === "day"
-          ? `date=${dateValue}`
-          : `year=${monthCursor.year}&month=${monthCursor.month}`;
-      const [reportRes, seriesRes, expenseRes] = await Promise.all([
-        fetch(`/api/reports?${periodQuery}`),
-        fetch(`/api/reports?days=14&endDate=${seriesEnd}`),
-        fetch(`/api/expenses?from=${periodFrom(mode, dateValue, monthCursor).toISOString()}&to=${periodTo(mode, dateValue, monthCursor).toISOString()}`),
-      ]);
-      if (!reportRes.ok) throw new Error();
-      setReport(((await reportRes.json()) as { report: ReportJson }).report);
-      if (!seriesRes.ok) throw new Error();
-      setSeries(((await seriesRes.json()) as { series: SeriesJson }).series);
-      if (!expenseRes.ok) throw new Error();
-      setExpenses(((await expenseRes.json()) as { expenses: ExpenseJson[] }).expenses);
+      const url =
+        range === null
+          ? "/api/reports/summary"
+          : `/api/reports/summary?from=${range.from}&to=${range.to}`;
+      const response = await fetch(url, { signal });
+      if (!response.ok) throw new Error();
+      const data = (await response.json()) as { summary: ReportsPeriodSummaryJson };
+      setSummary(data.summary);
+      setRangeStart(data.summary.rangeStart);
+      // أول جلب: تثبيت حدود «الكل» على ما أعادته الخدمة فعلاً
+      setRange((current) => current ?? { from: data.summary.from, to: data.summary.to });
     } catch {
-      // نُظهر كل حالة فشل في مكانها بدل تجميعها في رسالة واحدة
-      setReport(null);
-      setSeries(null);
-      setExpenses(null);
-      const probe = await fetch(
-        mode === "day"
-          ? `/api/reports?date=${dateValue}`
-          : `/api/reports?year=${monthCursor.year}&month=${monthCursor.month}`,
-      ).catch(() => null);
-      if (probe?.ok) {
-        setReport(((await probe.json()) as { report: ReportJson }).report);
-        setSeriesError(true);
-        setExpenseError(true);
-      } else {
-        setReportError(true);
-      }
+      if (signal?.aborted) return;
+      setSummary(null);
+      setLoadError(true);
     }
-  }, [mode, dateValue, monthCursor]);
+  }, [range]);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  const categoryTotals = useMemo(
-    () => summarizeExpensesByCategory(expenses ?? []),
-    [expenses],
-  );
-  const categoryMax = Math.max(1, ...categoryTotals.map((c) => c.totalSyp));
-
-  async function submitExpense() {
-    setFormError(null);
-    const amountSyp = Number(amountStr);
-    if (!Number.isInteger(amountSyp) || amountSyp <= 0) {
-      setFormError("المصروف يجب أن يكون رقماً صحيحاً موجباً");
+    // نطاق مخصص غير صالح: نُظهر التنبيه دون جلب — آخر بيانات صالحة تبقى معروضة
+    if (range !== null && range.from > range.to) {
+      setRangeInvalid(true);
       return;
     }
-    setBusy(true);
-    try {
-      const res = await fetch("/api/expenses", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          category,
-          amountSyp,
-          note: note.trim() || undefined,
-          spentAt: `${spentAt}T00:00:00Z`,
-        }),
-      });
-      const data = (await res.json()) as { error?: string };
-      if (!res.ok) {
-        setFormError(data.error ?? "تعذر تسجيل المصروف، أعد المحاولة");
-        return;
-      }
-      toast("سُجّل المصروف");
-      setAddOpen(false);
-      setAmountStr("");
-      setNote("");
-      await refresh();
-    } catch {
-      setFormError("تعذر الاتصال بالخادم، حاول مرة أخرى");
-    } finally {
-      setBusy(false);
-    }
+    setRangeInvalid(false);
+    const controller = new AbortController();
+    void refresh(controller.signal);
+    return () => controller.abort();
+  }, [refresh, range]);
+
+  function selectPreset(value: ReportsPeriodSelection) {
+    if (value === "custom") return;
+    setSelection(value);
+    setRange(presetRange(value, todayValue, rangeStart ?? todayValue));
   }
 
-  const periodLabel =
-    mode === "day"
-      ? new Intl.DateTimeFormat("ar-SY-u-nu-latn", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        }).format(new Date(`${dateValue}T00:00:00Z`))
-      : monthLabelFmt.format(monthUtcStart(monthCursor.year, monthCursor.month));
+  function editRange(field: "from" | "to", value: string) {
+    setSelection("custom");
+    setRange((current) => ({
+      from: field === "from" ? value : (current?.from ?? value),
+      to: field === "to" ? value : (current?.to ?? value),
+    }));
+  }
+
+  function exportCsv() {
+    if (!summary) return;
+    downloadCsv("تقرير الفترة.csv", buildPeriodCsv(summary, usdRate));
+  }
+
+  const usd = (syp: number) => formatUsdSpaced(sypToUsd(syp, usdRate));
+  const avgInvoiceSyp =
+    summary && summary.invoiceCount > 0
+      ? Math.round(summary.totalChargesSyp / summary.invoiceCount)
+      : 0;
 
   return (
     <>
-      <PageHeader
-        title="التقارير"
-        description="التحصيل مقابل المصاريف وصافي الفترة — كل الأرقام من قيود الدفتر وسجل المصاريف كما هي."
-        actions={
-          <Button onClick={() => setAddOpen(true)}>
-            <Plus size={16} aria-hidden />
-            مصروف جديد
-          </Button>
-        }
-      />
+      <PageHeader title="التقارير" description={todayLabel} />
 
-      {/* مبدّل الفترة */}
-      <div className="flex flex-wrap items-center gap-2">
-        <FilterPills
-          ariaLabel="نوع التقرير"
-          value={mode}
-          onChange={setMode}
-          options={[
-            { value: "day", label: "تقرير يوم" },
-            { value: "month", label: "تقرير شهر" },
-          ]}
-        />
-
-        {mode === "day" ? (
-          <Input
-            type="date"
-            value={dateValue}
-            onChange={(e) => setDateValue(e.target.value || initialDate)}
-            aria-label="تاريخ التقرير"
-            className="w-auto"
+      {/* شريط الأدوات — المدى المخصص والحِبّات يميناً وزر التصدير يساراً */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-wrap items-end gap-2">
+          <RangeField
+            label="من"
+            value={range?.from ?? todayValue}
+            onChange={(value) => editRange("from", value)}
           />
-        ) : (
-          <div className="flex items-center gap-1">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() =>
-                setMonthCursor((prev) =>
-                  prev.month === 1
-                    ? { year: prev.year - 1, month: 12 }
-                    : { ...prev, month: prev.month - 1 },
-                )
-              }
-              aria-label="الشهر السابق"
-            >
-              <ChevronRight size={14} aria-hidden />
-            </Button>
-            <span className="min-w-28 text-center text-sm font-medium text-ink-900">
-              {monthLabelFmt.format(
-                monthUtcStart(monthCursor.year, monthCursor.month),
-              )}
-            </span>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() =>
-                setMonthCursor((prev) =>
-                  prev.month === 12
-                    ? { year: prev.year + 1, month: 1 }
-                    : { ...prev, month: prev.month + 1 },
-                )
-              }
-              aria-label="الشهر التالي"
-            >
-              <ChevronLeft size={14} aria-hidden />
-            </Button>
-          </div>
-        )}
-        <p className="text-xs text-warm-500">{periodLabel}</p>
+          <RangeField
+            label="إلى"
+            value={range?.to ?? todayValue}
+            onChange={(value) => editRange("to", value)}
+          />
+          <FilterPills
+            ariaLabel="فترة التقرير"
+            accent="warning"
+            value={selection}
+            onChange={selectPreset}
+            options={PERIOD_PRESET_OPTIONS}
+            className="pb-1"
+          />
+        </div>
+        <Button
+          variant="secondary"
+          shape="pill"
+          onClick={exportCsv}
+          disabled={!summary}
+        >
+          تصدير التقرير CSV
+        </Button>
       </div>
+      {rangeInvalid && (
+        <p role="alert" className="mt-2 text-xs text-danger-600">
+          تاريخ «من» يجب أن يكون قبل تاريخ «إلى» أو مساوياً له.
+        </p>
+      )}
 
-      {/* بطاقات الفترة */}
-      {reportError ? (
+      {/* بطاقات الإحصاء */}
+      {loadError ? (
         <div
           role="alert"
           className="mt-4 flex flex-col items-start gap-2 rounded-panel border border-danger-300 bg-danger-50 px-4 py-4"
@@ -297,247 +216,175 @@ export default function ReportsBoard({
             إعادة المحاولة
           </Button>
         </div>
-      ) : report === null ? (
-        <div aria-busy="true" className="mt-4 grid gap-3 sm:grid-cols-4">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-20 animate-pulse rounded-panel bg-surface-sunken" />
+      ) : summary === null ? (
+        <div aria-busy="true" className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[0, 1, 2, 3].map((index) => (
+            <div
+              key={index}
+              className="h-20 animate-pulse rounded-panel bg-surface-sunken"
+            />
           ))}
         </div>
       ) : (
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
-            value={formatDualFromSyp(report.collectedSyp, usdRate)}
-            label="التحصيل"
+            value={usd(summary.totalChargesSyp)}
+            label="إجمالي الفواتير"
             icon={DollarSign}
+            valueClassName="text-warning-600"
           />
           <StatCard
-            value={formatDualFromSyp(report.expensesSyp, usdRate)}
-            label="المصاريف"
+            value={String(summary.invoiceCount)}
+            label="فاتورة صادرة"
+            subLabel={`متوسط ${usd(avgInvoiceSyp)}`}
             icon={ReceiptText}
+            iconClassName="bg-warning-500/10 text-warning-600"
+            className="border-warning-500/50"
           />
           <StatCard
-            value={formatDualFromSyp(report.refundsSyp, usdRate)}
-            label="الاستردادات"
+            value={String(summary.paymentCount)}
+            label="دفعة مستلمة"
+            icon={DollarSign}
+            iconClassName="bg-ink-600/10 text-ink-700"
+          />
+          <StatCard
+            value={usd(summary.outstandingSyp)}
+            label="مستحقات حالية"
             icon={TriangleAlert}
             tone="danger"
           />
-          <StatCard
-            value={formatDualFromSyp(report.netSyp, usdRate)}
-            label="صافي الفترة"
-            icon={Wallet}
-            tone={report.netSyp >= 0 ? "primary" : "danger"}
-          />
         </div>
       )}
 
-      {/* الرسم اليومي وتوزيع المصاريف */}
-      <div className="mt-4 grid gap-4 lg:grid-cols-5">
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle>اتجاه آخر 14 يوماً</CardTitle>
-          </CardHeader>
-          <CardBody>
-            {seriesError ? (
-              <p role="alert" className="text-xs text-danger-600">
-                تعذر تحميل الرسم اليومي.
-              </p>
-            ) : series === null ? (
-              <div
-                aria-busy="true"
-                className="h-40 animate-pulse rounded-field bg-surface-sunken"
-              />
-            ) : (
-              <DailyBarsChart series={series} usdRate={usdRate} />
-            )}
-          </CardBody>
-        </Card>
+      {/* الرسوم والقوائم — على شكل المرجع: البطاقة العريضة يميناً والضيقة يساراً */}
+      {summary !== null && (
+        <div className="mt-4 grid gap-4 lg:grid-cols-5">
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <ChartTitle icon={BarChart3}>الإيرادات الشهرية خلال الفترة</ChartTitle>
+            </CardHeader>
+            <CardBody>
+              {summary.monthlyRevenue.some((month) => month.chargesSyp > 0) ? (
+                <VerticalBarsChart
+                  ariaLabel="الإيرادات الشهرية خلال الفترة"
+                  points={summary.monthlyRevenue.map((month) => ({
+                    label: monthLabel(month.month),
+                    value: Math.round(sypToUsd(month.chargesSyp, usdRate)),
+                    valueText: usdFormatter.format(
+                      Math.round(sypToUsd(month.chargesSyp, usdRate)),
+                    ),
+                    title: `${monthLabel(month.month)}: ${usd(month.chargesSyp)}`,
+                  }))}
+                />
+              ) : (
+                <EmptyState icon={BarChart3} title="لا إيرادات في الفترة" />
+              )}
+            </CardBody>
+          </Card>
 
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>المصاريف حسب الفئة</CardTitle>
-          </CardHeader>
-          <CardBody>
-            {expenseError ? (
-              <p role="alert" className="text-xs text-danger-600">
-                تعذر تحميل المصاريف.
-              </p>
-            ) : expenses === null ? (
-              <div
-                aria-busy="true"
-                className="h-40 animate-pulse rounded-field bg-surface-sunken"
-              />
-            ) : categoryTotals.length === 0 ? (
-              <EmptyState
-                icon={BarChart3}
-                title="لا مصاريف في هذه الفترة"
-                description="سجّل مصروفاً وسيظهر توزيعه على الفئات هنا."
-                action={
-                  <Button size="sm" onClick={() => setAddOpen(true)}>
-                    <Plus size={14} aria-hidden />
-                    مصروف جديد
-                  </Button>
-                }
-              />
-            ) : (
-              <ul className="flex flex-col gap-3">
-                {categoryTotals.map((c) => (
-                  <li key={c.category}>
-                    <div className="mb-1 flex items-center justify-between text-xs">
-                      <span className="font-medium text-ink-900">
-                        {expenseCategoryLabel(c.category)}
-                      </span>
-                      <span className="numeric text-warm-600">
-                        {formatDualFromSyp(c.totalSyp, usdRate)}
-                      </span>
-                    </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-surface-sunken">
-                      <div
-                        className="h-full rounded-full bg-primary-500"
-                        style={{ width: `${(c.totalSyp / categoryMax) * 100}%` }}
-                        role="img"
-                        aria-label={`${expenseCategoryLabel(c.category)}: ${formatDualFromSyp(c.totalSyp, usdRate)}`}
-                      />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardBody>
-        </Card>
-      </div>
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <ChartTitle icon={Calendar}>نتائج المواعيد</ChartTitle>
+            </CardHeader>
+            <CardBody>
+              <AppointmentOutcomesDonut outcomes={summary.appointmentOutcomes} />
+            </CardBody>
+          </Card>
 
-      {/* أحدث المصاريف */}
-      {expenses !== null && expenses.length > 0 && (
-        <div className="mt-4">
-          <h2 className="mb-2 text-sm font-semibold text-ink-900">
-            أحدث المصاريف
-          </h2>
-          <Table>
-            <THead>
-              <TRow>
-                <TH>التاريخ</TH>
-                <TH>الفئة</TH>
-                <TH>البيان</TH>
-                <TH className="text-end">المبلغ</TH>
-              </TRow>
-            </THead>
-            <tbody>
-              {expenses.slice(0, 8).map((e) => (
-                <TRow key={e.id}>
-                  <TD className="numeric whitespace-nowrap text-xs text-warm-600">
-                    {expenseDateFmt.format(new Date(e.spentAt))}
-                  </TD>
-                  <TD>
-                    <StatusPill tone={EXPENSE_CATEGORY_TONES[e.category] ?? "neutral"}>
-                      {expenseCategoryLabel(e.category)}
-                    </StatusPill>
-                  </TD>
-                  <TD className="max-w-64 text-xs text-warm-600">
-                    {e.note ?? "—"}
-                  </TD>
-                  <TD>
-                    <DualAmount syp={e.amountSyp} usdRate={usdRate} />
-                  </TD>
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <ChartTitle icon={User}>الإيراد حسب الطبيب (حسب الفواتير)</ChartTitle>
+            </CardHeader>
+            <CardBody>
+              {summary.revenueByDoctor.length > 0 ? (
+                <HorizontalRevenueBars
+                  rows={summary.revenueByDoctor.map((row) => ({
+                    label: row.doctor,
+                    value: row.chargesSyp,
+                  }))}
+                  amountText={usd}
+                />
+              ) : (
+                <EmptyState icon={User} title="لا فواتير في الفترة" />
+              )}
+            </CardBody>
+          </Card>
+
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <ChartTitle icon={BarChart3}>الإيراد حسب نوع العلاج</ChartTitle>
+            </CardHeader>
+            <CardBody>
+              {summary.revenueByProcedure.length > 0 ? (
+                <HorizontalRevenueBars
+                  rows={summary.revenueByProcedure.map((row) => ({
+                    label: row.procedure,
+                    value: row.chargesSyp,
+                  }))}
+                  amountText={usd}
+                />
+              ) : (
+                <EmptyState icon={BarChart3} title="لا فواتير في الفترة" />
+              )}
+            </CardBody>
+          </Card>
+
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <ChartTitle icon={UserPlus}>نمو سجل المرضى (شهرياً)</ChartTitle>
+            </CardHeader>
+            <CardBody>
+              {summary.patientGrowth.some((month) => month.count > 0) ? (
+                <VerticalBarsChart
+                  ariaLabel="نمو سجل المرضى شهرياً — الأحدث إلى اليسار"
+                  points={[...summary.patientGrowth]
+                    .reverse()
+                    .map((month) => ({
+                      label: monthLabel(month.month),
+                      value: month.count,
+                      valueText: String(month.count),
+                      title: `${monthLabel(month.month)}: ${month.count} مريض جديد`,
+                    }))}
+                />
+              ) : (
+                <EmptyState icon={UserPlus} title="لا تسجيل مرضى في الشهور الأخيرة" />
+              )}
+            </CardBody>
+          </Card>
+
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <ChartTitle icon={Info}>أعلى المرضى (فواتير الفترة)</ChartTitle>
+            </CardHeader>
+            <Table>
+              <THead>
+                <TRow>
+                  <TH>المريض</TH>
+                  <TH className="text-start text-warning-700">الإجمالي</TH>
                 </TRow>
-              ))}
-            </tbody>
-          </Table>
+              </THead>
+              <tbody>
+                {summary.topPatients.length > 0 ? (
+                  summary.topPatients.map((patient) => (
+                    <TRow key={patient.patientId}>
+                      <TD className="text-sm">{patient.patientName}</TD>
+                      <TD className="numeric text-sm font-semibold text-warning-600">
+                        {usd(patient.chargesSyp)}
+                      </TD>
+                    </TRow>
+                  ))
+                ) : (
+                  <TRow>
+                    <TD colSpan={2}>
+                      <EmptyState icon={Info} title="لا فواتير في الفترة" />
+                    </TD>
+                  </TRow>
+                )}
+              </tbody>
+            </Table>
+          </Card>
         </div>
       )}
-
-      {/* نافذة مصروف جديد */}
-      <Modal
-        open={addOpen}
-        onClose={() => {
-          setAddOpen(false);
-          setFormError(null);
-        }}
-        title="مصروف جديد"
-        footer={
-          <>
-            <Button loading={busy} onClick={() => void submitExpense()}>
-              تسجيل المصروف
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setAddOpen(false);
-                setFormError(null);
-              }}
-              disabled={busy}
-            >
-              إلغاء
-            </Button>
-          </>
-        }
-      >
-        <div className="flex flex-col gap-4">
-          <Field label="الفئة" htmlFor="expense-category">
-            <Select
-              id="expense-category"
-              value={category}
-              onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
-            >
-              {EXPENSE_CATEGORIES.map((key) => (
-                <option key={key} value={key}>
-                  {EXPENSE_CATEGORY_LABELS[key]}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="المبلغ (ل.س)" htmlFor="expense-amount">
-            <Input
-              id="expense-amount"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              value={amountStr}
-              onChange={(e) => setAmountStr(e.target.value)}
-              placeholder="مثال: 150000"
-            />
-          </Field>
-          <Field label="تاريخ المصروف" htmlFor="expense-date">
-            <Input
-              id="expense-date"
-              type="date"
-              value={spentAt}
-              onChange={(e) => setSpentAt(e.target.value || initialDate)}
-            />
-          </Field>
-          <Field label="البيان (اختياري)" htmlFor="expense-note">
-            <Textarea
-              id="expense-note"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="تفاصيل المصروف…"
-              rows={2}
-            />
-          </Field>
-          {formError && (
-            <p role="alert" className="text-xs text-danger-600">
-              {formError}
-            </p>
-          )}
-        </div>
-      </Modal>
     </>
-  );
-}
-
-/** بداية نطاق الفترة (UTC) — يوم محدد أو أول شهر */
-function periodFrom(mode: Mode, dateValue: string, cursor: { year: number; month: number }): Date {
-  return mode === "day"
-    ? new Date(`${dateValue}T00:00:00Z`)
-    : monthUtcStart(cursor.year, cursor.month);
-}
-
-/** نهاية نطاق الفترة الحصرية (UTC) */
-function periodTo(mode: Mode, dateValue: string, cursor: { year: number; month: number }): Date {
-  if (mode === "day") {
-    return new Date(new Date(`${dateValue}T00:00:00Z`).getTime() + DAY_MS);
-  }
-  return monthUtcStart(
-    cursor.month === 12 ? cursor.year + 1 : cursor.year,
-    cursor.month === 12 ? 1 : cursor.month + 1,
   );
 }

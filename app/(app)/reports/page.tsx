@@ -4,12 +4,12 @@ import { redirect } from "next/navigation";
 import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
 import { tenantContextFromSession } from "@/lib/tenant/context";
 import { getClinicUsdRate } from "@/lib/services/account";
-import { toDateInputValue } from "@/lib/dates";
+import { formatWeekdayDateCell, toDateInputValue } from "@/lib/dates";
 import ReportsBoard from "@/components/reports/ReportsBoard";
 
-// صفحة التقارير — تقارير الفترة والرسوم اليومية والمصاريف، محمية
-// بالجلسة والبيانات من واجهة برمجة العيادة حصراً. سعر الصرف من الإعدادات
-// لعرض العملة المزدوجة في كل مبالغ التقرير.
+// صفحة التقارير — تقرير فترة كامل (خيارات جاهزة ومدى مخصص من/إلى وتصدير
+// CSV)، محمية بالجلسة وبياناتها من واجهة العيادة حصراً. سعر الصرف من
+// الإعدادات لعرض مبالغ الدولار، والتاريخ من الخادم لتثبيت الترويسة.
 export default async function ReportsPage() {
   const session = await getSessionUser(
     (await cookies()).get(SESSION_COOKIE)?.value,
@@ -18,10 +18,15 @@ export default async function ReportsPage() {
 
   const ctx = tenantContextFromSession(session);
   const usdRate = await getClinicUsdRate(ctx);
+  const now = new Date();
 
   return (
     <div className={pageWrapClass("wide")}>
-      <ReportsBoard initialDate={toDateInputValue(new Date())} usdRate={usdRate} />
+      <ReportsBoard
+        todayValue={toDateInputValue(now)}
+        todayLabel={formatWeekdayDateCell(now)}
+        usdRate={usdRate}
+      />
     </div>
   );
 }

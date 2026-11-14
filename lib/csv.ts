@@ -19,3 +19,16 @@ export function toCsv(
 export function withUtf8Bom(csv: string): string {
   return `\uFEFF${csv}`;
 }
+
+/** تنزيل نص CSV من المتصفح — إلحاق BOM ليُقرأ العربية في Excel */
+export function downloadCsv(filename: string, csv: string): void {
+  const blob = new Blob([withUtf8Bom(csv)], {
+    type: "text/csv;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
