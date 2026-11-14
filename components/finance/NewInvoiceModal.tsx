@@ -4,6 +4,11 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
 import { usdToSyp } from "@/lib/currency";
+import {
+  buildChargeWithItemsBody,
+  invoiceItemDescription,
+  type InvoiceItemPayload,
+} from "@/lib/invoices-view";
 import { toDateInputValue } from "@/lib/dates";
 import type { PatientDto } from "@/lib/services/patients";
 import { Button } from "@/components/ui/Button";
@@ -11,8 +16,9 @@ import { Field, Input, Select, Textarea } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 
-// «فاتورة جديدة» من صفحة الفواتير — تُصدر الفاتورة بقيد رسوم (CHARGE) لكل بند
-// عبر مسار الدفتر القائم، بتاريخ الاختيار (createdAt). الأسعار تُدخل بالدولار
+// «فاتورة جديدة» من صفحة الفواتير — تُصدر الفاتورة بقيد رسوم واحد (CHARGE)
+// ببنود مهيكلة (items) عبر مسار الدفتر، فتأخذ رقماً واحداً من تسلسل العيادة
+// وتُصنَّف بنودها في تجميع الإيراد حسب نوع العلاج. الأسعار تُدخل بالدولار
 // على شكل المرجع وتُحوَّل إلى الليرة بسعر العيادة عند التسجيل.
 
 type InvoiceItemDraft = { procedure: string; tooth: string; priceUsd: string };
@@ -92,27 +98,37 @@ export default function NewInvoiceModal({
       const validItems = items.filter(
         (item) => item.procedure.trim() && Number(item.priceUsd) > 0,
       );
-      for (const item of validItems) {
-        const res = await fetch(
-          `/api/patients/${encodeURIComponent(patientId)}/ledger`,
-          {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              type: "CHARGE",
-              amountSyp: usdToSyp(Number(item.priceUsd), usdRate),
-              note: item.tooth.trim()
-                ? `${item.procedure.trim()} (السن ${item.tooth.trim()})`
-                : item.procedure.trim(),
+      // كل بند يُحوَّل إلى الليرة مستقلاً (تقريب وحدة التخزين)، ومبلغ القيد
+      // يُبنى كمجموع البنود المحوَّلة — فيمر تحقق «مجموع البنود = المبلغ» دائماً.
+      const payloadItems: InvoiceItemPayload[] = validItems.map((item) => {
+        const procedure = item.procedure.trim();
+        const tooth = item.tooth.trim();
+        return {
+          description: invoiceItemDescription(procedure, tooth || undefined),
+          // التصنيف نص حر أساس تجميع الإيراد حسب نوع العلاج — للفاتورة
+          // اليدوية بلا حقل تصنيف، فالإجراء نفسه هو التصنيف.
+          category: procedure,
+          amountSyp: usdToSyp(Number(item.priceUsd), usdRate),
+        };
+      });
+      const res = await fetch(
+        `/api/patients/${encodeURIComponent(patientId)}/ledger`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(
+            buildChargeWithItemsBody({
+              items: payloadItems,
+              note: notes.trim() || `فاتورة — ${payloadItems.length} بنود`,
               createdAt: dateIso.toISOString(),
             }),
-          },
-        );
-        const data = (await res.json()) as { entry?: object; error?: string };
-        if (!res.ok || !data.entry) {
-          setError(data.error ?? "تعذر إصدار الفاتورة، أعد المحاولة");
-          return;
-        }
+          ),
+        },
+      );
+      const data = (await res.json()) as { entry?: object; error?: string };
+      if (!res.ok || !data.entry) {
+        setError(data.error ?? "تعذر إصدار الفاتورة، أعد المحاولة");
+        return;
       }
       const discount = Number(discountStr);
       if (Number.isFinite(discount) && discount > 0) {
@@ -194,7 +210,7 @@ export default function NewInvoiceModal({
           </Field>
         </div>
 
-        {/* بنود الفاتورة — كل بند قيد رسوم مستقل في الدفتر */}
+        {/* بنود الفاتورة — قيد رسوم واحد ببنود مهيكلة تُصنَّف في التقارير */}
         <fieldset className="flex flex-col gap-2">
           <legend className="text-sm font-medium text-ink-900">البنود *</legend>
           {items.map((item, index) => (

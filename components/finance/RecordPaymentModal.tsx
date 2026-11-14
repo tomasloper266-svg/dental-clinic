@@ -6,6 +6,7 @@ import { sypToUsd, usdToSyp } from "@/lib/currency";
 import { useDisplayCurrency, useMoney } from "@/components/ui/CurrencyContext";
 import { toDateInputValue } from "@/lib/dates";
 import {
+  buildPaymentBody,
   composePaymentNote,
   PAYMENT_METHOD_OPTIONS,
   type ClinicInvoiceRow,
@@ -19,8 +20,9 @@ import { useToast } from "@/components/ui/Toast";
 
 // نموذج «تسديد دفعة» — يسجل قيد دفعة (PAYMENT) عبر مسار الدفتر القائم
 // (POST /api/patients/:id/ledger). «على الفاتورة» خياران: دفعة على حساب
-// المريض (بدون فوترة) أو سداد فاتورة معلقة، وطريقة الدفع والتاريخ يُضمَّنان
-// في بيان القيد والتاريخ (createdAt) دون أي تغيير في المخطط.
+// المريض (بدون فوترة) أو سداد فاتورة معلقة، ومعرّف الفاتورة المختار يُرسل
+// في الجسم فعلياً (appliedChargeId — ترشيح عرض حصراً) مع طريقة الدفع والتاريخ
+// في بيان القيد والتاريخ (createdAt)، دون أي تغيير في معادلة الرصيد.
 
 type Props = {
   onClose: () => void;
@@ -144,12 +146,14 @@ export default function RecordPaymentModal({
         {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            type: "PAYMENT",
-            amountSyp: -fromDisplayAmount(amount),
-            note: composePaymentNote(method, paymentBaseNote()),
-            createdAt: dateIso.toISOString(),
-          }),
+          body: JSON.stringify(
+            buildPaymentBody({
+              amountSyp: -fromDisplayAmount(amount),
+              note: composePaymentNote(method, paymentBaseNote()),
+              createdAt: dateIso.toISOString(),
+              appliedChargeId: chargeId || undefined,
+            }),
+          ),
         },
       );
       const data = (await res.json()) as { entry?: object; error?: string };
