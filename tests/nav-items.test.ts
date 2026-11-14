@@ -62,12 +62,13 @@ describe("سلامة العناصر", () => {
     }
   });
 
-  it("الشارات الرقمية هي waitlist وlowStock حصراً", () => {
+  it("الشارات الرقمية هي waitlist وlowStock وdues حصراً", () => {
     const badges = allNavItems
       .filter((i) => i.badge)
       .map((i) => [i.href, i.badge]);
     expect(badges).toEqual([
       ["/waitlist", "waitlist"],
+      ["/dues", "dues"],
       ["/inventory", "lowStock"],
     ]);
   });
