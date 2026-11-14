@@ -76,6 +76,7 @@ async function cleanDb(): Promise<void> {
   await prisma.ledgerEntry.deleteMany();
   await prisma.treatmentPlanItem.deleteMany();
   await prisma.appointment.deleteMany();
+  await prisma.staffMember.deleteMany();
   await prisma.waitlistEntry.deleteMany();
   await prisma.expense.deleteMany();
   await prisma.instructionTemplate.deleteMany();
@@ -133,15 +134,29 @@ describe("parseCreateMaterial", () => {
     ).toBe(false);
   });
 
-  it("سعر غير صحيح يُرفض", () => {
+  it("سعر سالب يُرفض", () => {
     expect(
       parseCreateMaterial({
         name: "كمبوزيت",
         unit: "علبة",
         minQuantity: 1,
-        costSyp: 12.5,
+        costSyp: -5,
       }).ok,
     ).toBe(false);
+  });
+
+  // فجوة 7: التكلفة بعشرية بحد منزلتين — الأسعار الكسورية تُقبل لا تُقرَّب.
+  it("سعر كسري بعشرية واحدة يُقبل كما هو", () => {
+    const parsed = parseCreateMaterial({
+      name: "كمبوزيت",
+      unit: "علبة",
+      minQuantity: 1,
+      costSyp: 4.5,
+    });
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.value.costSyp).toBe(4.5);
+    }
   });
 });
 

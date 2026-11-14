@@ -72,6 +72,7 @@ describeDb("عزل العيادات — integration", () => {
     await prisma.ledgerEntry.deleteMany();
     await prisma.treatmentPlanItem.deleteMany();
     await prisma.appointment.deleteMany();
+    await prisma.staffMember.deleteMany();
     await prisma.waitlistEntry.deleteMany();
     await prisma.expense.deleteMany();
     await prisma.instructionTemplate.deleteMany();

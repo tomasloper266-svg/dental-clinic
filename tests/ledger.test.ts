@@ -3,6 +3,7 @@ import {
   computeBalance,
   parseCreateLedgerEntry,
   validateEntrySign,
+  validateLedgerEntryItems,
 } from "@/lib/services/ledger";
 
 // اختبارات وحدة الدفتر المالي — معادلة الرصيد نقية وبلا قاعدة بيانات.
@@ -118,5 +119,91 @@ describe("تحقق جسم طلب إنشاء قيد", () => {
     const parsed = parseCreateLedgerEntry(valid);
     expect(parsed.ok).toBe(true);
     if (parsed.ok) expect(parsed.value.createdAt).toBeUndefined();
+  });
+
+  it("يقبل الإسناد الصريح للطبيب وترشيح الدفعة", () => {
+    const parsed = parseCreateLedgerEntry({
+      ...valid,
+      doctorId: "staff_1",
+      appliedChargeId: "entry_1",
+    });
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.value.doctorId).toBe("staff_1");
+      expect(parsed.value.appliedChargeId).toBe("entry_1");
+    }
+  });
+
+  it("يقبل بنود فاتورة مجموعها يساوي المبلغ", () => {
+    const parsed = parseCreateLedgerEntry({
+      type: "CHARGE",
+      amountSyp: 150_000,
+      items: [
+        { description: "حشو", category: "ترميم", amountSyp: 100_000, sort: 0 },
+        { description: "تنظيف", amountSyp: 50_000, sort: 1 },
+      ],
+    });
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.value.items).toHaveLength(2);
+      expect(parsed.value.items?.[0].sort).toBe(0);
+    }
+  });
+
+  it("يرفض بنوداً لا تجمع مبلغ القيد (فجوة 2 — تحقق صارم)", () => {
+    const parsed = parseCreateLedgerEntry({
+      type: "CHARGE",
+      amountSyp: 150_000,
+      items: [
+        { description: "حشو", amountSyp: 100_000 },
+        { description: "تنظيف", amountSyp: 40_000 },
+      ],
+    });
+    expect(parsed.ok).toBe(false);
+    if (!parsed.ok) {
+      expect(parsed.error).toContain("مجموع البنود");
+    }
+  });
+
+  it("يرفض البنود على قيد غير رسوم", () => {
+    expect(
+      parseCreateLedgerEntry({
+        ...valid,
+        items: [{ description: "حشو", amountSyp: 100_000 }],
+      }).ok,
+    ).toBe(false);
+  });
+});
+
+describe("تحقق بنود الفاتورة — مجموع البنود = مبلغ القيد", () => {
+  it("قائمة فارغة مقبولة — القيد اليدوي المفرد بلا بنود", () => {
+    expect(validateLedgerEntryItems([], 100_000)).toBeNull();
+  });
+
+  it("مجموع البنود يساوي المبلغ يُقبل", () => {
+    expect(
+      validateLedgerEntryItems(
+        [
+          { description: "حشو", amountSyp: 70_000 },
+          { description: "صيانة", amountSyp: 30_000 },
+        ],
+        100_000,
+      ),
+    ).toBeNull();
+  });
+
+  it("مجموع مخالف يُرفض", () => {
+    expect(
+      validateLedgerEntryItems([{ description: "حشو", amountSyp: 50_000 }], 100_000),
+    ).not.toBeNull();
+  });
+
+  it("وصف فارغ أو مبلغ غير صحيح يُرفض", () => {
+    expect(
+      validateLedgerEntryItems([{ description: "  ", amountSyp: 100_000 }], 100_000),
+    ).not.toBeNull();
+    expect(
+      validateLedgerEntryItems([{ description: "حشو", amountSyp: 10.5 }], 10.5),
+    ).not.toBeNull();
   });
 });

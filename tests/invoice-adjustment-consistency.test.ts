@@ -30,6 +30,8 @@ function entry(
     note: null,
     treatmentItemId: null,
     invoiceSeq: type === "CHARGE" ? 1 : null,
+    doctorId: null,
+    appliedChargeId: null,
     createdAt: new Date(base + minutes * 60_000),
   };
 }

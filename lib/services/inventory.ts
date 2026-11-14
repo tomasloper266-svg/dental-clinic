@@ -62,7 +62,8 @@ function toMaterialDto(row: {
   supplier: string | null;
   quantityOnHand: unknown;
   minQuantity: unknown;
-  costSyp: number | null;
+  // Decimal(12,2) من القاعدة — تُحوَّل إلى number عند حدود الخدمة
+  costSyp: unknown;
 }): MaterialDto {
   const quantityOnHand = Number(row.quantityOnHand);
   const minQuantity = Number(row.minQuantity);
@@ -74,7 +75,7 @@ function toMaterialDto(row: {
     supplier: row.supplier,
     quantityOnHand,
     minQuantity,
-    costSyp: row.costSyp,
+    costSyp: row.costSyp === null ? null : Number(row.costSyp),
     isLow: isLowStock(quantityOnHand, minQuantity),
   };
 }
@@ -89,6 +90,15 @@ function parseQuantity(value: unknown, error: string): number | string {
     return error;
   }
   return rounded;
+}
+
+// سعر المادة بعشرية بحد منزلتين (Decimal(12,2)) — لا سالب، والصفر مقبول.
+// نقية للاختبار المباشر؛ نفس قاعدة التقريب بمنزلتين كالكميات.
+function parseCostSyp(value: unknown): number | string {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    return "سعر المادة يجب أن يكون رقماً غير سالب بحد منزلتين";
+  }
+  return Math.round(value * 100) / 100;
 }
 
 // نص وصفي اختياري (الفئة والمورد) — نتيجة متمايزة: النص القصير الصالح نجاح
@@ -145,14 +155,11 @@ export function parseCreateMaterial(
 
   let costSyp: number | undefined;
   if (b.costSyp !== undefined && b.costSyp !== null) {
-    if (
-      typeof b.costSyp !== "number" ||
-      !Number.isInteger(b.costSyp) ||
-      b.costSyp < 0
-    ) {
-      return { ok: false, error: "سعر المادة يجب أن يكون رقماً صحيحاً غير سالب" };
+    const parsedCost = parseCostSyp(b.costSyp);
+    if (typeof parsedCost === "string") {
+      return { ok: false, error: parsedCost };
     }
-    costSyp = b.costSyp;
+    costSyp = parsedCost;
   }
 
   // الرصيد الافتتاحي اختياري — رقم غير سالب بحد منزلتين، وصفر هو الافتراض
@@ -272,14 +279,12 @@ export function parseUpdateMaterial(
   if (b.costSyp !== undefined) {
     if (b.costSyp === null) {
       value.costSyp = null;
-    } else if (
-      typeof b.costSyp === "number" &&
-      Number.isInteger(b.costSyp) &&
-      b.costSyp >= 0
-    ) {
-      value.costSyp = b.costSyp;
     } else {
-      return { ok: false, error: "سعر المادة يجب أن يكون رقماً صحيحاً غير سالب" };
+      const parsedCost = parseCostSyp(b.costSyp);
+      if (typeof parsedCost === "string") {
+        return { ok: false, error: parsedCost };
+      }
+      value.costSyp = parsedCost;
     }
   }
 
@@ -676,7 +681,7 @@ export async function listPatientMaterialUsages(
       costSyp:
         row.material.costSyp === null
           ? null
-          : row.material.costSyp * quantityUsed,
+          : Number(row.material.costSyp) * quantityUsed,
     };
   });
 }
