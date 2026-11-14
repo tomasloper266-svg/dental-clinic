@@ -62,7 +62,7 @@ describe("buildDuesRows", () => {
     const rows = buildDuesRows(
       [
         entry({ id: "e1", amountSyp: 955_000, createdAt: "2026-10-07T10:00:00Z" }),
-        entry({ id: "e2", type: "PAYMENT", amountSyp: -655_000 }),
+        entry({ id: "e2", type: "PAYMENT", amountSyp: -655_000, createdAt: "2026-11-13T10:00:00Z" }),
       ],
       NOW,
     );
@@ -72,7 +72,32 @@ describe("buildDuesRows", () => {
       chargesSyp: 955_000,
       paidSyp: 655_000,
       dueSyp: 300_000,
+      lastPaymentAt: expect.stringContaining("2026-11-13"),
     });
+    expect(rows[0].lastChargeAt).toContain("2026-10-07");
+  });
+
+  it("آخر فاتورة وآخر دفعة يلتقطان الأحدث زمنياً من عدة قيود", () => {
+    const rows = buildDuesRows(
+      [
+        entry({ id: "e1", amountSyp: 100_000, createdAt: "2026-09-01T10:00:00Z" }),
+        entry({ id: "e2", amountSyp: 60_000, createdAt: "2026-11-10T10:00:00Z" }),
+        entry({ id: "e3", type: "PAYMENT", amountSyp: -40_000, createdAt: "2026-11-12T10:00:00Z" }),
+        entry({ id: "e4", type: "PAYMENT", amountSyp: -10_000, createdAt: "2026-10-20T10:00:00Z" }),
+      ],
+      NOW,
+    );
+    expect(rows[0].lastChargeAt).toContain("2026-11-10");
+    expect(rows[0].lastPaymentAt).toContain("2026-11-12");
+  });
+
+  it("مريض بلا دفعات يكون آخر دفعة صفراً", () => {
+    const rows = buildDuesRows(
+      [entry({ id: "e1", amountSyp: 100_000, createdAt: "2026-11-01T10:00:00Z" })],
+      NOW,
+    );
+    expect(rows[0].lastPaymentAt).toBeNull();
+    expect(rows[0].lastChargeAt).toContain("2026-11-01");
   });
 
   it("آخر قيد غير مسدد هو آخر قيد رسوم بقي الرصيد بعده موجباً — وأيام التأخر تُحسب حتى الآن", () => {

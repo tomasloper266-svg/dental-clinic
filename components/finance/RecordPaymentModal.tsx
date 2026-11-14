@@ -17,9 +17,10 @@ import { Field, Input, Select, Textarea } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 
-// نموذج «تسديد دفعة» — يسجل قيد دفعة (PAYMENT) على الفاتورة المختارة عبر
-// مسار الدفتر القائم (POST /api/patients/:id/ledger). طريقة الدفع والتاريخ
-// يُضمَّنان في بيان القيد والتاريخ (createdAt) دون أي تغيير في المخطط.
+// نموذج «تسديد دفعة» — يسجل قيد دفعة (PAYMENT) عبر مسار الدفتر القائم
+// (POST /api/patients/:id/ledger). «على الفاتورة» خياران: دفعة على حساب
+// المريض (بدون فوترة) أو سداد فاتورة معلقة، وطريقة الدفع والتاريخ يُضمَّنان
+// في بيان القيد والتاريخ (createdAt) دون أي تغيير في المخطط.
 
 type Props = {
   onClose: () => void;
@@ -32,6 +33,8 @@ type Props = {
   /** تعبئة مسبقة — من زر التسديد في صف الجدول */
   initialPatientId?: string | null;
   initialChargeId?: string | null;
+  /** تعبئة مبلغ مسبق من رصيد المريض — من صفحة المستحقات دون فاتورة محددة */
+  initialDueSyp?: number;
 };
 
 export default function RecordPaymentModal({
@@ -42,6 +45,7 @@ export default function RecordPaymentModal({
   invoices,
   initialPatientId,
   initialChargeId,
+  initialDueSyp,
 }: Props) {
   const router = useRouter();
   const { toast } = useToast();
@@ -55,20 +59,25 @@ export default function RecordPaymentModal({
     initialInvoice?.patientId ?? initialPatientId ?? patients[0]?.id ?? "",
   );
   const [chargeId, setChargeId] = useState(initialInvoice?.chargeId ?? "");
-  const [amountStr, setAmountStr] = useState(
-    initialInvoice && initialInvoice.remainingSyp > 0
-      ? String(
-          Math.round(sypToUsd(initialInvoice.remainingSyp, usdRate) * 100) / 100,
-        )
-      : "",
-  );
+  const [amountStr, setAmountStr] = useState(() => {
+    if (initialInvoice && initialInvoice.remainingSyp > 0) {
+      return String(
+        Math.round(sypToUsd(initialInvoice.remainingSyp, usdRate) * 100) / 100,
+      );
+    }
+    if (initialDueSyp !== undefined && initialDueSyp > 0) {
+      return String(Math.round(sypToUsd(initialDueSyp, usdRate) * 100) / 100);
+    }
+    return "";
+  });
   const [method, setMethod] = useState<PaymentMethod>("نقدا");
   const [date, setDate] = useState(toDateInputValue(new Date()));
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // فواتير المريض المختار التي عليها متبقٍ — خيارات «على الفاتورة»
+  // فواتير المريض المختار التي عليها متبقٍ — خيارات «على الفاتورة» بعد
+  // خيار الحساب (بدون فوترة) الذي يبقى اختياراً صالحاً دائماً
   const outstanding = useMemo(
     () =>
       invoices.filter(
@@ -87,9 +96,22 @@ export default function RecordPaymentModal({
   const futureDate =
     dateIso !== null && dateIso.getTime() > Date.now() + 60_000;
 
+  /**
+   * نقي — بيان الدفعة: مع الفاتورة يُذكر رقمها، وبدونها فالدفعة على حساب
+   * المريض (بدون فوترة) — وكلاهما يمر عبر composePaymentNote نفسها.
+   */
+  function paymentBaseNote(): string {
+    const parts = [
+      notes.trim(),
+      selectedInvoice
+        ? `سداد الفاتورة ${selectedInvoice.number}`
+        : "على الحساب (بدون فوترة)",
+    ];
+    return parts.filter(Boolean).join(" — ");
+  }
+
   function validate(): string | null {
     if (!patientId) return "اختر المريض";
-    if (!chargeId) return "اختر الفاتورة";
     if (!Number.isFinite(amount) || amount <= 0)
       return "المبلغ يجب أن يكون رقماً موجباً";
     if (!dateIso || Number.isNaN(dateIso.getTime())) return "التاريخ غير صالح";
@@ -99,8 +121,8 @@ export default function RecordPaymentModal({
 
   async function submit() {
     const validationError = validate();
-    if (validationError || !selectedInvoice || !dateIso) {
-      setError(validationError ?? "اختر الفاتورة");
+    if (validationError || !dateIso) {
+      setError(validationError ?? "التاريخ غير صالح");
       return;
     }
     setSaving(true);
@@ -114,7 +136,7 @@ export default function RecordPaymentModal({
           body: JSON.stringify({
             type: "PAYMENT",
             amountSyp: -usdToSyp(amount, usdRate),
-            note: composePaymentNote(method, notes),
+            note: composePaymentNote(method, paymentBaseNote()),
             createdAt: dateIso.toISOString(),
           }),
         },
@@ -139,10 +161,11 @@ export default function RecordPaymentModal({
       open
       onClose={onClose}
       title="تسديد دفعة"
+      titleClassName="font-display text-lg text-warning-600"
       className="max-w-lg"
       footer={
         <>
-          <Button loading={saving} onClick={() => void submit()}>
+          <Button variant="gold" loading={saving} onClick={() => void submit()}>
             تسجيل الدفعة
           </Button>
           <Button variant="secondary" disabled={saving} onClick={onClose}>
@@ -151,7 +174,9 @@ export default function RecordPaymentModal({
         </>
       }
     >
-      <div className="flex flex-col gap-4">
+      {/* عمودان — على شكل المرجع: المريض/المبلغ/التاريخ يميناً،
+          على الفاتورة/طريقة الدفع/ملاحظات يساراً */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="المريض *" htmlFor="pay-patient">
           <Select
             id="pay-patient"
@@ -172,9 +197,9 @@ export default function RecordPaymentModal({
         <Field
           label="على الفاتورة"
           htmlFor="pay-invoice"
-          error={
+          hint={
             patients.length > 0 && outstanding.length === 0
-              ? "لا فواتير معلقة لهذا المريض"
+              ? "لا فواتير معلقة — الدفعة تُقيَّد على الحساب"
               : undefined
           }
         >
@@ -183,9 +208,7 @@ export default function RecordPaymentModal({
             value={chargeId}
             onChange={(e) => setChargeId(e.target.value)}
           >
-            <option value="" disabled>
-              اختر الفاتورة
-            </option>
+            <option value="">فواتير على الحساب (بدون فوترة)</option>
             {outstanding.map((row) => (
               <option key={row.chargeId} value={row.chargeId}>
                 {row.number} — متبقى {formatUsdSpaced(
@@ -255,11 +278,12 @@ export default function RecordPaymentModal({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="ملاحظة اختيارية…"
+            className="min-h-10"
           />
         </Field>
 
         {error && (
-          <p role="alert" className="text-xs text-danger-600">
+          <p role="alert" className="text-xs text-danger-600 sm:col-span-2">
             {error}
           </p>
         )}

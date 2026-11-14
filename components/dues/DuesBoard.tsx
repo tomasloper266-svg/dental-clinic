@@ -1,55 +1,42 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarClock, RotateCw, UserRound, Users, Wallet } from "lucide-react";
-import type { LedgerEntryType } from "@/lib/services/ledger";
-import { formatDateCell } from "@/lib/dates";
-import { formatDayLabel } from "@/lib/appointment-ui";
-import { toCsv, withUtf8Bom } from "@/lib/csv";
 import {
-  buildDuesRows,
-  searchDuesRows,
-  sortDuesRows,
-  summarizeDues,
-  type DuesRowView,
-  type DuesSortKey,
-} from "@/lib/dues-view";
-import { formatDualFromSyp } from "@/lib/currency";
+  BarChart3,
+  CircleDollarSign,
+  DollarSign,
+  Info,
+  RotateCw,
+  Users,
+  Wallet,
+} from "lucide-react";
+import { sypToUsd } from "@/lib/currency";
+import { formatDateCell, formatWeekdayDateCell } from "@/lib/dates";
+import { toCsv, withUtf8Bom } from "@/lib/csv";
+import { buildDuesRows, sortDuesRows, type DuesRowView } from "@/lib/dues-view";
+import { deriveClinicInvoices, formatUsdSpaced } from "@/lib/invoices-view";
+import type { ClinicLedgerEntryDto } from "@/lib/services/ledger";
+import type { PatientDto } from "@/lib/services/patients";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
-import { PanelToolbar, SearchInput, SortSelect } from "@/components/ui/Toolbar";
-import { EntityCell } from "@/components/ui/EntityCell";
-import { PillAction } from "@/components/ui/TableActions";
-import { DualAmount } from "@/components/ui/DualAmount";
 import { Table, THead, TRow, TH, TD } from "@/components/ui/Table";
+import { PillAction } from "@/components/ui/TableActions";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
-import SettlePaymentModal from "@/components/finance/SettlePaymentModal";
+import RecordPaymentModal from "@/components/finance/RecordPaymentModal";
 
-// شاشة المستحقات — بنية المرجع: ترويسة كبيرة بتصدير CSV، أربع بطاقات إحصاء
-// (الإجمالي، عدد المدينين، الأعلى فردياً، المتوسط)، ثم بطاقة سجل المدينين
-// بجدولها: المريض بأفاتاره، الهاتف، إجمالي الفواتير، المسدد، الرصيد المستحق
-// بالعملتين معاً، آخر قيد غير مسدد بمدة تأخره، وإجراءَي تسديد/الملف.
-// كل الأرقام تُبنى نقياً من قيود الدفتر عبر lib/dues-view.ts.
+// شاشة المستحقات — على شكل المرجع: ترويسة بتصدير CSV، أربع بطاقات إحصاء
+// (الإجمالي بالأحمر، عدد المرضى، أعلى رصيد فردي، متوسط الرصيد)، شريط ملاحظة،
+// ثم جدول المدينين: المريض بشارة مرقّمة وسطر «آخر فاتورة»، الهاتف، إجمالي
+// الفواتير، المسدد، الفرقة المتبقية بالأحمر، آخر دفعة، وإجراءَي تسديد/الملف.
+// كل الأرقام تُبنى نقياً من قيود الدفتر عبر lib/dues-view.ts، والتسديد عبر
+// نموذج «تسديد دفعة» نفسه المشترك مع صفحة الفواتير (RecordPaymentModal).
 
-type ClinicEntryJson = {
-  id: string;
-  patientId: string;
-  type: LedgerEntryType;
-  amountSyp: number;
-  note: string | null;
-  createdAt: string;
-  patientName: string;
-  patientPhone: string | null;
-};
+type ClinicEntryJson = ClinicLedgerEntryDto & { createdAt: string };
 
-const SORT_OPTIONS: ReadonlyArray<{ value: DuesSortKey; label: string }> = [
-  { value: "amount", label: "المبلغ المستحق" },
-  { value: "overdue", label: "الأقدم تأخراً" },
-  { value: "name", label: "الاسم" },
-];
+type PayState = { patientId: string; dueSyp: number } | null;
 
 /** تنزيل نص CSV من المتصفح — إلحاق BOM ليُقرأ العربية في Excel */
 function downloadCsv(filename: string, csv: string) {
@@ -62,43 +49,56 @@ function downloadCsv(filename: string, csv: string) {
   URL.revokeObjectURL(url);
 }
 
-function OverdueCell({ row }: { row: DuesRowView }) {
-  if (row.lastUnpaidChargeAt === null || row.overdueDays === null) {
-    return <span className="text-xs text-warm-400">—</span>;
-  }
+/** خلية المريض بشارة مرقّمة ذهبية وسطر «آخر فاتورة» — على شكل المرجع */
+function PatientCell({ row, index }: { row: DuesRowView; index: number }) {
   return (
-    <span className="flex flex-col items-start leading-tight">
-      <span className="numeric whitespace-nowrap text-xs text-warm-700">
-        {formatDateCell(row.lastUnpaidChargeAt)}
+    <div className="flex items-center gap-2.5">
+      <span
+        aria-hidden
+        className="numeric grid size-8 shrink-0 place-items-center rounded-full border border-warning-500/50 bg-warning-500/10 text-xs font-bold text-warning-600"
+      >
+        {index + 1}
       </span>
-      <span className="whitespace-nowrap text-[11px] text-warm-500">
-        متأخر <span className="numeric">{row.overdueDays}</span> يوم
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-semibold text-ink-900">
+          {row.patientName}
+        </span>
+        {row.lastChargeAt && (
+          <span className="numeric block truncate text-xs text-warning-600">
+            آخر فاتورة {formatDateCell(row.lastChargeAt)}
+          </span>
+        )}
       </span>
-    </span>
+    </div>
   );
 }
 
-type Props = {
-  usdRate: number;
-};
-
-export default function DuesBoard({ usdRate }: Props) {
+export default function DuesBoard({ usdRate }: { usdRate: number }) {
   const { toast } = useToast();
   const [entries, setEntries] = useState<ClinicEntryJson[] | null>(null);
+  const [patients, setPatients] = useState<PatientDto[] | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const [query, setQuery] = useState("");
-  const [sortKey, setSortKey] = useState<DuesSortKey>("amount");
-  const [settling, setSettling] = useState<DuesRowView | null>(null);
+  const [payState, setPayState] = useState<PayState>(null);
 
   const refresh = useCallback(async () => {
     setLoadError(false);
     try {
-      const res = await fetch("/api/finance/ledger");
-      if (!res.ok) throw new Error();
-      const data = (await res.json()) as { entries: ClinicEntryJson[] };
-      setEntries(data.entries);
+      const [entriesRes, patientsRes] = await Promise.all([
+        fetch("/api/finance/ledger"),
+        fetch("/api/patients"),
+      ]);
+      if (!entriesRes.ok || !patientsRes.ok) throw new Error();
+      const entriesData = (await entriesRes.json()) as {
+        entries: ClinicEntryJson[];
+      };
+      const patientsData = (await patientsRes.json()) as {
+        patients: PatientDto[];
+      };
+      setEntries(entriesData.entries);
+      setPatients(patientsData.patients);
     } catch {
       setEntries(null);
+      setPatients(null);
       setLoadError(true);
     }
   }, []);
@@ -107,41 +107,56 @@ export default function DuesBoard({ usdRate }: Props) {
     void refresh();
   }, [refresh]);
 
-  const allRows = useMemo(
-    () => (entries === null ? null : buildDuesRows(entries, new Date())),
+  const rows = useMemo(
+    () =>
+      entries === null ? null : sortDuesRows(buildDuesRows(entries, new Date()), "amount"),
     [entries],
   );
-  const summary = useMemo(() => summarizeDues(allRows ?? []), [allRows]);
-  const rows = useMemo(() => {
-    if (allRows === null) return null;
-    return sortDuesRows(searchDuesRows(allRows, query), sortKey);
-  }, [allRows, query, sortKey]);
+
+  const summary = useMemo(() => {
+    if (rows === null) return null;
+    let totalDuesSyp = 0;
+    let maxDueSyp = 0;
+    for (const row of rows) {
+      totalDuesSyp += row.dueSyp;
+      if (row.dueSyp > maxDueSyp) maxDueSyp = row.dueSyp;
+    }
+    return {
+      totalDuesSyp,
+      debtors: rows.length,
+      maxDueSyp,
+      avgDueSyp: rows.length === 0 ? 0 : Math.round(totalDuesSyp / rows.length),
+    };
+  }, [rows]);
+
+  // كل فواتير العيادة — لبناء خيارات «على الفاتورة» في نموذج التسديد
+  const invoices = useMemo(
+    () => (entries === null ? null : deriveClinicInvoices(entries)),
+    [entries],
+  );
 
   function exportCsv() {
     if (!rows) return;
     const csv = toCsv(
-      ["المريض", "الهاتف", "إجمالي الفواتير", "المسدد", "الرصيد المستحق", "آخر قيد غير مسدد", "أيام التأخر"],
+      ["المريض", "رقم الهاتف", "إجمالي الفواتير", "المسدد", "الفرقة المتبقية", "آخر دفعة"],
       rows.map((row) => [
         row.patientName,
         row.patientPhone ?? "",
-        formatDualFromSyp(row.chargesSyp, usdRate),
-        formatDualFromSyp(row.paidSyp, usdRate),
-        formatDualFromSyp(row.dueSyp, usdRate),
-        row.lastUnpaidChargeAt === null
-          ? ""
-          : formatDateCell(row.lastUnpaidChargeAt),
-        row.overdueDays ?? "",
+        formatUsdSpaced(sypToUsd(row.chargesSyp, usdRate)),
+        formatUsdSpaced(sypToUsd(row.paidSyp, usdRate)),
+        formatUsdSpaced(sypToUsd(row.dueSyp, usdRate)),
+        row.lastPaymentAt === null ? "" : formatDateCell(row.lastPaymentAt),
       ]),
     );
     downloadCsv("المستحقات.csv", csv);
-    toast("صُدِّر ملف CSV");
+    toast("صُدّر ملف CSV");
   }
 
   return (
     <div className="w-full">
       <PageHeader
         title="المستحقات"
-        description={formatDayLabel(new Date())}
+        description={formatWeekdayDateCell(new Date())}
         actions={
           <Button variant="secondary" shape="pill" onClick={exportCsv} disabled={!rows}>
             تصدير CSV
@@ -152,25 +167,40 @@ export default function DuesBoard({ usdRate }: Props) {
       {/* بطاقات الإحصاء الأربع — كل الأرقام من صفوف المدينين نفسها */}
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          value={formatDualFromSyp(summary.totalDuesSyp, usdRate)}
+          value={
+            summary === null
+              ? "—"
+              : formatUsdSpaced(sypToUsd(summary.totalDuesSyp, usdRate))
+          }
           label="إجمالي المستحقات غير المسددة"
-          icon={Wallet}
+          icon={CircleDollarSign}
           tone="danger"
         />
         <StatCard
-          value={String(summary.debtors)}
-          label="عدد المرضى المدينين"
+          value={summary === null ? "—" : String(summary.debtors)}
+          label="مرضى عليهم رصيد"
           icon={Users}
+          iconClassName="bg-warning-500/10 text-warning-600"
         />
         <StatCard
-          value={formatDualFromSyp(summary.maxDueSyp, usdRate)}
+          value={
+            summary === null
+              ? "—"
+              : formatUsdSpaced(sypToUsd(summary.maxDueSyp, usdRate))
+          }
           label="أعلى رصيد فردي"
-          icon={UserRound}
+          icon={DollarSign}
+          iconClassName="bg-steel-500/10 text-steel-600"
         />
         <StatCard
-          value={formatDualFromSyp(summary.avgDueSyp, usdRate)}
+          value={
+            summary === null
+              ? "—"
+              : formatUsdSpaced(sypToUsd(summary.avgDueSyp, usdRate))
+          }
           label="متوسط الرصيد"
-          icon={CalendarClock}
+          icon={BarChart3}
+          iconClassName="bg-primary-500/10 text-primary-700"
         />
       </div>
 
@@ -189,20 +219,18 @@ export default function DuesBoard({ usdRate }: Props) {
         </div>
       ) : (
         <Card>
-          <PanelToolbar className="border-b border-warm-200">
-            <SearchInput
-              value={query}
-              onChange={setQuery}
-              placeholder="ابحث باسم المريض أو هاتفه…"
-              aria-label="بحث في المستحقات"
-            />
-            <SortSelect
-              options={SORT_OPTIONS}
-              value={sortKey}
-              onChange={setSortKey}
-              ariaLabel="ترتيب المستحقات"
-            />
-          </PanelToolbar>
+          {/* شريط الملاحظة أعلى الجدول — على شكل المرجع */}
+          <div className="flex items-center gap-2 border-b border-warm-200 px-5 py-3">
+            <span
+              aria-hidden
+              className="grid size-6 shrink-0 place-items-center rounded-[8px] bg-warning-500/10 text-warning-600"
+            >
+              <Info size={14} />
+            </span>
+            <p className="text-xs text-warm-600">
+              سجل المدينين — كل مريض له رصيد غير مسدد
+            </p>
+          </div>
 
           <div className="px-5 pb-5 pt-4">
             {rows === null ? (
@@ -225,12 +253,8 @@ export default function DuesBoard({ usdRate }: Props) {
               ) : (
                 <EmptyState
                   icon={Wallet}
-                  title={query.trim() ? "لا نتائج مطابقة" : "لا مستحقات غير مسددة"}
-                  description={
-                    query.trim()
-                      ? "جرّب اسماً أو رقماً أقصر."
-                      : "كل المرضى مسددون — لا يوجد أي رصيد مستحق."
-                  }
+                  title="لا مستحقات غير مسددة"
+                  description="كل المرضى مسددون — لا يوجد أي رصيد مستحق."
                   className="border-0 bg-transparent py-10"
                 />
               )
@@ -240,53 +264,50 @@ export default function DuesBoard({ usdRate }: Props) {
                   <THead>
                     <TRow>
                       <TH>المريض</TH>
-                      <TH className="hidden md:table-cell">الهاتف</TH>
+                      <TH className="hidden md:table-cell">رقم الهاتف</TH>
                       <TH className="text-end">إجمالي الفواتير</TH>
                       <TH className="text-end">المسدد</TH>
-                      <TH className="text-end">الرصيد المستحق</TH>
-                      <TH className="hidden lg:table-cell">آخر قيد غير مسدد</TH>
+                      <TH className="text-end text-danger-600">الفرقة المتبقية</TH>
+                      <TH className="hidden lg:table-cell">آخر دفعة</TH>
                       <TH className="w-[12%]">
                         <span className="sr-only">إجراءات</span>
                       </TH>
                     </TRow>
                   </THead>
                   <tbody>
-                    {rows.map((row) => (
+                    {rows.map((row, index) => (
                       <TRow key={row.patientId}>
                         <TD>
-                          <EntityCell
-                            name={row.patientName}
-                            subtitle={
-                              row.lastUnpaidChargeAt
-                                ? `آخر قيد غير مسدد ${formatDateCell(row.lastUnpaidChargeAt)}`
-                                : undefined
-                            }
-                          />
+                          <PatientCell row={row} index={index} />
                         </TD>
-                        <TD className="numeric hidden whitespace-nowrap text-xs text-warm-600 md:table-cell">
+                        <TD className="numeric hidden whitespace-nowrap text-xs text-warning-600 md:table-cell">
                           {row.patientPhone ?? "—"}
                         </TD>
-                        <TD className="text-end">
-                          <DualAmount syp={row.chargesSyp} usdRate={usdRate} />
+                        <TD className="numeric whitespace-nowrap text-end">
+                          {formatUsdSpaced(sypToUsd(row.chargesSyp, usdRate))}
                         </TD>
-                        <TD className="text-end">
-                          <DualAmount syp={row.paidSyp} usdRate={usdRate} />
+                        <TD className="numeric whitespace-nowrap text-end">
+                          {formatUsdSpaced(sypToUsd(row.paidSyp, usdRate))}
                         </TD>
-                        <TD className="text-end">
-                          <DualAmount
-                            syp={row.dueSyp}
-                            usdRate={usdRate}
-                            tone="danger"
-                          />
+                        <TD className="numeric whitespace-nowrap text-end font-semibold text-danger-600">
+                          {formatUsdSpaced(sypToUsd(row.dueSyp, usdRate))}
                         </TD>
-                        <TD className="hidden lg:table-cell">
-                          <OverdueCell row={row} />
+                        <TD className="numeric hidden whitespace-nowrap text-xs text-warning-600 lg:table-cell">
+                          {row.lastPaymentAt === null
+                            ? "—"
+                            : formatDateCell(row.lastPaymentAt)}
                         </TD>
                         <TD>
                           <div className="flex items-center justify-end gap-1.5">
                             <PillAction
-                              variant="success"
-                              onClick={() => setSettling(row)}
+                              variant="successSoft"
+                              className="border border-primary-500/40"
+                              onClick={() =>
+                                setPayState({
+                                  patientId: row.patientId,
+                                  dueSyp: row.dueSyp,
+                                })
+                              }
                             >
                               تسديد
                             </PillAction>
@@ -305,32 +326,32 @@ export default function DuesBoard({ usdRate }: Props) {
 
                 {/* بطاقات الموبايل */}
                 <ul className="flex flex-col gap-2 md:hidden">
-                  {rows.map((row) => (
+                  {rows.map((row, index) => (
                     <li key={row.patientId}>
                       <Card>
                         <div className="flex flex-col gap-2 px-5 py-3">
-                          <EntityCell
-                            name={row.patientName}
-                            subtitle={row.patientPhone ?? undefined}
-                          />
+                          <PatientCell row={row} index={index} />
                           <div className="flex items-center justify-between gap-2 text-xs">
-                            <span className="text-warm-500">الرصيد المستحق</span>
-                            <DualAmount
-                              syp={row.dueSyp}
-                              usdRate={usdRate}
-                              tone="danger"
-                            />
+                            <span className="text-warm-500">الفرقة المتبقية</span>
+                            <span className="numeric font-semibold text-danger-600">
+                              {formatUsdSpaced(sypToUsd(row.dueSyp, usdRate))}
+                            </span>
                           </div>
-                          {row.overdueDays !== null && (
-                            <p className="text-[11px] text-warm-500">
-                              متأخر <span className="numeric">{row.overdueDays}</span> يوم
-                              عن آخر قيد غير مسدد
+                          {row.lastPaymentAt !== null && (
+                            <p className="numeric text-[11px] text-warm-500">
+                              آخر دفعة {formatDateCell(row.lastPaymentAt)}
                             </p>
                           )}
                           <div className="flex items-center justify-end gap-1.5 border-t border-warm-200 pt-2">
                             <PillAction
-                              variant="success"
-                              onClick={() => setSettling(row)}
+                              variant="successSoft"
+                              className="border border-primary-500/40"
+                              onClick={() =>
+                                setPayState({
+                                  patientId: row.patientId,
+                                  dueSyp: row.dueSyp,
+                                })
+                              }
                             >
                               تسديد
                             </PillAction>
@@ -352,15 +373,20 @@ export default function DuesBoard({ usdRate }: Props) {
         </Card>
       )}
 
-      <SettlePaymentModal
-        open={settling !== null}
-        onClose={() => setSettling(null)}
-        onSaved={() => void refresh()}
-        patientId={settling?.patientId ?? ""}
-        patientName={settling?.patientName ?? ""}
-        dueSyp={settling?.dueSyp ?? 0}
-        usdRate={usdRate}
-      />
+      {payState && patients && invoices && (
+        <RecordPaymentModal
+          onClose={() => setPayState(null)}
+          onSaved={() => {
+            setPayState(null);
+            void refresh();
+          }}
+          usdRate={usdRate}
+          patients={patients}
+          invoices={invoices}
+          initialPatientId={payState.patientId}
+          initialDueSyp={payState.dueSyp}
+        />
+      )}
     </div>
   );
 }

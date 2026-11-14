@@ -29,12 +29,23 @@ export type DuesRowView = {
   lastUnpaidChargeAt: string | null;
   /** أيام التأخر منذ آخر قيد غير مسدد — null إن لم يوجد قيد كهذا */
   overdueDays: number | null;
+  /** آخر قيد رسوم (فاتورة) للمريض تاريخاً — سطر «آخر فاتورة» في الجدول */
+  lastChargeAt: string | null;
+  /** آخر قيد دفعة للمريض تاريخاً — عمود «آخر دفعة» */
+  lastPaymentAt: string | null;
 };
 
 const DAY_MS = 86_400_000;
 
 function entryTime(createdAt: string | Date): number {
   return new Date(createdAt).getTime();
+}
+
+/** نقي — النص الأحدث زمنياً من قيدَين، لأسطر «آخر فاتورة» و«آخر دفعة» */
+function latest(a: string | null, b: string | null): string | null {
+  if (a === null) return b;
+  if (b === null) return a;
+  return entryTime(b) > entryTime(a) ? b : a;
 }
 
 /**
@@ -54,6 +65,8 @@ export function buildDuesRows(
     balanceSyp: number;
     chargesSyp: number;
     lastUnpaidChargeAt: string | null;
+    lastChargeAt: string | null;
+    lastPaymentAt: string | null;
   };
   const patients = new Map<string, PatientBuild>();
 
@@ -64,17 +77,21 @@ export function buildDuesRows(
       balanceSyp: 0,
       chargesSyp: 0,
       lastUnpaidChargeAt: null,
+      lastChargeAt: null,
+      lastPaymentAt: null,
     };
     current.balanceSyp += entry.amountSyp;
     if (entry.type === "CHARGE") {
       current.chargesSyp += entry.amountSyp;
+      current.lastChargeAt = latest(current.lastChargeAt, String(entry.createdAt));
       if ((balanceAfter.get(entry.id) ?? 0) > 0) {
-        const candidate = entryTime(entry.createdAt);
-        const incumbent = current.lastUnpaidChargeAt
-          ? entryTime(current.lastUnpaidChargeAt)
-          : Number.NEGATIVE_INFINITY;
-        if (candidate > incumbent) current.lastUnpaidChargeAt = String(entry.createdAt);
+        current.lastUnpaidChargeAt = latest(
+          current.lastUnpaidChargeAt,
+          String(entry.createdAt),
+        );
       }
+    } else if (entry.type === "PAYMENT") {
+      current.lastPaymentAt = latest(current.lastPaymentAt, String(entry.createdAt));
     }
     patients.set(entry.patientId, current);
   }
@@ -90,6 +107,8 @@ export function buildDuesRows(
       paidSyp: p.chargesSyp - p.balanceSyp,
       dueSyp: p.balanceSyp,
       lastUnpaidChargeAt: p.lastUnpaidChargeAt,
+      lastChargeAt: p.lastChargeAt,
+      lastPaymentAt: p.lastPaymentAt,
       overdueDays:
         p.lastUnpaidChargeAt === null
           ? null
