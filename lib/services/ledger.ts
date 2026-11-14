@@ -16,6 +16,8 @@ export type LedgerEntryDto = {
   amountSyp: number;
   note: string | null;
   treatmentItemId: string | null;
+  /** تسلسل الرسوم على مستوى العيادة — أساس رقم الفاتورة، فارغ للقيود القديمة */
+  invoiceSeq: number | null;
   createdAt: Date;
 };
 
@@ -123,6 +125,7 @@ export async function listLedgerEntries(
       amountSyp: true,
       note: true,
       treatmentItemId: true,
+      invoiceSeq: true,
       createdAt: true,
     },
   });
@@ -143,6 +146,7 @@ const CLINIC_ENTRY_SELECT = {
   amountSyp: true,
   note: true,
   treatmentItemId: true,
+  invoiceSeq: true,
   createdAt: true,
   patient: { select: { name: true, phone: true } },
 } as const;
@@ -167,6 +171,7 @@ export async function listClinicLedgerEntries(
     amountSyp: row.amountSyp,
     note: row.note,
     treatmentItemId: row.treatmentItemId,
+    invoiceSeq: row.invoiceSeq,
     createdAt: row.createdAt,
     patientName: row.patient.name,
     patientPhone: row.patient.phone,
@@ -204,6 +209,17 @@ export async function createLedgerEntry(
     if (!item) return null;
   }
 
+  // تسلسل الرسوم على مستوى العيادة — للرسوم حصراً: عدّ رسوم العيادة داخل
+  // نفس المعاملة (حيث يمرّ المتصل بمعاملة) ثم إنشاء القيد بالتسلسل التالي؛
+  // القيد الفريد (clinicId, invoiceSeq) حاجز أخير ضد سباق الإنشاء المتوازي.
+  let invoiceSeq: number | undefined;
+  if (input.type === "CHARGE") {
+    const charged = await db.ledgerEntry.count({
+      where: { type: "CHARGE" },
+    });
+    invoiceSeq = charged + 1;
+  }
+
   const entry = await db.ledgerEntry.create({
     data: {
       clinicId: ctx.clinicId,
@@ -212,6 +228,7 @@ export async function createLedgerEntry(
       amountSyp: input.amountSyp,
       note: input.note,
       treatmentItemId: input.treatmentItemId,
+      invoiceSeq,
       createdAt: input.createdAt,
       createdById: ctx.userId,
     },
@@ -222,6 +239,7 @@ export async function createLedgerEntry(
       amountSyp: true,
       note: true,
       treatmentItemId: true,
+      invoiceSeq: true,
       createdAt: true,
     },
   });
@@ -252,6 +270,7 @@ export async function recordTreatmentCharge(
       amountSyp: true,
       note: true,
       treatmentItemId: true,
+      invoiceSeq: true,
       createdAt: true,
     },
   });
@@ -317,6 +336,7 @@ export async function deleteUnallocatedCharge(
         amountSyp: true,
         note: true,
         treatmentItemId: true,
+        invoiceSeq: true,
         createdAt: true,
       },
     });

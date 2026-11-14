@@ -468,6 +468,9 @@ model LedgerEntry {
   // ربط اختياري ببند خطة علاج — لقيد الرسوم التلقائي عند اكتمال العلاج.
   // فريد: البند الواحد له قيد رسوم واحد حصراً — حاجز التكرار الأخير تحت الخدمة.
   treatmentItemId String? @unique
+  // تسلسل الرسوم على مستوى العيادة — رقم الفاتورة يُشتق منه كي لا يتكرر
+  // بين المرضى. فارغ للقيود السابقة على إضافته (يُرقّم موضعياً كالسابق).
+  invoiceSeq Int?
 
   clinic    Clinic  @relation(fields: [clinicId], references: [id])
   patient   Patient @relation(fields: [patientId], references: [id])
@@ -475,6 +478,7 @@ model LedgerEntry {
 
   @@index([clinicId, patientId, createdAt])
   @@index([clinicId, treatmentItemId])
+  @@unique([clinicId, invoiceSeq])
 }
 
 // ─── مصاريف العيادة ──────────────────────────────────────────────────────────

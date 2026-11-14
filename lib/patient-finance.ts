@@ -22,7 +22,7 @@ export const INVOICE_STATUS_CHIP: Record<InvoiceStatus, string> = {
 };
 
 export type InvoiceView = {
-  /** رقم الفاتورة — INV-<سنة>-<تسلسل المريض> بثلاث خانات */
+  /** رقم الفاتورة — INV-<سنة>-<تسلسل العيادة> بثلاث خانات */
   number: string;
   date: string;
   totalSyp: number;
@@ -33,6 +33,19 @@ export type InvoiceView = {
 
 function timeOf(value: Date | string): number {
   return value instanceof Date ? value.getTime() : new Date(value).getTime();
+}
+
+/**
+ * نقي — رقم الفاتورة من تسلسل الرسوم على مستوى العيادة (invoiceSeq عند
+ * الإنشاء) كي لا يتكرر الرقم بين مريضين. القيود القديمة بلا تسلسل تُرقَّم
+ * بموضعها ضمن قيود المريض كالسابق.
+ */
+function invoiceNumber(
+  charge: Pick<LedgerEntryDto, "invoiceSeq" | "createdAt">,
+  fallbackIndex: number,
+): string {
+  const seq = charge.invoiceSeq ?? fallbackIndex + 1;
+  return `INV-${new Date(charge.createdAt).getFullYear()}-${String(seq).padStart(3, "0")}`;
 }
 
 /**
@@ -57,7 +70,7 @@ export function deriveInvoices(
     const status: InvoiceStatus =
       remainingSyp === 0 ? "PAID" : paidSyp > 0 ? "PARTIAL" : "UNPAID";
     return {
-      number: `INV-${new Date(charge.createdAt).getFullYear()}-${String(index + 1).padStart(3, "0")}`,
+      number: invoiceNumber(charge, index),
       date:
         charge.createdAt instanceof Date
           ? charge.createdAt.toISOString()
@@ -145,7 +158,7 @@ export function deriveInvoicesDetailed(
     const status: InvoiceStatus =
       remaining === 0 ? "PAID" : paidSyp + discountSyp > 0 ? "PARTIAL" : "UNPAID";
     return {
-      number: `INV-${new Date(charge.createdAt).getFullYear()}-${String(index + 1).padStart(3, "0")}`,
+      number: invoiceNumber(charge, index),
       date:
         charge.createdAt instanceof Date
           ? charge.createdAt.toISOString()
