@@ -26,7 +26,7 @@ export const MATERIAL_STATUS_LABELS: Record<
 > = {
   available: "متوفر",
   low: "منخفض",
-  critical: "حرج",
+  critical: "نفذ",
 };
 
 /** نقية — نسبة امتلاء شريط الكمية (0..1) بمقياس ضعف حد التنبيه، ولا تقبل صفراً */
@@ -45,6 +45,16 @@ export function healthyCount<T extends StockFields & { isLow: boolean }>(
   return materials.filter((m) => !m.isLow).length;
 }
 
+/**
+ * عدد المواد تحت حد التنبيه حصراً (بما فيها النفادة) — بطاقة «تحت الحد الأدنى».
+ * «بحاجة تزويد» تشمل بلوغ الحد، وهذه أشدّ: الكمية نزلت دون الحد نفسه.
+ */
+export function belowMinCount<T extends StockFields>(
+  materials: readonly T[],
+): number {
+  return materials.filter((m) => m.quantityOnHand < m.minQuantity).length;
+}
+
 function csvCell(value: string): string {
   return `"${value.replaceAll('"', '""')}"`;
 }
@@ -57,18 +67,30 @@ export function materialsToCsv(
   materials: readonly {
     name: string;
     unit: string;
+    category: string | null;
+    supplier: string | null;
     quantityOnHand: number;
     minQuantity: number;
     costSyp: number | null;
   }[],
 ): string {
-  const header = ["الاسم", "الوحدة", "الرصيد", "حد التنبيه", "سعر الوحدة (ل.س)"];
+  const header = [
+    "الاسم",
+    "الفئة",
+    "الوحدة",
+    "الرصيد",
+    "حد التنبيه",
+    "المورد",
+    "سعر الوحدة (ل.س)",
+  ];
   const rows = materials.map((m) =>
     [
       m.name,
+      m.category ?? "",
       m.unit,
       String(m.quantityOnHand),
       String(m.minQuantity),
+      m.supplier ?? "",
       m.costSyp === null ? "" : String(m.costSyp),
     ]
       .map(csvCell)

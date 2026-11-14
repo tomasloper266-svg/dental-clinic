@@ -4,7 +4,8 @@ import { parseSupplyInput, supplyMaterial } from "@/lib/services/inventory";
 
 type Params = { params: Promise<{ materialId: string }> };
 
-// توريد كمية — زيادة صافية على الرصيد الحالي، بدون أثر على سجل الاستعمال.
+// توريد كمية — زيادة صافية على الرصيد الحالي مع سطر حركة في الدفتر،
+// بملاحظات اختيارية وتاريخ الحركة كما أدخله المستخدم.
 
 export async function POST(req: NextRequest, { params }: Params) {
   const ctx = await requireTenant(req);
@@ -26,11 +27,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   try {
-    const material = await supplyMaterial(
-      ctx,
-      materialId,
-      parsed.value.quantity,
-    );
+    const material = await supplyMaterial(ctx, materialId, parsed.value);
     if (!material) {
       return NextResponse.json({ error: "المادة غير موجودة" }, { status: 404 });
     }

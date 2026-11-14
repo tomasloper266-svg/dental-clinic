@@ -9,10 +9,21 @@ export type MaterialDto = {
   id: string;
   name: string;
   unit: string;
+  category: string | null;
+  supplier: string | null;
   quantityOnHand: number;
   minQuantity: number;
   costSyp: number | null;
   isLow: boolean;
+};
+
+export type MaterialMovementDto = {
+  id: string;
+  materialId: string;
+  /** التغيّر في الرصيد: توريد موجب، استعمال وتعديل يدوي سالب */
+  quantityChange: number;
+  note: string | null;
+  movedAt: Date;
 };
 
 export type MaterialUsageDto = {
@@ -28,6 +39,8 @@ const MATERIAL_SELECT = {
   id: true,
   name: true,
   unit: true,
+  category: true,
+  supplier: true,
   quantityOnHand: true,
   minQuantity: true,
   costSyp: true,
@@ -45,6 +58,8 @@ function toMaterialDto(row: {
   id: string;
   name: string;
   unit: string;
+  category: string | null;
+  supplier: string | null;
   quantityOnHand: unknown;
   minQuantity: unknown;
   costSyp: number | null;
@@ -55,6 +70,8 @@ function toMaterialDto(row: {
     id: row.id,
     name: row.name,
     unit: row.unit,
+    category: row.category,
+    supplier: row.supplier,
     quantityOnHand,
     minQuantity,
     costSyp: row.costSyp,
@@ -74,9 +91,21 @@ function parseQuantity(value: unknown, error: string): number | string {
   return rounded;
 }
 
+// نص وصفي اختياري (الفئة والمورد) — نص قصير أو لا شيء
+function parseOptionalText(value: unknown, error: string): string | null | string {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string") return error;
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return null;
+  if (trimmed.length > 120) return error;
+  return trimmed;
+}
+
 export type CreateMaterialInput = {
   name: string;
   unit: string;
+  category?: string | null;
+  supplier?: string | null;
   minQuantity: number;
   costSyp?: number;
 };
@@ -119,12 +148,29 @@ export function parseCreateMaterial(
     costSyp = b.costSyp;
   }
 
-  return { ok: true, value: { name, unit, minQuantity, costSyp } };
+  const category = parseOptionalText(b.category, "الفئة نص حتى 120 حرفاً");
+  if (typeof category === "string") {
+    return { ok: false, error: category };
+  }
+
+  const supplier = parseOptionalText(b.supplier, "المورد نص حتى 120 حرفاً");
+  if (typeof supplier === "string") {
+    return { ok: false, error: supplier };
+  }
+
+  return {
+    ok: true,
+    value: { name, unit, category, supplier, minQuantity, costSyp },
+  };
 }
 
 export type UpdateMaterialInput = {
   name?: string;
   unit?: string;
+  category?: string | null;
+  supplier?: string | null;
+  // تعديل الرصيد مباشرة — يُسجَّل معه سطر حركة تسوية في الدفتر
+  quantity?: number;
   minQuantity?: number;
   costSyp?: number | null;
 };
@@ -155,6 +201,35 @@ export function parseUpdateMaterial(
     value.unit = unit;
   }
 
+  if (b.category !== undefined) {
+    const category = parseOptionalText(b.category, "الفئة نص حتى 120 حرفاً");
+    if (typeof category === "string") {
+      return { ok: false, error: category };
+    }
+    value.category = category;
+  }
+
+  if (b.supplier !== undefined) {
+    const supplier = parseOptionalText(b.supplier, "المورد نص حتى 120 حرفاً");
+    if (typeof supplier === "string") {
+      return { ok: false, error: supplier };
+    }
+    value.supplier = supplier;
+  }
+
+  if (b.quantity !== undefined) {
+    const quantity =
+      typeof b.quantity === "number" &&
+      Number.isFinite(b.quantity) &&
+      b.quantity >= 0
+        ? Math.round(b.quantity * 100) / 100
+        : NaN;
+    if (!Number.isFinite(quantity)) {
+      return { ok: false, error: "الكمية يجب أن تكون رقماً غير سالب" };
+    }
+    value.quantity = quantity;
+  }
+
   if (b.minQuantity !== undefined) {
     const minQuantity =
       typeof b.minQuantity === "number" && b.minQuantity >= 0
@@ -181,22 +256,6 @@ export function parseUpdateMaterial(
   }
 
   return { ok: true, value };
-}
-
-export function parseSupplyInput(
-  body: unknown,
-): { ok: true; value: { quantity: number } } | { ok: false; error: string } {
-  if (typeof body !== "object" || body === null) {
-    return { ok: false, error: "طلب غير صالح" };
-  }
-  const quantity = parseQuantity(
-    (body as Record<string, unknown>).quantity,
-    "الكمية الموردة يجب أن تكون رقماً موجباً",
-  );
-  if (typeof quantity === "string") {
-    return { ok: false, error: quantity };
-  }
-  return { ok: true, value: { quantity } };
 }
 
 export type UsageInput = {
@@ -283,6 +342,8 @@ export async function createMaterial(
       clinicId: ctx.clinicId,
       name: input.name,
       unit: input.unit,
+      category: input.category ?? null,
+      supplier: input.supplier ?? null,
       minQuantity: input.minQuantity,
       costSyp: input.costSyp,
       quantityOnHand: 0,
@@ -300,29 +361,95 @@ export async function updateMaterial(
   const db = clinicScope(ctx.clinicId);
   const existing = await db.material.findUnique({
     where: { id: materialId },
-    select: { id: true },
+    select: MATERIAL_SELECT,
   });
   if (!existing) return null;
 
-  // تعديل الهوية والحدود فقط — الكمية تتغير بالتوريد والاستعمال حصراً.
-  const row = await db.material.update({
-    where: { id: materialId },
-    data: {
-      name: input.name,
-      unit: input.unit,
-      minQuantity: input.minQuantity,
-      costSyp: input.costSyp,
-    },
-    select: MATERIAL_SELECT,
+  return db.$transaction(async (tx) => {
+    // الكمية تتغير بالتوريد والاستعمال حصراً — إن عدّلها المستخدم من نافذة
+    // التعديل يُسجّل الفرق سطر حركة تسوية في الدفتر فيبقى الرصيد مفهوماً دائماً.
+    if (input.quantity !== undefined) {
+      const current = Number(existing.quantityOnHand);
+      if (input.quantity !== current) {
+        const adjustment = Math.round((input.quantity - current) * 100) / 100;
+        await tx.material.update({
+          where: { id: materialId },
+          data: { quantityOnHand: input.quantity },
+          select: { id: true },
+        });
+        await tx.materialMovement.create({
+          data: {
+            clinicId: ctx.clinicId,
+            materialId,
+            quantityChange: adjustment,
+            note: "تعديل يدوي للكمية من نافذة التعديل",
+            recordedById: ctx.userId,
+          },
+          select: { id: true },
+        });
+      }
+    }
+
+    // تعديل الهوية والحدود والمورد — الكمية فوق (إن وُجدت) بمعاملتها الخاصة
+    const row = await tx.material.update({
+      where: { id: materialId },
+      data: {
+        name: input.name,
+        unit: input.unit,
+        category: input.category,
+        supplier: input.supplier,
+        minQuantity: input.minQuantity,
+        costSyp: input.costSyp,
+      },
+      select: MATERIAL_SELECT,
+    });
+    return toMaterialDto(row);
   });
-  return toMaterialDto(row);
 }
 
-// توريد كمية — زيادة صافية على الرصيد الحالي.
+export type SupplyInput = {
+  quantity: number;
+  note?: string;
+  // تاريخ الحركة كما أدخله المستخدم (توريد بفاتورة سابقة مثلاً) — الافتراض الآن
+  movedAt?: Date;
+};
+
+export function parseSupplyInput(
+  body: unknown,
+): { ok: true; value: SupplyInput } | { ok: false; error: string } {
+  if (typeof body !== "object" || body === null) {
+    return { ok: false, error: "طلب غير صالح" };
+  }
+  const b = body as Record<string, unknown>;
+  const quantity = parseQuantity(
+    b.quantity,
+    "الكمية الموردة يجب أن تكون رقماً موجباً",
+  );
+  if (typeof quantity === "string") {
+    return { ok: false, error: quantity };
+  }
+
+  const note = parseOptionalText(b.note, "الملاحظات نص حتى 120 حرفاً");
+  if (typeof note === "string") {
+    return { ok: false, error: note };
+  }
+
+  let movedAt: Date | undefined;
+  if (b.movedAt !== undefined && b.movedAt !== null) {
+    movedAt = new Date(String(b.movedAt));
+    if (Number.isNaN(movedAt.getTime())) {
+      return { ok: false, error: "التاريخ غير صالح" };
+    }
+  }
+
+  return { ok: true, value: { quantity, note: note ?? undefined, movedAt } };
+}
+
+// توريد كمية — زيادة صافية على الرصيد الحالي مع سطر حركة في الدفتر داخل معاملة واحدة.
 export async function supplyMaterial(
   ctx: TenantContext,
   materialId: string,
-  quantity: number,
+  input: SupplyInput,
 ): Promise<MaterialDto | null> {
   const db = clinicScope(ctx.clinicId);
   const existing = await db.material.findUnique({
@@ -331,12 +458,25 @@ export async function supplyMaterial(
   });
   if (!existing) return null;
 
-  const row = await db.material.update({
-    where: { id: materialId },
-    data: { quantityOnHand: { increment: quantity } },
-    select: MATERIAL_SELECT,
+  return db.$transaction(async (tx) => {
+    const row = await tx.material.update({
+      where: { id: materialId },
+      data: { quantityOnHand: { increment: input.quantity } },
+      select: MATERIAL_SELECT,
+    });
+    await tx.materialMovement.create({
+      data: {
+        clinicId: ctx.clinicId,
+        materialId,
+        quantityChange: input.quantity,
+        note: input.note,
+        recordedById: ctx.userId,
+        ...(input.movedAt !== undefined ? { movedAt: input.movedAt } : {}),
+      },
+      select: { id: true },
+    });
+    return toMaterialDto(row);
   });
-  return toMaterialDto(row);
 }
 
 export type UsageResult =
@@ -406,6 +546,18 @@ export async function recordMaterialUsage(
         appointmentId: true,
         createdAt: true,
       },
+    });
+
+    // سطر حركة سالب في الدفتر داخل المعاملة نفسها — السجل يعكس كل تغيّر رصيد
+    await tx.materialMovement.create({
+      data: {
+        clinicId: ctx.clinicId,
+        materialId: input.materialId,
+        quantityChange: -input.quantityUsed,
+        note: "استعمال",
+        recordedById: ctx.userId,
+      },
+      select: { id: true },
     });
 
     return {
@@ -493,4 +645,57 @@ export async function listPatientMaterialUsages(
           : row.material.costSyp * quantityUsed,
     };
   });
+}
+
+// سجل حركات مادة — الدفتر الإلحاقي لكل تغيّر رصيد، الأحدث أولاً لسجل «السجل».
+export async function listMaterialMovements(
+  ctx: TenantContext,
+  materialId: string,
+): Promise<MaterialMovementDto[] | null> {
+  const db = clinicScope(ctx.clinicId);
+  const material = await db.material.findUnique({
+    where: { id: materialId },
+    select: { id: true },
+  });
+  if (!material) return null;
+
+  const rows = await db.materialMovement.findMany({
+    where: { materialId },
+    orderBy: { movedAt: "desc" },
+    take: 100,
+    select: {
+      id: true,
+      materialId: true,
+      quantityChange: true,
+      note: true,
+      movedAt: true,
+    },
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    materialId: row.materialId,
+    quantityChange: Number(row.quantityChange),
+    note: row.note,
+    movedAt: row.movedAt,
+  }));
+}
+
+// حذف مادة — مع سطور استعمالها وحركاتها داخل معاملة واحدة، فلا يبقى سطر يتيم.
+// عمليات الاستعمال سجل سريري مالي مرتبط بالمواد، وحذف المادة يفرض حذفها.
+export async function deleteMaterial(
+  ctx: TenantContext,
+  materialId: string,
+): Promise<boolean> {
+  const db = clinicScope(ctx.clinicId);
+  const existing = await db.material.findUnique({
+    where: { id: materialId },
+    select: { id: true },
+  });
+  if (!existing) return false;
+
+  await db.$transaction(async (tx) => {
+    await tx.materialUsage.deleteMany({ where: { materialId } });
+    await tx.material.delete({ where: { id: materialId } });
+  });
+  return true;
 }

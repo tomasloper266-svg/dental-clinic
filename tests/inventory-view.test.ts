@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   MATERIAL_STATUS_LABELS,
+  belowMinCount,
   healthyCount,
   materialStockStatus,
   materialsToCsv,
@@ -30,7 +31,7 @@ describe("materialStockStatus — حالة المادة", () => {
     expect(MATERIAL_STATUS_LABELS).toEqual({
       available: "متوفر",
       low: "منخفض",
-      critical: "حرج",
+      critical: "نفذ",
     });
   });
 });
@@ -75,6 +76,8 @@ describe("materialsToCsv — تصدير المواد", () => {
       {
         name: "أقنعة N95",
         unit: "علبة",
+        category: "مواد وقاية",
+        supplier: "المستوصد الشامي",
         quantityOnHand: 2,
         minQuantity: 5,
         costSyp: 12000,
@@ -83,15 +86,19 @@ describe("materialsToCsv — تصدير المواد", () => {
     expect(csv.startsWith("\uFEFF")).toBe(true);
     const lines = csv.slice(1).split("\r\n");
     expect(lines[0]).toBe(
-      '"الاسم","الوحدة","الرصيد","حد التنبيه","سعر الوحدة (ل.س)"',
+      '"الاسم","الفئة","الوحدة","الرصيد","حد التنبيه","المورد","سعر الوحدة (ل.س)"',
     );
-    expect(lines[1]).toBe('"أقنعة N95","علبة","2","5","12000"');
+    expect(lines[1]).toBe(
+      '"أقنعة N95","مواد وقاية","علبة","2","5","المستوصد الشامي","12000"',
+    );
   });
   it("الاقتباس الداخلي مضاعف والسعر الفارغ خلية فارغة", () => {
     const csv = materialsToCsv([
       {
         name: 'مادة "خاصة"',
         unit: "عبوة",
+        category: null,
+        supplier: null,
         quantityOnHand: 1,
         minQuantity: 2,
         costSyp: null,
@@ -99,5 +106,37 @@ describe("materialsToCsv — تصدير المواد", () => {
     ]);
     expect(csv).toContain('"مادة ""خاصة"""');
     expect(csv.endsWith(',""'));
+  });
+
+  it("الفئة والمورد الفارغان خليتان فارغتان", () => {
+    const csv = materialsToCsv([
+      {
+        name: "ألياف ضوئية",
+        unit: "عبوة",
+        category: null,
+        supplier: null,
+        quantityOnHand: 0,
+        minQuantity: 3,
+        costSyp: null,
+      },
+    ]);
+    const line = csv.slice(1).split("\r\n")[1];
+    expect(line.startsWith('"ألياف ضوئية","","عبوة"')).toBe(true);
+  });
+});
+
+describe("belowMinCount — المواد تحت الحد الأدنى", () => {
+  it("يعد ما دون الحد حصراً بما فيه النفاد", () => {
+    expect(
+      belowMinCount([
+        { quantityOnHand: 9, minQuantity: 4 },
+        { quantityOnHand: 5, minQuantity: 5 },
+        { quantityOnHand: 2, minQuantity: 5 },
+        { quantityOnHand: 0, minQuantity: 3 },
+      ]),
+    ).toBe(2);
+  });
+  it("قائمة فارغة تعطي صفراً", () => {
+    expect(belowMinCount([])).toBe(0);
   });
 });

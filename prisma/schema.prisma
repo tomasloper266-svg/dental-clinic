@@ -134,6 +134,7 @@ model Clinic {
   instructionSends     InstructionSend[]
   appointmentReminders AppointmentReminder[]
   staffMembers         StaffMember[]
+  materialMovements    MaterialMovement[]
 }
 
 model User {
@@ -461,14 +462,38 @@ model Material {
   clinicId       String
   name           String
   unit           String
+  // الفئة والمورد — وصيانة اختيارية للعرض في جدول المخزون ونوافذ التعديل
+  category       String?
+  supplier       String?
   quantityOnHand Decimal @default(0) @db.Decimal(12, 2)
   minQuantity    Decimal @default(0) @db.Decimal(12, 2)
   costSyp        Int?
 
-  clinic         Clinic          @relation(fields: [clinicId], references: [id])
+  clinic         Clinic            @relation(fields: [clinicId], references: [id])
   materialUsages MaterialUsage[]
+  movements      MaterialMovement[]
 
   @@index([clinicId, name])
+}
+
+// حركات المخزون — دفتر إلحاقي لكل تغيّر كمية: التوريد موجب، والاستعمال والتعديل
+// اليدوي سالب. الرصيد الحالي يبقى في Material.quantityOnHand حصراً، والدفتر
+// لسجل «السجل» ومراجعة التغييرات — لا يُعدَّل ولا يُحذف من طبقة الخدمة.
+model MaterialMovement {
+  id             String   @id @default(cuid())
+  clinicId       String
+  materialId     String
+  quantityChange Decimal  @db.Decimal(12, 2)
+  note           String?
+  recordedById   String
+  // تاريخ الحركة كما أدخله المستخدم (توريد سابق بتاريخ فاتورة مثلاً) — الافتراض الآن
+  movedAt        DateTime @default(now())
+
+  clinic   Clinic   @relation(fields: [clinicId], references: [id])
+  material Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId, materialId, movedAt])
+  @@index([clinicId, movedAt])
 }
 
 model MaterialUsage {
