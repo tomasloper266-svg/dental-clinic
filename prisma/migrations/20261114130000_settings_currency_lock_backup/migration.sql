@@ -29,4 +29,4 @@ CREATE TABLE "ClinicBackup" (
 CREATE INDEX "ClinicBackup_clinicId_kind_createdAt_idx" ON "ClinicBackup"("clinicId", "kind", "createdAt");
 
 -- AddForeignKey
-ALTER TABLE "ClinicBackup" ADD CONSTRAINT "ClinicBackup_clinicId_fkey" FOREIGN KEY ("clinicId") REFERENCES "Clinic"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "ClinicBackup" ADD CONSTRAINT "ClinicBackup_clinicId_fkey" FOREIGN KEY ("clinicId") REFERENCES "Clinic"("id") ON DELETE CASCADE ON UPDATE CASCADE;

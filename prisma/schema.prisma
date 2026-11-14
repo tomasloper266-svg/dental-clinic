@@ -163,7 +163,7 @@ model ClinicBackup {
   payload   Json
   createdAt DateTime   @default(now())
 
-  clinic Clinic @relation(fields: [clinicId], references: [id])
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
   @@index([clinicId, kind, createdAt])
 }
