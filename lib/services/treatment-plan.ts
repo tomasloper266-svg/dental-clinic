@@ -2,6 +2,7 @@ import { clinicScope } from "@/lib/tenant/clinic-client";
 import type { TenantContext } from "@/lib/tenant/context";
 import { isValidToothFdi } from "@/lib/odontogram/fdi";
 import { TOOTH_STATUS_KEYS, type ToothStatusKey } from "@/lib/odontogram/statuses";
+import { recordTreatmentCharge, type ScopedClient } from "@/lib/services/ledger";
 
 // خدمة خطة العلاج المسعّرة — عبر clinicScope حصراً.
 // البنود المخططة/المقبولة قابلة للتعديل؛ المنفَّذ نهائي ولا يُعدَّل.
@@ -158,9 +159,10 @@ export type StartPlanResult =
   | { ok: true; value: { item: PlanItemDto; findingId: string } }
   | { ok: false; error: string };
 
-// بدء التنفيذ: البند يتحول إلى DONE ويُسجَّل مشاهدة علاج منفذ على السن.
-// السجل الإلحاقي محفوظ — هذه إضافة قيد جديد وليست استبدالاً لمشاهدة قائمة.
-// عمليتان متتاليتان عبر العميل المحصور (nested writes غير مدعومة في clinicScope).
+// بدء التنفيذ: البند يتحول إلى DONE وتُسجَّل مشاهدة علاج منفذ على السن،
+// ويُقيَّد الرسوم تلقائياً (القيد التلقائي الموصوف في recordTreatmentCharge) —
+// الكتابات الثلاث داخل معاملة واحدة: إما تنفَّذ البند مسجَّلاً بعائده ورسومه،
+// أو لا يتغير شيء. البند بلا سعر (0) يُنفَّذ بلا قيد رسوم.
 export async function startPlanItem(
   ctx: TenantContext,
   patientId: string,
@@ -169,31 +171,46 @@ export async function startPlanItem(
 ): Promise<StartPlanResult> {
   const db = clinicScope(ctx.clinicId);
 
-  const update = await updatePlanItemStatus(db, patientId, itemId);
-  if (!update.ok) return { ok: false, error: update.error };
+  return db.$transaction(async (tx) => {
+    const update = await updatePlanItemStatus(tx, patientId, itemId);
+    if (!update.ok) return { ok: false as const, error: update.error };
 
-  const finding = await db.toothFinding.create({
-    data: {
-      clinicId: ctx.clinicId,
-      patientId,
-      toothFdi: update.toothFdi,
-      kind: "TREATMENT_DONE",
-      status: resultStatus,
-      note: `تنفيذ بند الخطة: ${update.procedure}`,
-      recordedById: ctx.userId,
-    },
-    select: { id: true },
+    const finding = await tx.toothFinding.create({
+      data: {
+        clinicId: ctx.clinicId,
+        patientId,
+        toothFdi: update.toothFdi,
+        kind: "TREATMENT_DONE",
+        status: resultStatus,
+        note: `تنفيذ بند الخطة: ${update.procedure}`,
+        recordedById: ctx.userId,
+      },
+      select: { id: true },
+    });
+
+    if (update.item.priceSyp > 0) {
+      await recordTreatmentCharge(
+        ctx,
+        {
+          patientId,
+          treatmentItemId: update.item.id,
+          procedure: update.procedure,
+          priceSyp: update.item.priceSyp,
+        },
+        tx,
+      );
+    }
+
+    return {
+      ok: true as const,
+      value: { item: update.item, findingId: finding.id },
+    };
   });
-
-  return {
-    ok: true,
-    value: { item: update.item, findingId: finding.id },
-  };
 }
 
 // قفل الحالة قبل التحديث: تُقبل PROPOSED وACCEPTED فقط — يمنع سباق التنفيذ المزدوج.
 async function updatePlanItemStatus(
-  db: ReturnType<typeof clinicScope>,
+  db: ScopedClient,
   patientId: string,
   itemId: string,
 ): Promise<

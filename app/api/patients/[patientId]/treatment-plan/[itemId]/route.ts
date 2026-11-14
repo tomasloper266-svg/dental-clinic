@@ -14,6 +14,12 @@ type Params = { params: Promise<{ patientId: string; itemId: string }> };
 // تعديل بند مخطط أو مقبول — البند المنفَّذ نهائي.
 export async function PATCH(req: NextRequest, { params }: Params) {
   const ctx = await requireTenant(req);
+  if (ctx === "LOCKED") {
+    return NextResponse.json(
+      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
+      { status: 423 },
+    );
+  }
   if (!ctx) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
@@ -51,6 +57,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 // بدء التنفيذ: يتحول البند إلى منفذ ويُسجَّل مشاهدة علاج منفذ على السن.
 export async function POST(req: NextRequest, { params }: Params) {
   const ctx = await requireTenant(req);
+  if (ctx === "LOCKED") {
+    return NextResponse.json(
+      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
+      { status: 423 },
+    );
+  }
   if (!ctx) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
@@ -88,6 +100,12 @@ export async function POST(req: NextRequest, { params }: Params) {
 // حذف بند غير منفذ — البند المنفذ نهائي.
 export async function DELETE(_req: NextRequest, { params }: Params) {
   const ctx = await requireTenant(_req);
+  if (ctx === "LOCKED") {
+    return NextResponse.json(
+      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
+      { status: 423 },
+    );
+  }
   if (!ctx) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
