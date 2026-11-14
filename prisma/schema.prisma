@@ -336,6 +336,8 @@ model StaffMember {
 
   clinic       Clinic        @relation(fields: [clinicId], references: [id])
   appointments Appointment[]
+  // قيود الرسوم المُسندة لهذا الطبيب — إسناد محفوظ لحظة القيد.
+  ledgerEntries LedgerEntry[]
 
   @@index([clinicId, name])
 }
@@ -471,14 +473,44 @@ model LedgerEntry {
   // تسلسل الرسوم على مستوى العيادة — رقم الفاتورة يُشتق منه كي لا يتكرر
   // بين المرضى. فارغ للقيود السابقة على إضافته (يُرقّم موضعياً كالسابق).
   invoiceSeq Int?
+  // الطبيب المُسند للقيد — يُملأ لحظة إنشاء قيد الرسوم من طبيب الموعد المُسند،
+  // وقيمته محفوظة فتُقدَّم على أي استنتاج احتياجي في تقارير الإيراد. اختياري
+  // للقيود القديمة، وحذف عضو الطاقم يفصل القيود (SET NULL) فلا يُحذف أي قيد.
+  doctorId String?
+  // ترشيح تخصيص الدفعة لفاتورة — للعرض في واجهة الفواتير حصراً ولا يدخل في
+  // معادلة الرصيد إطلاقاً (التخصيص الزمني FIFO يبقى هو المعتمد محاسبياً).
+  // RESTRICT: لا يُحذف قيد رسوم يشير إليه سطر دفعات — الدفتر إلحاقي.
+  appliedChargeId String?
 
   clinic    Clinic  @relation(fields: [clinicId], references: [id])
   patient   Patient @relation(fields: [patientId], references: [id])
   createdBy User    @relation("LedgerEntryCreator", fields: [createdById], references: [id])
+  doctor    StaffMember? @relation(fields: [doctorId], references: [id])
+  appliedCharge LedgerEntry?  @relation("LedgerEntryAppliedCharge", fields: [appliedChargeId], references: [id], onDelete: Restrict)
+  appliedPayments LedgerEntry[] @relation("LedgerEntryAppliedCharge")
+  items LedgerEntryItem[]
 
   @@index([clinicId, patientId, createdAt])
   @@index([clinicId, treatmentItemId])
+  @@index([doctorId])
   @@unique([clinicId, invoiceSeq])
+}
+
+// بنود الفاتورة — تفصيل قيد الرسوم: مجموع البنود يجب أن يساوي مبلغ القيد
+// (تحقق صارم في الخدمة). تُنشأ من بند الخطة عند القيد التلقائي وتُدخل يدوياً
+// في نموذج الفاتورة؛ القيد اليدوي المفرد بلا بنود مقبول. تُحذف مع قيدها.
+model LedgerEntryItem {
+  id          String @id @default(cuid())
+  entryId     String
+  description String
+  // تصنيف نصي حُرّ — أساس تجميع الإيراد حسب نوع العلاج للفواتير المباشرة.
+  category    String?
+  amountSyp   Int
+  sort        Int    @default(0)
+
+  entry LedgerEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@index([entryId])
 }
 
 // ─── مصاريف العيادة ──────────────────────────────────────────────────────────
@@ -508,7 +540,8 @@ model Material {
   supplier       String?
   quantityOnHand Decimal @default(0) @db.Decimal(12, 2)
   minQuantity    Decimal @default(0) @db.Decimal(12, 2)
-  costSyp        Int?
+  // التكلفة بعشرية ثابتة (12,2) — أسعار كسورية لا تُقرَّب عند التخزين أو العرض.
+  costSyp        Decimal? @db.Decimal(12, 2)
 
   clinic         Clinic            @relation(fields: [clinicId], references: [id])
   materialUsages MaterialUsage[]

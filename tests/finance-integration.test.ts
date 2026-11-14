@@ -4,6 +4,7 @@ import { beforeAll, afterAll, describe, expect, it } from "vitest";
 import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/db";
+import { Prisma } from "@/lib/generated/prisma/client";
 import { hashPassword } from "@/lib/auth/password";
 import { tenantContextFromSession } from "@/lib/tenant/context";
 import {
@@ -75,6 +76,7 @@ async function cleanDb(): Promise<void> {
   await prisma.ledgerEntry.deleteMany();
   await prisma.treatmentPlanItem.deleteMany();
   await prisma.appointment.deleteMany();
+  await prisma.staffMember.deleteMany();
   await prisma.waitlistEntry.deleteMany();
   await prisma.expense.deleteMany();
   await prisma.instructionTemplate.deleteMany();
@@ -420,5 +422,142 @@ role: "DENTIST",
       new NextRequest("http://localhost/api/reports"),
     );
     expect(res.status).toBe(401);
+  });
+
+  // فجوة 1: إسناد الطبيب المحفوظ — قيمة تخزينية تُقدَّم على أي استنتاج لاحق.
+  it("قيد رسوم على موعد مُسند للطبيب يُخزن doctorId من الموعد نفسه", async () => {
+    const staff = await prisma.staffMember.create({
+      data: { clinicId: clinicAId, name: "د. خالد" },
+    });
+    await prisma.appointment.create({
+      data: {
+        clinicId: clinicAId,
+        patientId: patientAId,
+        staffId: staff.id,
+        startsAt: new Date(Date.now() - 60 * 60_000),
+      },
+    });
+
+    const entry = await createLedgerEntry(ctxA, {
+      patientId: patientAId,
+      type: "CHARGE",
+      amountSyp: 120_000,
+    });
+    expect(entry).not.toBeNull();
+    expect(entry?.doctorId).toBe(staff.id);
+  });
+
+  it("إسناد صريح لطبيب عيادة أخرى يُرفض", async () => {
+    const staffB = await prisma.staffMember.create({
+      data: { clinicId: clinicBId, name: "د. رنا" },
+    });
+    const entry = await createLedgerEntry(ctxA, {
+      patientId: patientAId,
+      type: "CHARGE",
+      amountSyp: 120_000,
+      doctorId: staffB.id,
+    });
+    expect(entry).toBeNull();
+  });
+
+  // فجوة 2: بنود الفاتورة — من بند الخطة عند القيد التلقائي، ومجموع مخالف يُرفض.
+  it("القيد التلقائي ينشئ بند فاتورة من بند الخطة بمبلغ يساوي القيد", async () => {
+    const item = await prisma.treatmentPlanItem.create({
+      data: {
+        clinicId: clinicAId,
+        patientId: patientAId,
+        toothFdi: 16,
+        procedure: "خلع ضرس",
+        priceSyp: 250_000,
+        status: "DONE",
+      },
+    });
+    const { entry } = await recordTreatmentCharge(ctxA, {
+      patientId: patientAId,
+      treatmentItemId: item.id,
+      procedure: "خلع ضرس",
+      priceSyp: 250_000,
+    });
+    expect(entry).not.toBeNull();
+    const rows = await prisma.ledgerEntryItem.findMany({
+      where: { entryId: entry!.id },
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].description).toBe("خلع ضرس");
+    expect(rows[0].amountSyp).toBe(250_000);
+  });
+
+  it("بنود لا تجمع مبلغ القيد تُرفض ولا يُخزن شيء", async () => {
+    const beforeCount = await prisma.ledgerEntry.count({
+      where: { patientId: patientAId, type: "CHARGE" },
+    });
+
+    await expect(
+      createLedgerEntry(ctxA, {
+        patientId: patientAId,
+        type: "CHARGE",
+        amountSyp: 100_000,
+        items: [
+          { description: "حشو", amountSyp: 60_000 },
+          { description: "تنظيف", amountSyp: 30_000 },
+        ],
+      }),
+    ).rejects.toThrow();
+
+    const afterCount = await prisma.ledgerEntry.count({
+      where: { patientId: patientAId, type: "CHARGE" },
+    });
+    expect(afterCount).toBe(beforeCount); // المرفوض بلا أثر — لا قيد جديد
+  });
+
+  // فجوة 3: الدفعة المخصصة ترشيح عرض — الرصيد زمني دائماً ولا يتأثر.
+  it("دفعة بـ appliedChargeId لا تغير الرصيد المحسوب", async () => {
+    const charge = await createLedgerEntry(ctxA, {
+      patientId: patientAId,
+      type: "CHARGE",
+      amountSyp: 80_000,
+    });
+    expect(charge).not.toBeNull();
+
+    const before = await listLedgerEntries(ctxA, patientAId);
+    const payment = await createLedgerEntry(ctxA, {
+      patientId: patientAId,
+      type: "PAYMENT",
+      amountSyp: -80_000,
+      appliedChargeId: charge!.id,
+    });
+    expect(payment).not.toBeNull();
+    expect(payment?.appliedChargeId).toBe(charge!.id);
+
+    const after = await listLedgerEntries(ctxA, patientAId);
+    // الدفعة تدخل الرصيد بمبلغها كأي دفعة — لكن التخصيص نفسه لا يغير شيئاً:
+    // الرصيد مجموع القيود الموقعة حصراً (معادلة الرصيد).
+    expect(after.balance).toBe(before.balance - 80_000);
+    const stored = await prisma.ledgerEntry.findUnique({
+      where: { id: payment!.id },
+      select: { appliedChargeId: true },
+    });
+    expect(stored?.appliedChargeId).toBe(charge!.id);
+  });
+
+  // فجوة 7: التكلفة الكسرية تُخزن بعشرية ثابتة لا تُقرَّب.
+  it("مادة بتكلفة 4.5 تُخزن وتُقرأ 4.50", async () => {
+    const material = await prisma.material.create({
+      data: {
+        clinicId: clinicAId,
+        name: "مادة اختبار عشرية",
+        unit: "علبة",
+        costSyp: 4.5,
+      },
+    });
+    const stored = await prisma.$queryRaw<[{ text: string }]>(
+      Prisma.sql`SELECT "costSyp"::text AS text FROM "Material" WHERE id = ${material.id}`,
+    );
+    expect(stored[0].text).toBe("4.50");
+    const read = await prisma.material.findUnique({
+      where: { id: material.id },
+      select: { costSyp: true },
+    });
+    expect(read?.costSyp?.toNumber()).toBe(4.5);
   });
 });
