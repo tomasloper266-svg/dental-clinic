@@ -75,11 +75,11 @@ export function StaffFormModal({ open, editing, onClose, onSaved }: Props) {
     <Modal
       open={open}
       onClose={onClose}
-      title={editing ? "تعديل عضو الطاقم" : "إضافة عضو للطاقم"}
+      title={editing ? "تعديل عضو الطاقم" : "إضافة عضو جديد"}
       className="max-w-xl"
     >
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="الاسم" htmlFor="staff-name">
+        <Field label="الاسم *" htmlFor="staff-name">
           <Input
             id="staff-name"
             value={values.name}
@@ -106,7 +106,7 @@ export function StaffFormModal({ open, editing, onClose, onSaved }: Props) {
             id="staff-specialty"
             value={values.specialty}
             onChange={(e) => set("specialty")(e.target.value)}
-            placeholder="تجميل وتقويم…"
+            placeholder="تحليل وتقويم الأسنان"
           />
         </Field>
         <Field label="الهاتف" htmlFor="staff-phone">
@@ -145,7 +145,7 @@ export function StaffFormModal({ open, editing, onClose, onSaved }: Props) {
               id="staff-schedule"
               value={values.scheduleNote}
               onChange={(e) => set("scheduleNote")(e.target.value)}
-              placeholder="الأحد إلى الخميس — 9:00 إلى 16:00"
+              placeholder="الأحد إلى الخميس — من 9:00 إلى 16:00"
             />
           </Field>
         </div>

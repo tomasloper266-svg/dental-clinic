@@ -9,7 +9,7 @@ import {
   staffMemberToForm,
   type StaffFormValues,
 } from "@/lib/staff-view";
-import { toDateInputValue } from "@/lib/dates";
+import { toDateInputValue, formatWeekdayDateCell } from "@/lib/dates";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
@@ -60,28 +60,6 @@ export default function StaffBoard() {
 
   const staff = state.kind === "loaded" ? state.staff : null;
 
-  async function toggleActive(member: StaffMemberDto) {
-    setBusyId(member.id);
-    try {
-      const res = await fetch(`/api/staff/${encodeURIComponent(member.id)}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ isActive: !member.isActive }),
-      });
-      const data = (await res.json()) as { error?: string };
-      if (!res.ok) {
-        toast(data.error ?? "تعذر تغيير حالة العضو", "danger");
-        return;
-      }
-      toast(member.isActive ? "عُطّل العضو" : "فُعّل العضو");
-      await refresh();
-    } catch {
-      toast("تعذر الاتصال بالخادم، حاول مرة أخرى", "danger");
-    } finally {
-      setBusyId(null);
-    }
-  }
-
   async function removeMember() {
     if (!deleting) return;
     setBusyId(deleting.id);
@@ -108,9 +86,11 @@ export default function StaffBoard() {
     <>
       <PageHeader
         title="الطاقم"
-        description="أعضاء فريق العيادة — الأطباء والاستقبال والمساعدون والمحاسبة، بعمولاتهم ومواعيدهم القادمة."
+        description={formatWeekdayDateCell(new Date())}
         actions={
           <Button
+            variant="gold"
+            shape="pill"
             onClick={() => {
               setEditing(null);
               setFormOpen(true);
@@ -163,7 +143,7 @@ export default function StaffBoard() {
                     <span
                       aria-hidden
                       style={tint}
-                      className="grid size-12 shrink-0 place-items-center rounded-full border text-lg font-bold"
+                      className="grid size-12 shrink-0 place-items-center rounded-2xl border text-lg font-bold"
                     >
                       {member.name.trim().charAt(0) || "؟"}
                     </span>
@@ -192,7 +172,7 @@ export default function StaffBoard() {
                       <a
                         href={`tel:${member.phone.replace(/\s/g, "")}`}
                         dir="ltr"
-                        className="numeric text-ink-900 hover:text-primary-700"
+                        className="numeric text-primary-700 hover:text-primary-800"
                       >
                         {member.phone}
                       </a>
@@ -232,14 +212,6 @@ export default function StaffBoard() {
                       }}
                     >
                       <Pencil size={14} aria-hidden /> تعديل
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      loading={busyId === member.id}
-                      onClick={() => void toggleActive(member)}
-                    >
-                      {member.isActive ? "تعطيل" : "تفعيل"}
                     </Button>
                     <Button
                       variant="ghost"
