@@ -214,22 +214,31 @@ describeDb("الحسابات — integration", () => {
     expect(body.balance).toBe(rows.reduce((s, r) => s + r.amountSyp, 0));
   });
 
-  it("لا endpoint يعدل أو يحذف قيداً — لا PUT ولا DELETE في وحدة المسار", async () => {
+  it("لا endpoint يعدل أو يحدّث قيداً — ولا حذف إلا للفاتورة غير المخصَّصة", async () => {
     // في Next.js غياب الـ handler يعني 405 تلقائياً على مستوى الإطار؛
-    // الاختبار يثبت غياب المُصدرين نفسهما فلا مسار تعديل أو حذف أصلاً.
+    // الاختبار يثبت غياب المُصدرين نفسهما فلا مسار تعديل أو تحديث أصلاً.
     const routeModule = await import(
       "@/app/api/patients/[patientId]/ledger/route"
     );
     expect(routeModule.PUT).toBeUndefined();
-    expect(routeModule.DELETE).toBeUndefined();
     expect(routeModule.PATCH).toBeUndefined();
+    // مسار القائمة بلا حذف — الحذف الوحيد على قيد واحد فقط.
+    expect(routeModule.DELETE).toBeUndefined();
 
-    // وطبقة الخدمة بلا دوال تحديث أو حذف — التصحيح بقيد عكسي فقط.
+    // والخدمة بلا أي دالة تحديث — التصحيح بقيد عكسي فقط. الاستثناء الوحيد
+    // هو حذف فاتورة غير مخصَّصة (بلا دفعات ولا خصم)، والحذف على قيد واحد.
+    const entryRouteModule = await import(
+      "@/app/api/patients/[patientId]/ledger/[entryId]/route"
+    );
+    expect(entryRouteModule.PUT).toBeUndefined();
+    expect(entryRouteModule.PATCH).toBeUndefined();
+    expect(typeof entryRouteModule.DELETE).toBe("function");
+
     const service = await import("@/lib/services/ledger");
     const exported = Object.keys(service).filter((k) =>
       /update|delete/i.test(k),
     );
-    expect(exported).toHaveLength(0);
+    expect(exported).toEqual(["deleteUnallocatedCharge"]);
   });
 
   it("قراءة دفتر مريض عيادة ب بجلسة عيادة أ ترجع دفتراً فارغاً", async () => {
