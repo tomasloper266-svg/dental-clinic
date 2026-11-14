@@ -1,5 +1,6 @@
 import { clinicScope } from "@/lib/tenant/clinic-client";
 import type { TenantContext } from "@/lib/tenant/context";
+import { deriveInvoicesDetailed } from "@/lib/patient-finance";
 
 // خدمة الدفتر المالي — دفتر غير قابل للتعديل أو الحذف: التصحيح بقيد عكسي فقط.
 // الرصيد لا يُخزَّن أبداً — يُحسب من مجموع القيود الموقّعة (معادلة الرصيد).
@@ -24,6 +25,9 @@ export type LedgerEntryInput = {
   amountSyp: number;
   note?: string;
   treatmentItemId?: string;
+  /** تاريخ القيد الفعلي — يُدعم الاختياري لتسديدات وفواتير بتاريخ سابق؛
+   *  غيابه يعني الآن (سلوك @default في المخطط) */
+  createdAt?: Date;
 };
 
 const ENTRY_TYPES: readonly LedgerEntryType[] = [
@@ -85,9 +89,22 @@ export function parseCreateLedgerEntry(
   const treatmentItemId =
     typeof b.treatmentItemId === "string" ? b.treatmentItemId : undefined;
 
+  // تاريخ القيد اختياري — نص ISO صالح ولا يقبل المستقبل (بتسامح دقيقة واحدة)
+  let createdAt: Date | undefined;
+  if (b.createdAt !== undefined && b.createdAt !== null) {
+    const parsedDate = new Date(String(b.createdAt));
+    if (Number.isNaN(parsedDate.getTime())) {
+      return { ok: false, error: "تاريخ القيد غير صالح" };
+    }
+    if (parsedDate.getTime() > Date.now() + 60_000) {
+      return { ok: false, error: "لا يمكن تسجيل القيد بتاريخ مستقبلي" };
+    }
+    createdAt = parsedDate;
+  }
+
   return {
     ok: true,
-    value: { type, amountSyp, note, treatmentItemId },
+    value: { type, amountSyp, note, treatmentItemId, createdAt },
   };
 }
 
@@ -176,6 +193,7 @@ export async function createLedgerEntry(
       amountSyp: input.amountSyp,
       note: input.note,
       treatmentItemId: input.treatmentItemId,
+      createdAt: input.createdAt,
       createdById: ctx.userId,
     },
     select: {
@@ -235,4 +253,57 @@ export async function recordTreatmentCharge(
     treatmentItemId: input.treatmentItemId,
   });
   return { entry, alreadyCharged: false };
+}
+
+export type DeleteChargeResult =
+  | { ok: true }
+  | { ok: false; error: string; status: 404 | 409 };
+
+/**
+ * حذف قيد رسوم لم يُخصَّص له دفعات أو خصومات بعد — الباب الوحيد للحذف في دفتر
+ * غير قابل للتعديل. فاتورة عليها تخصيص تُرفض لأن حذفها يعيد توزيع الدفعات
+ * (FIFO) على فواتير أخرى ويغيّر التاريخ المالي بأثر رجعي.
+ */
+export async function deleteUnallocatedCharge(
+  ctx: TenantContext,
+  patientId: string,
+  entryId: string,
+): Promise<DeleteChargeResult> {
+  const db = clinicScope(ctx.clinicId);
+  const entry = await db.ledgerEntry.findFirst({
+    where: { id: entryId, patientId, clinicId: ctx.clinicId, type: "CHARGE" },
+    select: { id: true },
+  });
+  if (!entry) {
+    return { ok: false, error: "الفاتورة غير موجودة", status: 404 };
+  }
+
+  const entries = await db.ledgerEntry.findMany({
+    where: { patientId },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      patientId: true,
+      type: true,
+      amountSyp: true,
+      note: true,
+      treatmentItemId: true,
+      createdAt: true,
+    },
+  });
+  const invoices = deriveInvoicesDetailed(entries);
+  const index = entries
+    .filter((e) => e.type === "CHARGE")
+    .findIndex((charge) => charge.id === entry.id);
+  const invoice = invoices[index];
+  if (invoice && invoice.paidSyp + invoice.discountSyp > 0) {
+    return {
+      ok: false,
+      error: "لا يمكن حذف فاتورة عليها دفعات أو خصم — صححها بقيد عكسي",
+      status: 409,
+    };
+  }
+
+  await db.ledgerEntry.delete({ where: { id: entry.id } });
+  return { ok: true };
 }

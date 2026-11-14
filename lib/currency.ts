@@ -43,6 +43,12 @@ export function sypToUsd(syp: number, rate: number): number {
   return syp / rate;
 }
 
+/** تحويل من الدولار إلى الليرة — مقرّباً لأقرب ليرة صحيحة (وحدة التخزين) */
+export function usdToSyp(usd: number, rate: number): number {
+  assertRate(rate);
+  return Math.round(usd * rate);
+}
+
 /**
  * المبلغ بالعملتين معاً بالعربية: «$50 (750,000 ل.س)» — الدولار أولاً
  * (يُحسب بقسمة المبلغ على سعر الصرف) ثم الليرة بين قوسين.

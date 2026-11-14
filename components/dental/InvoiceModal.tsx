@@ -2,14 +2,20 @@
 
 import { useState } from "react";
 import { Printer, CircleDollarSign } from "lucide-react";
-import { formatSypAmount } from "@/lib/currency";
+import { sypToUsd } from "@/lib/currency";
 import { toothLabelAr } from "@/lib/odontogram/fdi";
 import type { LedgerEntryDto } from "@/lib/services/ledger";
 import type { PlanItemDto } from "@/lib/services/treatment-plan";
 import { planStatusMeta } from "@/lib/treatment-plan-view";
-import type { DetailedInvoiceView } from "@/lib/patient-finance";
+import { formatWeekdayDateCell } from "@/lib/dates";
+import {
+  INVOICE_STATUS_LABELS,
+  type DetailedInvoiceView,
+} from "@/lib/patient-finance";
+import { INVOICE_STATUS_TONE, formatUsdSpaced } from "@/lib/invoices-view";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { StatusPill } from "@/components/ui/Badge";
 import SettlePaymentModal from "@/components/finance/SettlePaymentModal";
 import { ToothIcon } from "@/components/shell/icons/ToothIcon";
 
@@ -27,6 +33,10 @@ type Props = {
   planItems: PlanItemDto[];
   usdRate: number;
   onLedgerChanged: () => void;
+  /** فتح نموذج التسديد خارج النافذة — يلغي النموذج المدمج عند تمريره */
+  onSettle?: () => void;
+  /** سطر المرافق من سجل المريض — يظهر في شريط الفاتورة عند وجوده */
+  companionLine?: string | null;
 };
 
 export default function InvoiceModal({
@@ -39,6 +49,8 @@ export default function InvoiceModal({
   planItems,
   usdRate,
   onLedgerChanged,
+  onSettle,
+  companionLine,
 }: Props) {
   const [settleOpen, setSettleOpen] = useState(false);
 
@@ -72,9 +84,28 @@ export default function InvoiceModal({
         title={`الفاتورة ${invoice.number}`}
         className="max-w-2xl"
       >
-        <p className="text-steel-600 text-sm">
-          فاتورة مالية {patientName} — {formatDate(invoice.date)}
-        </p>
+        {/* شريط الفاتورة — المريض والتاريخ يميناً، والرقم والحالة يساراً */}
+        <div className="bg-warning-500/5 border-warning-200 mt-1 flex items-start justify-between gap-3 rounded-field border px-3 py-2.5">
+          <div className="min-w-0">
+            <p className="text-ink-900 truncate text-sm font-bold">{patientName}</p>
+            <p className="numeric text-steel-500 mt-0.5 text-xs">
+              فاتورة عيادة أسنان — {formatWeekdayDateCell(invoice.date)}
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            <div className="flex items-center gap-2">
+              <StatusPill tone={INVOICE_STATUS_TONE[invoice.status]}>
+                {INVOICE_STATUS_LABELS[invoice.status]}
+              </StatusPill>
+              <span className="numeric text-warning-600 text-sm font-bold">
+                {invoice.number}
+              </span>
+            </div>
+            {companionLine && (
+              <p className="text-steel-500 text-xs">{companionLine}</p>
+            )}
+          </div>
+        </div>
 
         <div className="rounded-field border-warm-200 mt-3 border">
           <table className="w-full text-start text-sm">
@@ -105,7 +136,7 @@ export default function InvoiceModal({
                     </td>
                     <td className="px-3 py-2.5 text-steel-600">{toothText(charge)}</td>
                     <td className="numeric px-3 py-2.5 font-semibold">
-                      {formatSypAmount(charge.amountSyp)}
+                      {formatUsdSpaced(sypToUsd(charge.amountSyp, usdRate))}
                     </td>
                   </tr>
                 );
@@ -114,22 +145,30 @@ export default function InvoiceModal({
           </table>
 
           <div className="border-warm-200 divide-y divide-warm-100 border-t px-3">
-            <SummaryRow label="المجموع" value={formatSypAmount(invoice.totalSyp)} />
-            <SummaryRow label="الخصم" value={formatSypAmount(invoice.discountSyp)} />
+            <SummaryRow
+              label="المجموع"
+              value={formatUsdSpaced(sypToUsd(invoice.totalSyp, usdRate))}
+            />
+            <SummaryRow
+              label="الخصم"
+              value={formatUsdSpaced(sypToUsd(invoice.discountSyp, usdRate))}
+            />
             <SummaryRow
               label="الإجمالي"
-              value={formatSypAmount(invoice.totalSyp - invoice.discountSyp)}
+              value={formatUsdSpaced(
+                sypToUsd(invoice.totalSyp - invoice.discountSyp, usdRate),
+              )}
               tone="gold"
               emphasis
             />
             <SummaryRow
               label="المسدد"
-              value={formatSypAmount(invoice.paidSyp)}
+              value={formatUsdSpaced(sypToUsd(invoice.paidSyp, usdRate))}
               tone="success"
             />
             <SummaryRow
               label="المتبقي"
-              value={formatSypAmount(invoice.remainingSyp)}
+              value={formatUsdSpaced(sypToUsd(invoice.remainingSyp, usdRate))}
               tone="danger"
               emphasis
             />
@@ -156,7 +195,7 @@ export default function InvoiceModal({
                 >
                   <span className="text-steel-600">{payment.note || "دفعة"}</span>
                   <span className="numeric font-medium">
-                    {formatSypAmount(payment.amountSyp)}
+                    {formatUsdSpaced(sypToUsd(payment.amountSyp, usdRate))}
                   </span>
                 </li>
               ))}
@@ -171,8 +210,8 @@ export default function InvoiceModal({
           </Button>
           <div className="flex items-center gap-2">
             <Button
-              variant="gold"
-              onClick={() => setSettleOpen(true)}
+              variant="primary"
+              onClick={() => (onSettle ? onSettle() : setSettleOpen(true))}
               disabled={invoice.remainingSyp <= 0}
             >
               <CircleDollarSign size={15} aria-hidden />
@@ -185,18 +224,20 @@ export default function InvoiceModal({
         </footer>
       </Modal>
 
-      <SettlePaymentModal
-        open={settleOpen}
-        onClose={() => setSettleOpen(false)}
-        onSaved={() => {
-          setSettleOpen(false);
-          onLedgerChanged();
-        }}
-        patientId={patientId}
-        patientName={patientName}
-        dueSyp={invoice.remainingSyp}
-        usdRate={usdRate}
-      />
+      {!onSettle && (
+        <SettlePaymentModal
+          open={settleOpen}
+          onClose={() => setSettleOpen(false)}
+          onSaved={() => {
+            setSettleOpen(false);
+            onLedgerChanged();
+          }}
+          patientId={patientId}
+          patientName={patientName}
+          dueSyp={invoice.remainingSyp}
+          usdRate={usdRate}
+        />
+      )}
     </>
   );
 }
@@ -230,13 +271,4 @@ function SummaryRow({
       <span className={`numeric text-sm font-semibold ${toneClass}`}>{value}</span>
     </div>
   );
-}
-
-/** تاريخ الفاتورة بصيغة يوم — شهر — سنة */
-function formatDate(iso: string): string {
-  return new Intl.DateTimeFormat("ar", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  }).format(new Date(iso));
 }

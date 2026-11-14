@@ -31,7 +31,7 @@ describe("تجميع الأقسام", () => {
   it("المجموعة المالية: الفواتير والمدفوعات ثم المستحقات ثم التقارير", () => {
     const financial = navGroups.find((g) => g.key === "financial");
     expect(financial?.items.map((i) => i.href)).toEqual([
-      "/finance",
+      "/invoices",
       "/dues",
       "/reports",
     ]);

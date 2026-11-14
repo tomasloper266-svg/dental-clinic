@@ -73,7 +73,7 @@ export const navGroups: NavGroup[] = [
     key: "financial",
     label: "مالي",
     items: [
-      { href: "/finance", label: "الفواتير والمدفوعات", icon: BookOpen },
+      { href: "/invoices", label: "الفواتير والمدفوعات", icon: BookOpen },
       { href: "/dues", label: "المستحقات", icon: Clock },
       { href: "/reports", label: "التقارير", icon: BarChart3 },
     ],
@@ -111,7 +111,7 @@ const segmentLabels: Record<string, string> = {
   patients: "المرضى",
   appointments: "المواعيد",
   waitlist: "قائمة الانتظار",
-  finance: "الفواتير والمدفوعات",
+  invoices: "الفواتير والمدفوعات",
   dues: "المستحقات",
   reports: "التقارير",
   inventory: "المخزون",

@@ -90,4 +90,33 @@ describe("تحقق جسم طلب إنشاء قيد", () => {
     expect(parseCreateLedgerEntry("قيد").ok).toBe(false);
     expect(parseCreateLedgerEntry(null).ok).toBe(false);
   });
+
+  it("يقبل تاريخ قيد صالحاً — لتسديدات وفواتير بتاريخ سابق", () => {
+    const parsed = parseCreateLedgerEntry({
+      ...valid,
+      createdAt: "2026-11-13T09:00:00.000Z",
+    });
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.value.createdAt?.getTime()).toBe(
+        new Date("2026-11-13T09:00:00.000Z").getTime(),
+      );
+    }
+  });
+
+  it("يرفض تاريخاً غير صالح أو مستقبلياً", () => {
+    expect(
+      parseCreateLedgerEntry({ ...valid, createdAt: "ليس تاريخاً" }).ok,
+    ).toBe(false);
+    const future = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    expect(parseCreateLedgerEntry({ ...valid, createdAt: future }).ok).toBe(
+      false,
+    );
+  });
+
+  it("يترك غياب التاريخ بلا قيمة — يأخذ الآن من المخطط", () => {
+    const parsed = parseCreateLedgerEntry(valid);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.value.createdAt).toBeUndefined();
+  });
 });

@@ -6,6 +6,7 @@ import {
   formatSypAmount,
   formatUsd,
   sypToUsd,
+  usdToSyp,
 } from "@/lib/currency";
 
 describe("formatUsd", () => {
@@ -28,6 +29,20 @@ describe("formatSypAmount", () => {
   it("يقرّب لأقرب ليرة ويفصل الآلاف", () => {
     expect(formatSypAmount(750000)).toBe("750,000 ل.س");
     expect(formatSypAmount(1234.6)).toBe("1,235 ل.س");
+  });
+});
+
+describe("usdToSyp", () => {
+  it("يحوّل من الدولار إلى الليرة مقرّباً لأقرب ليرة صحيحة", () => {
+    expect(usdToSyp(35, 15000)).toBe(525000);
+    expect(usdToSyp(0.1, 15000)).toBe(1500);
+    expect(usdToSyp(1.05, 1000)).toBe(1050);
+  });
+
+  it("يرفض سعراً غير موجب — نفس العقد الصارم", () => {
+    expect(() => usdToSyp(35, 0)).toThrow(RangeError);
+    expect(() => usdToSyp(35, -5)).toThrow(RangeError);
+    expect(() => usdToSyp(35, Number.NaN)).toThrow(RangeError);
   });
 });
 

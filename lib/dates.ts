@@ -25,6 +25,19 @@ export function weekRange(date: Date): [Date, Date] {
 }
 
 // أول الشهر حتى أول الشهر التالي — بتوقيت UTC مثل بقية حدود الأيام.
+const WEEKDAY_DATE_FMT = new Intl.DateTimeFormat("ar-SY-u-nu-latn", {
+  weekday: "long",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
+
+/** تاريخ مع اليوم — «السبت 2026/11/14» لترويسة الصفحات وبطاقة الفاتورة */
+export function formatWeekdayDateCell(date: Date | string): string {
+  return WEEKDAY_DATE_FMT.format(new Date(date));
+}
+
+// أول الشهر حتى أول الشهر التالي — بتوقيت UTC مثل بقية حدود الأيام.
 export function monthRange(date: Date): [Date, Date] {
   const start = dayStart(date);
   return [

@@ -11,6 +11,10 @@ type StatCardProps = {
   icon: LucideIcon;
   /** نبرة البطاقة — primary للهوية، danger للتحذير المالي (مستحقات) */
   tone?: StatCardTone;
+  /** تجاوز اختياري للون القيمة — ذهبي بطاقات الفواتير مثلاً */
+  valueClassName?: string;
+  /** تجاوز اختياري للون صندوق الأيقونة — أيقونة خضراء بين قيمة ذهبية */
+  iconClassName?: string;
   className?: string;
 };
 
@@ -29,6 +33,8 @@ export function StatCard({
   label,
   icon: Icon,
   tone = "primary",
+  valueClassName,
+  iconClassName,
   className,
 }: StatCardProps) {
   return (
@@ -43,6 +49,7 @@ export function StatCard({
           className={cn(
             "numeric truncate text-2xl font-bold",
             tone === "danger" ? "text-danger-600" : "text-ink-900",
+            valueClassName,
           )}
         >
           {value}
@@ -54,6 +61,7 @@ export function StatCard({
         className={cn(
           "grid size-12 shrink-0 place-items-center rounded-[14px]",
           iconBoxClasses[tone],
+          iconClassName,
         )}
       >
         <Icon size={22} />

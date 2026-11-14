@@ -3,8 +3,9 @@ import type { LucideIcon } from "lucide-react";
 import { cn } from "./cn";
 
 type PillActionProps = {
-  /** وجه الحبة — solid ممتلئة بلون الهوية، outline محددة الحد، success حبة التسديد الناجحة */
-  variant?: "solid" | "outline" | "success";
+  /** وجه الحبة — solid ممتلئة بلون الهوية، outline محددة الحد، success حبة التسديد الناجحة،
+   *  gold الذهبية للإجراء البارز، successSoft الخضراء الشفافة لتسديد الفواتير */
+  variant?: "solid" | "outline" | "success" | "gold" | "successSoft";
   href?: string;
   onClick?: () => void;
   /** تعطيل الحبة أثناء انتظار العملية */
@@ -27,6 +28,8 @@ const pillVariantClasses: Record<
     "border border-warm-300 bg-surface-raised text-warm-700 hover:bg-surface-hover active:bg-surface-sunken",
   success:
     "bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800",
+  gold: "bg-warning-500 text-white hover:bg-warning-600 active:bg-warning-700",
+  successSoft: "bg-primary-500/10 text-primary-700 hover:bg-primary-500/20",
 };
 
 const pillBase =

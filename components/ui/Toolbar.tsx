@@ -54,8 +54,22 @@ type FilterPillsProps<V extends string> = {
   value: V;
   onChange: (value: V) => void;
   ariaLabel?: string;
+  /** لون الحبة النشطة — primary افتراضياً، warning (ذهبي) لصفحة الفواتير */
+  accent?: "primary" | "warning";
   className?: string;
 };
+
+/** أصناف الحبة النشطة والمتنشطة حسب اللون — توكنات الهوية حصراً */
+const pillAccentClasses = {
+  primary: {
+    active: "bg-primary-600 text-white",
+    activeCount: "text-primary-100",
+  },
+  warning: {
+    active: "bg-warning-500 text-white",
+    activeCount: "text-warning-100",
+  },
+} as const;
 
 /**
  * أزرار تصفية بشكل حبوب — النشطة ممتلئة بلون الهوية والبقية محددة الحد.
@@ -66,8 +80,10 @@ export function FilterPills<V extends string>({
   value,
   onChange,
   ariaLabel,
+  accent = "primary",
   className,
 }: FilterPillsProps<V>) {
+  const accentClasses = pillAccentClasses[accent];
   return (
     <div
       role="group"
@@ -86,7 +102,7 @@ export function FilterPills<V extends string>({
               "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors",
               "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
               active
-                ? "bg-primary-600 text-white"
+                ? accentClasses.active
                 : "border border-warm-200 bg-surface-raised text-warm-600 hover:bg-surface-hover",
             )}
           >
@@ -95,7 +111,7 @@ export function FilterPills<V extends string>({
               <span
                 className={cn(
                   "numeric text-[10px]",
-                  active ? "text-primary-100" : "text-warm-400",
+                  active ? accentClasses.activeCount : "text-warm-400",
                 )}
               >
                 {option.count}
