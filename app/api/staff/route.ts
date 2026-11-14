@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenant } from "@/lib/tenant/require-tenant";
+import { requireRole } from "@/lib/tenant/context";
 import { createStaff, listStaff, parseStaffInput } from "@/lib/services/staff";
 import { dayStart } from "@/lib/dates";
 
@@ -38,6 +39,11 @@ export async function POST(req: NextRequest) {
   }
   if (!ctx) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  }
+  // إدارة الطاقم عملية إدارية — الطبيب حصراً.
+  const roleError = requireRole(ctx, "DENTIST");
+  if (roleError) {
+    return NextResponse.json({ error: roleError }, { status: 403 });
   }
 
   let body: unknown;

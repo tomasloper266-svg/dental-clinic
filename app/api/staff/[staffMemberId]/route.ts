@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenant } from "@/lib/tenant/require-tenant";
+import { requireRole } from "@/lib/tenant/context";
 import {
   deleteStaff,
   parseStaffInput,
@@ -10,6 +11,7 @@ type Params = { params: Promise<{ staffMemberId: string }> };
 
 // تعديل عضو الطاقم (بما فيه تعطيل/تفعيل عبر isActive) — تعطيل تحوّل حالة آمن
 // يحفظ التاريخ والمواعيد، والحذف يفصل مواعيده فقط (SET NULL).
+// كل عمليات هذا المسار إدارية — الطبيب حصراً.
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   const ctx = await requireTenant(req);
@@ -21,6 +23,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
   if (!ctx) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  }
+  const roleError = requireRole(ctx, "DENTIST");
+  if (roleError) {
+    return NextResponse.json({ error: roleError }, { status: 403 });
   }
   const { staffMemberId } = await params;
 
@@ -74,6 +80,10 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   }
   if (!ctx) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  }
+  const roleError = requireRole(ctx, "DENTIST");
+  if (roleError) {
+    return NextResponse.json({ error: roleError }, { status: 403 });
   }
   const { staffMemberId } = await params;
 

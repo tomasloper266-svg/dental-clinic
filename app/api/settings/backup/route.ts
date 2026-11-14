@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenant } from "@/lib/tenant/require-tenant";
+import { requireRole } from "@/lib/tenant/context";
 import { buildSnapshot, restoreSnapshot } from "@/lib/services/backup";
 import { getBasePrisma } from "@/lib/db";
 
@@ -38,6 +39,11 @@ export async function POST(req: NextRequest) {
   }
   if (!ctx) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  }
+  // الاستعادة تمس كل بيانات العيادة التشغيلية — الطبيب حصراً.
+  const roleError = requireRole(ctx, "DENTIST");
+  if (roleError) {
+    return NextResponse.json({ error: roleError }, { status: 403 });
   }
   let body: unknown;
   try {

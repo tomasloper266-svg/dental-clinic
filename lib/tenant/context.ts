@@ -15,3 +15,12 @@ export function tenantContextFromSession(session: SessionUser): TenantContext {
     role: session.role,
   };
 }
+
+// عنصر تحكم بالأدوار — عمليات العيادة الإدارية والتدميرية (الاستعادة، إعدادات
+// العيادة، إدارة الطاقم) للطبيب حصراً؛ المساعد مخصص للإدخال اليومي.
+export function requireRole(
+  ctx: TenantContext,
+  role: TenantContext["role"],
+): string | null {
+  return ctx.role === role ? null : "هذه العملية متاحة للطبيب حصراً";
+}

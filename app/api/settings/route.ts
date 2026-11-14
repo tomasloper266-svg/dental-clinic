@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenant } from "@/lib/tenant/require-tenant";
+import { requireRole } from "@/lib/tenant/context";
 import {
   getAccountOverview,
   parseLockInput,
@@ -51,6 +52,15 @@ export async function PATCH(req: NextRequest) {
   const lockInput = parseLockInput(raw);
   if (!lockInput.ok) {
     return NextResponse.json({ error: lockInput.error }, { status: 400 });
+  }
+
+  // بيانات العيادة (الاسم والعملة وسعر الصرف وساعات العمل) للطبيب حصراً؛
+  // قفل الحساب الشخصي متاح لكل حساب يدير رمزه الخاص.
+  if (Object.keys(settingsInput.value).length > 0) {
+    const roleError = requireRole(ctx, "DENTIST");
+    if (roleError) {
+      return NextResponse.json({ error: roleError }, { status: 403 });
+    }
   }
 
   const result = await updateSettings(ctx, settingsInput.value, lockInput.value);
