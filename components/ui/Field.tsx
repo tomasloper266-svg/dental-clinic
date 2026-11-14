@@ -2,7 +2,7 @@ import { forwardRef } from "react";
 import { cn } from "./cn";
 
 type FieldProps = {
-  label: string;
+  label: React.ReactNode;
   htmlFor: string;
   /** رسالة خطأ تحقق ميدانية — تعرض تحت الحقل وتعلّنه aria */
   error?: string;

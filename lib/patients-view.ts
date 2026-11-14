@@ -1,34 +1,27 @@
 // دوال عرض نقية لقائمة المرضى — تُختبر في وحدة منفصلة عن الشبكة وقاعدة البيانات.
-// البحث (الاسم/الهاتف) يبقى من طرف الخادم عبر q، والفلاتر هنا تصفية زبونية
-// فوق النتائج المرجعة بلا أي منطق عمل جديد.
+// البحث (الاسم/الهاتف/الرقم الوطني/رقم الملف) يبقى من طرف الخادم عبر q،
+// والفلاتر هنا تصفية زبونية فوق النتائج المرجعة بلا أي منطق عمل جديد.
 
-import { parseMedicalNotes } from "./medical-notes";
 import type { PatientDto } from "./services/patients";
 
-export type PatientFlag = "allergies" | "conditions" | "medications";
-
-export type PatientFilterKey = "ALL" | PatientFlag;
+export type PatientFilterKey = "ALL" | "MALE" | "FEMALE";
 
 export const PATIENT_FILTERS: ReadonlyArray<{
   key: PatientFilterKey;
   label: string;
 }> = [
   { key: "ALL", label: "الكل" },
-  { key: "allergies", label: "لديه حساسية" },
-  { key: "conditions", label: "أمراض مزمنة" },
-  { key: "medications", label: "أدوية حالية" },
+  { key: "MALE", label: "ذكر" },
+  { key: "FEMALE", label: "أنثى" },
 ] as const;
 
-/** أعلام الملاحظات الطبية لمريض واحد — من تركيب الملاحظات النصي فقط. */
-export function patientNotesFlags(
-  raw: string | null | undefined,
-): Record<PatientFlag, boolean> {
-  const notes = parseMedicalNotes(raw);
-  return {
-    allergies: Boolean(notes.allergies),
-    conditions: Boolean(notes.conditions),
-    medications: Boolean(notes.medications),
-  };
+/** تسمية الجنس للعرض — null لمن بلا جنس مسجل */
+export function genderLabel(
+  gender: PatientDto["gender"],
+): string | null {
+  if (gender === "MALE") return "ذكر";
+  if (gender === "FEMALE") return "أنثى";
+  return null;
 }
 
 /** عمر تقريبي من سنة الميلاد — للعرض فقط (سنة حالية − سنة الميلاد). */
@@ -37,29 +30,23 @@ export function ageFromBirthYear(birthYear: number | null): number | null {
   return new Date().getFullYear() - birthYear;
 }
 
-/** تصفية القائمة حسب الفلتر — ALL تعيد نسخة بنفس الترتيب الوارد. */
+/** تصفية القائمة حسب الجنس — ALL تعيد نسخة بنفس الترتيب الوارد. */
 export function filterPatients(
   patients: readonly PatientDto[],
   filter: PatientFilterKey,
 ): PatientDto[] {
   if (filter === "ALL") return [...patients];
-  return patients.filter((p) => patientNotesFlags(p.medicalNotes)[filter]);
+  return patients.filter((p) => p.gender === filter);
 }
 
-/** عدد أصحاب كل علم — لعرض العدّاد بجانب كل فلتر. */
-export function countFlags(
+/** عدد كل جنس — لعرض العدّاد بجانب كل فلتر. */
+export function countGenders(
   patients: readonly PatientDto[],
-): Record<PatientFlag, number> {
-  const counts: Record<PatientFlag, number> = {
-    allergies: 0,
-    conditions: 0,
-    medications: 0,
-  };
+): { MALE: number; FEMALE: number } {
+  const counts = { MALE: 0, FEMALE: 0 };
   for (const patient of patients) {
-    const flags = patientNotesFlags(patient.medicalNotes);
-    if (flags.allergies) counts.allergies += 1;
-    if (flags.conditions) counts.conditions += 1;
-    if (flags.medications) counts.medications += 1;
+    if (patient.gender === "MALE") counts.MALE += 1;
+    if (patient.gender === "FEMALE") counts.FEMALE += 1;
   }
   return counts;
 }
@@ -134,7 +121,7 @@ export function buildPatientRows(
   }));
 }
 
-/** نقي — بحث زبوني بالاسم أو الهاتف فوق الصفوف المحمّلة */
+/** نقي — بحث زبوني بالاسم أو الهاتف أو الرقم الوطني أو رقم الملف فوق الصفوف */
 export function searchPatientRows(
   rows: readonly PatientRowView[],
   query: string,
@@ -144,7 +131,10 @@ export function searchPatientRows(
   return rows.filter(
     ({ patient }) =>
       patient.name.toLowerCase().includes(needle) ||
-      (patient.phone ?? "").toLowerCase().includes(needle),
+      (patient.phone ?? "").toLowerCase().includes(needle) ||
+      (patient.secondaryPhone ?? "").toLowerCase().includes(needle) ||
+      (patient.nationalId ?? "").toLowerCase().includes(needle) ||
+      (patient.fileNo !== null && String(patient.fileNo) === needle),
   );
 }
 

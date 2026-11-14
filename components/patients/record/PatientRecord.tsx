@@ -5,12 +5,13 @@ import {
   CalendarDays,
   CalendarPlus,
   ClipboardList,
+  FileText,
+  HeartPulse,
+  PackageSearch,
   Plus,
-  ReceiptText,
   Smile,
-  Stethoscope,
   TriangleAlert,
-  Wallet,
+  UserPlus,
 } from "lucide-react";
 import Link from "next/link";
 import type { PatientDto } from "@/lib/services/patients";
@@ -18,47 +19,57 @@ import type { FindingDto } from "@/lib/services/findings";
 import type { PlanItemDto } from "@/lib/services/treatment-plan";
 import type { AppointmentDto } from "@/lib/services/appointments";
 import type { LedgerEntryDto } from "@/lib/services/ledger";
-import { ageFromBirthYear } from "@/lib/patients-view";
+import { ageFromBirthYear, genderLabel } from "@/lib/patients-view";
 import { parseMedicalNotes } from "@/lib/medical-notes";
 import { summarizePatientLedger } from "@/lib/ledger-view";
-import { splitAppointments } from "@/lib/patient-profile";
+import { firstLetter } from "@/components/ui/EntityCell";
 import OdontogramBoard from "@/components/odontogram/OdontogramBoard";
 import TreatmentPlanSection from "@/components/odontogram/TreatmentPlanSection";
-import PatientEditModal from "@/components/patients/PatientEditModal";
 import OverviewTab from "./OverviewTab";
 import AppointmentsTab from "./AppointmentsTab";
 import LedgerTab from "./LedgerTab";
 import NewAppointmentModal from "./NewAppointmentModal";
 import NewLedgerEntryModal from "./NewLedgerEntryModal";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { PageHeader, HeaderDivider } from "@/components/ui/PageHeader";
 import { DualAmount } from "@/components/ui/DualAmount";
 import { cn } from "@/components/ui/cn";
 
-// ملف المريض المتكامل — وحدة عمل سريرية بخمسة تبويبات: نظرة عامة، مخطط
-// الأسنان، خطط العلاج، المواعيد، الحسابات. رأس الملف بهوية الصفحات
-// (اسم كبير + بيانات فرعية + إجراءات + فاصل بمعيّن). اختيار السن مشترك بين
-// تبويبَي الأودوغرام والخطة: نقر سن في الرسم يعبّئ بند الخطة الجديد،
-// وزر السن في الخطة أو الدفتر يفتح السن على الرسم. كل ميزة من الملف
-// السابق محفوظة — التبويبات تنظّمها ولا تحذف شيئاً.
+// ملف المريض — أربعة تبويبات كالمرجع: الملف، المواعيد، مخطط الأسنان
+// وخطط العلاج (الرسم والخطة معاً في تبويب واحد)، والحساب والسجل المالي.
+// رأس الملف: أفاتار + اسم + بيانات، تحته شريط التنبيهات والملخص المالي،
+// ثم الإجراءات الثلاثة: موعد جديد، سجل عملية، مريض جديد.
 
 export type RecordTab =
   | "overview"
-  | "chart"
-  | "plans"
   | "appointments"
+  | "chart"
   | "ledger";
 
-const TABS: ReadonlyArray<{
-  key: RecordTab;
-  label: string;
+function WarningPill({
+  icon: Icon,
+  children,
+  tone,
+}: {
   icon: React.ElementType;
-}> = [
-  { key: "overview", label: "نظرة عامة", icon: Stethoscope },
-  { key: "chart", label: "مخطط الأسنان", icon: Smile },
-  { key: "plans", label: "خطط العلاج", icon: ClipboardList },
-  { key: "appointments", label: "المواعيد", icon: CalendarDays },
-  { key: "ledger", label: "الحسابات", icon: Wallet },
-];
+  children: React.ReactNode;
+  tone: "danger" | "warning";
+}) {
+  const classes =
+    tone === "danger"
+      ? "border-danger-300 bg-danger-50 text-danger-700"
+      : "border-warning-300 bg-warning-50 text-warning-700";
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium",
+        classes,
+      )}
+    >
+      <Icon size={12} aria-hidden />
+      {children}
+    </span>
+  );
+}
 
 function InfoCell({
   icon: Icon,
@@ -82,6 +93,12 @@ type Props = {
   appointments: AppointmentDto[];
   ledgerEntries: LedgerEntryDto[];
   ledgerBalance: number;
+  /** صفوف استهلاك المواد (المخزون) على هذا المريض — لتنبيه المخزون وللدفتر */
+  materialRows: ReadonlyArray<{
+    createdAt: Date | string;
+    materialName: string;
+    costSyp: number;
+  }>;
   /** سعر صرف الدولار من إعدادات العيادة — لعرض العملة المزدوجة */
   usdRate: number;
 };
@@ -93,64 +110,57 @@ export default function PatientRecord({
   appointments,
   ledgerEntries,
   ledgerBalance,
+  materialRows,
   usdRate,
 }: Props) {
   const [tab, setTab] = useState<RecordTab>("overview");
-  // اختيار السن مشترك بين تبويبَي الأودوغرام والخطة (ورابط الدفتر السني).
+  // اختيار السن مشترك بين الرسم وخطة العلاج في التبويب نفسه.
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
-  // زرّا «قيد جديد» و«تسديد دفعة» يفتحان النافذة نفسها بإعدادين مختلفين.
   const [apptOpen, setApptOpen] = useState(false);
   const [ledgerOpen, setLedgerOpen] = useState(false);
-  const [ledgerPreset, setLedgerPreset] = useState<"blank" | "settle">("blank");
 
-  const { upcoming } = splitAppointments(appointments, new Date());
   const notes = parseMedicalNotes(patient.medicalNotes);
   const summary = summarizePatientLedger(ledgerEntries, ledgerBalance);
   const dueSyp = Math.max(ledgerBalance, 0);
+  const allergies = patient.allergies ?? notes.allergies;
+  const chronic = patient.chronicDiseases ?? notes.conditions;
 
-  function openLedgerBlank() {
-    setLedgerPreset("blank");
-    setLedgerOpen(true);
-  }
-
-  function openLedgerSettle() {
-    setLedgerPreset("settle");
-    setLedgerOpen(true);
-  }
-
-  function focusTooth(fdi: number) {
-    setSelectedTooth(fdi);
-    setTab("chart");
-  }
+  const TABS: ReadonlyArray<{
+    key: RecordTab;
+    label: string;
+    icon: React.ElementType;
+    count?: number;
+  }> = [
+    { key: "overview", label: "الملف", icon: FileText },
+    { key: "appointments", label: "المواعيد", icon: CalendarDays, count: appointments.length },
+    {
+      key: "chart",
+      label: "مخطط الأسنان وخطط العلاج",
+      icon: Smile,
+      count: planItems.length,
+    },
+    { key: "ledger", label: "الحساب والسجل المالي", icon: ClipboardList },
+  ];
 
   const actionButtonClass =
     "inline-flex h-10 items-center gap-2 rounded-field border border-transparent px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2";
 
   return (
     <div className="w-full">
-      {/* ─── رأس الملف بهوية الصفحات: اسم كبير + بيانات فرعية + إجراءات ── */}
       <div className="px-4 pt-6">
         <PageHeader
           title={patient.name}
+          leading={
+            <span
+              aria-hidden
+              className="grid size-14 shrink-0 place-items-center rounded-full bg-primary-500/10 text-xl font-bold text-primary-700"
+            >
+              {firstLetter(patient.name)}
+            </span>
+          }
           description={
-            <span className="text-warm-700 flex flex-wrap items-center gap-x-4 gap-y-1">
-              <InfoCell icon={Stethoscope}>
-                {ageFromBirthYear(patient.birthYear) !== null ? (
-                  <>
-                    <span className="numeric">
-                      {ageFromBirthYear(patient.birthYear)}
-                    </span>{" "}
-                    سنة
-                    {patient.birthYear !== null && (
-                      <span className="text-warm-400 text-xs">
-                        (و.م <span className="numeric">{patient.birthYear}</span>)
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  <span className="text-warm-400">العمر غير مسجل</span>
-                )}
-              </InfoCell>
+            <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <InfoCell icon={UserPlus}>{genderLabel(patient.gender) || "—"}</InfoCell>
               <InfoCell icon={CalendarDays}>
                 {patient.phone ? (
                   <span dir="ltr" className="numeric">
@@ -160,115 +170,146 @@ export default function PatientRecord({
                   <span className="text-warm-400">لا هاتف مسجل</span>
                 )}
               </InfoCell>
-              {patient.address && (
-                <InfoCell icon={ReceiptText}>{patient.address}</InfoCell>
+              {patient.secondaryPhone && (
+                <InfoCell icon={CalendarDays}>
+                  <span dir="ltr" className="numeric">
+                    {patient.secondaryPhone}
+                  </span>
+                </InfoCell>
+              )}
+              {patient.birthYear !== null && (
+                <InfoCell icon={HeartPulse}>
+                  <span className="numeric">{patient.birthYear}</span>
+                  {ageFromBirthYear(patient.birthYear) !== null && (
+                    <span className="text-warm-400 text-xs">
+                      (
+                      <span className="numeric">
+                        {ageFromBirthYear(patient.birthYear)}
+                      </span>{" "}
+                      سنة)
+                    </span>
+                  )}
+                </InfoCell>
+              )}
+              {patient.address && <InfoCell icon={Smile}>{patient.address}</InfoCell>}
+              {patient.fileNo !== null && (
+                <InfoCell icon={ClipboardList}>
+                  <span className="numeric">رقم {patient.fileNo}</span>
+                </InfoCell>
               )}
             </span>
           }
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              <PatientEditModal patient={patient} />
-            <button
-              type="button"
-              onClick={() => setApptOpen(true)}
-              className={cn(
-                actionButtonClass,
-                "border-primary-200 bg-primary-50 text-primary-800 hover:bg-primary-100 focus-visible:outline-primary-500",
-              )}
-            >
-              <CalendarPlus size={16} aria-hidden />
-              موعد جديد
-            </button>
-            <button
-              type="button"
-              onClick={openLedgerBlank}
-              className={cn(
-                actionButtonClass,
-                "border-primary-200 bg-primary-50 text-primary-800 hover:bg-primary-100 focus-visible:outline-primary-500",
-              )}
-            >
-              <Plus size={16} aria-hidden />
-              قيد جديد
-            </button>
-            {dueSyp > 0 && (
               <button
                 type="button"
-                onClick={openLedgerSettle}
+                onClick={() => setApptOpen(true)}
                 className={cn(
                   actionButtonClass,
                   "bg-primary-600 text-white hover:bg-primary-700 focus-visible:outline-primary-500",
                 )}
               >
-                <Wallet size={16} aria-hidden />
-                تسديد دفعة
+                <CalendarPlus size={16} aria-hidden />
+                موعد جديد
               </button>
-            )}
+              <button
+                type="button"
+                onClick={() => setLedgerOpen(true)}
+                className={cn(
+                  actionButtonClass,
+                  "border-primary-200 bg-primary-50 text-primary-800 hover:bg-primary-100 focus-visible:outline-primary-500",
+                )}
+              >
+                <Plus size={16} aria-hidden />
+                سجل عملية
+              </button>
+              <Link
+                href="/patients?create=1"
+                className={cn(
+                  actionButtonClass,
+                  "border-primary-200 bg-primary-50 text-primary-800 hover:bg-primary-100 focus-visible:outline-primary-500",
+                )}
+              >
+                <UserPlus size={16} aria-hidden />
+                مريض جديد
+              </Link>
             </div>
           }
         />
 
-        {/* بطاقة الرأس المالية — بنية المرجع: شارات الحساسية والأمراض يميناً
-            وإحصاء الفواتير/المسدد/الرصيد يساراً، بالعملتين معاً */}
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-panel border border-warm-200 bg-surface-raised px-5 py-4">
+        {/* شريط التنبيهات والملخص المالي — تنبيهات يميناً (تنبيه مستحق،
+            تنبيه مخزون، الحساسيات والأمراض) والملخص يساراً */}
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-warm-200 bg-surface-raised px-5 py-4">
           <div className="flex flex-wrap items-center gap-2">
-            {notes.allergies && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-danger-300 bg-danger-50 px-2.5 py-1 text-[11px] font-medium text-danger-700">
-                <TriangleAlert size={12} aria-hidden />
-                حساسية
-              </span>
+            {dueSyp > 0 && (
+              <WarningPill icon={TriangleAlert} tone="danger">
+                تنبيه مستحق
+              </WarningPill>
             )}
-            {notes.conditions && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-warning-300 bg-warning-50 px-2.5 py-1 text-[11px] font-medium text-warning-700">
-                <Stethoscope size={12} aria-hidden />
-                أمراض مزمنة
-              </span>
+            {materialRows.length > 0 && (
+              <WarningPill icon={PackageSearch} tone="warning">
+                تنبيه مخزون
+              </WarningPill>
             )}
-            {!notes.allergies && !notes.conditions && (
-              <span className="text-xs text-warm-400">لا تنبيهات طبية</span>
+            {allergies && (
+              <WarningPill icon={TriangleAlert} tone="danger">
+                {allergies}
+              </WarningPill>
+            )}
+            {chronic && (
+              <WarningPill icon={HeartPulse} tone="warning">
+                {chronic}
+              </WarningPill>
+            )}
+            {dueSyp === 0 && materialRows.length === 0 && !allergies && !chronic && (
+              <span className="text-xs text-warm-400">لا تنبيهات</span>
             )}
           </div>
           <div className="flex flex-wrap items-end gap-6">
             <div>
-              <p className="text-warm-500 text-[11px] font-medium">
-                إجمالي الفواتير
-              </p>
-              <DualAmount syp={summary.chargesSyp} usdRate={usdRate} />
-            </div>
-            <div>
-              <p className="text-primary-700 text-[11px] font-medium">المسدد</p>
-              <DualAmount syp={summary.paidSyp} usdRate={usdRate} />
-            </div>
-            <div>
-              <p
-                className={cn(
-                  "text-[11px] font-medium",
-                  dueSyp > 0 ? "text-danger-600" : "text-warm-500",
-                )}
-              >
-                الرصيد المستحق
-              </p>
+              <p className="text-warm-500 text-[11px] font-medium">مستحق</p>
               <DualAmount
                 syp={summary.balanceSyp}
                 usdRate={usdRate}
                 tone={dueSyp > 0 ? "danger" : "default"}
               />
             </div>
+            <div>
+              <p className="text-warm-500 text-[11px] font-medium">
+                إجمالي المدفوع
+              </p>
+              <DualAmount syp={summary.paidSyp} usdRate={usdRate} />
+            </div>
+            <div className="flex items-center gap-1.5">
+              {dueSyp > 0 ? (
+                <>
+                  <TriangleAlert
+                    size={14}
+                    aria-hidden
+                    className="text-danger-600"
+                  />
+                  <span className="text-sm font-semibold text-danger-600">
+                    مستحق
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span
+                    aria-hidden
+                    className="grid size-4 place-items-center rounded-full bg-primary-600 text-[10px] text-white"
+                  >
+                    ✓
+                  </span>
+                  <span className="text-primary-700 text-sm font-semibold">
+                    مسدد
+                  </span>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* بانر الحساسية — دائم الظهور أعلى الملف إن وُجدت */}
-        {notes.allergies && (
-          <div
-            role="alert"
-            className="border-danger-300 bg-danger-50 text-danger-700 mt-3 flex items-start gap-2 rounded-panel border px-4 py-2.5 text-sm"
-          >
-            <TriangleAlert size={18} aria-hidden className="mt-0.5 shrink-0" />
-            <p>
-              <span className="font-semibold">حساسية:</span>{" "}
-              <span className="whitespace-pre-line">{notes.allergies}</span>
-            </p>
-          </div>
-        )}
+        <HeaderDivider className="mt-4" />
 
         {/* شريط التبويبات */}
         <nav aria-label="أقسام ملف المريض" className="mt-3">
@@ -277,7 +318,7 @@ export default function PatientRecord({
             aria-label="تبويبات ملف المريض"
             className="flex gap-1 overflow-x-auto"
           >
-            {TABS.map(({ key, label, icon: Icon }) => {
+            {TABS.map(({ key, label, icon: Icon, count }) => {
               const active = tab === key;
               return (
                 <button
@@ -298,7 +339,7 @@ export default function PatientRecord({
                 >
                   <Icon size={15} aria-hidden />
                   {label}
-                  {key === "appointments" && upcoming.length > 0 && (
+                  {count !== undefined && count > 0 && (
                     <span
                       className={cn(
                         "numeric ms-0.5 rounded-full px-1.5 text-[11px] font-semibold",
@@ -307,7 +348,7 @@ export default function PatientRecord({
                           : "bg-primary-100 text-primary-800",
                       )}
                     >
-                      {upcoming.length}
+                      {count}
                     </span>
                   )}
                 </button>
@@ -318,7 +359,7 @@ export default function PatientRecord({
       </div>
 
       {/* ─── اللوحات — كلها مركّبة والمخفية بـ hidden حتى لا يفقد تبويب
-           الأودوغرام قيوده المحلية عند التنقل بين التبويبات ──────────── */}
+           الرسم قيوده المحلية عند التنقل بين التبويبات ──────────── */}
       <div className="px-4 py-6">
         <div
           role="tabpanel"
@@ -326,41 +367,7 @@ export default function PatientRecord({
           aria-labelledby="patient-tab-overview"
           hidden={tab !== "overview"}
         >
-          <OverviewTab
-            medicalNotes={patient.medicalNotes}
-            planItems={planItems}
-            appointments={appointments}
-            onOpenPlans={() => setTab("plans")}
-            onOpenAppointments={() => setTab("appointments")}
-          />
-        </div>
-
-        <div
-          role="tabpanel"
-          id="patient-panel-chart"
-          aria-labelledby="patient-tab-chart"
-          hidden={tab !== "chart"}
-        >
-          <OdontogramBoard
-            patientId={patient.id}
-            initialFindings={findings}
-            selectedTooth={selectedTooth}
-            onSelectTooth={setSelectedTooth}
-          />
-        </div>
-
-        <div
-          role="tabpanel"
-          id="patient-panel-plans"
-          aria-labelledby="patient-tab-plans"
-          hidden={tab !== "plans"}
-        >
-          <TreatmentPlanSection
-            patientId={patient.id}
-            initialItems={planItems}
-            preselectedTooth={selectedTooth}
-            onFocusTooth={focusTooth}
-          />
+          <OverviewTab patient={patient} />
         </div>
 
         <div
@@ -377,6 +384,28 @@ export default function PatientRecord({
 
         <div
           role="tabpanel"
+          id="patient-panel-chart"
+          aria-labelledby="patient-tab-chart"
+          hidden={tab !== "chart"}
+        >
+          <div className="space-y-4">
+            <OdontogramBoard
+              patientId={patient.id}
+              initialFindings={findings}
+              selectedTooth={selectedTooth}
+              onSelectTooth={setSelectedTooth}
+            />
+            <TreatmentPlanSection
+              patientId={patient.id}
+              initialItems={planItems}
+              preselectedTooth={selectedTooth}
+              onFocusTooth={setSelectedTooth}
+            />
+          </div>
+        </div>
+
+        <div
+          role="tabpanel"
           id="patient-panel-ledger"
           aria-labelledby="patient-tab-ledger"
           hidden={tab !== "ledger"}
@@ -384,29 +413,11 @@ export default function PatientRecord({
           <LedgerTab
             entries={ledgerEntries}
             balance={ledgerBalance}
-            planItems={planItems}
+            usdRate={usdRate}
+            materialRows={materialRows}
             onNewEntry={() => setLedgerOpen(true)}
-            onFocusTooth={focusTooth}
           />
         </div>
-
-        <p className="text-warm-400 mt-6 text-center text-xs">
-          الرسم التشريحي الكامل بمنتقي المرضى على صفحة{" "}
-          <Link
-            href="/chart"
-            className="text-primary-700 hover:text-primary-800 hover:underline"
-          >
-            مخطط الأسنان
-          </Link>{" "}
-          — ولوحة بنود كل المرضى على{" "}
-          <Link
-            href="/plans"
-            className="text-primary-700 hover:text-primary-800 hover:underline"
-          >
-            خطط العلاج
-          </Link>
-          .
-        </p>
       </div>
 
       <NewAppointmentModal
@@ -419,8 +430,7 @@ export default function PatientRecord({
         onClose={() => setLedgerOpen(false)}
         patientId={patient.id}
         planItems={planItems}
-        initialType={ledgerPreset === "settle" ? "PAYMENT" : "CHARGE"}
-        initialAmountSyp={ledgerPreset === "settle" ? dueSyp : undefined}
+        initialType="CHARGE"
       />
     </div>
   );

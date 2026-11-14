@@ -3,9 +3,9 @@ import {
   PATIENT_FILTERS,
   ageFromBirthYear,
   buildPatientRows,
-  countFlags,
+  countGenders,
   filterPatients,
-  patientNotesFlags,
+  genderLabel,
   searchPatientRows,
   sortPatientRows,
   type PatientRowView,
@@ -21,44 +21,33 @@ function patient(overrides: Partial<PatientDto>): PatientDto {
     phone: null,
     address: null,
     medicalNotes: null,
+    gender: null,
+    secondaryPhone: null,
+    homePhone: null,
+    email: null,
+    nationalId: null,
+    bloodType: null,
+    allergies: null,
+    chronicDiseases: null,
+    emergencyContacts: null,
+    fileNo: null,
     createdAt: new Date("2026-01-01T00:00:00Z"),
     ...overrides,
   };
 }
 
-describe("patientNotesFlags", () => {
-  it("يرصد الأقسام الثلاثة من النص المركّب", () => {
-    const flags = patientNotesFlags(
-      "حساسية: بنسلين\nأمراض: سكري\nأدوية: إنسولين",
-    );
-    expect(flags).toEqual({
-      allergies: true,
-      conditions: true,
-      medications: true,
-    });
-  });
-
-  it("يعيد كل الأعلام خاطئة لنص فارغ", () => {
-    expect(patientNotesFlags(null)).toEqual({
-      allergies: false,
-      conditions: false,
-      medications: false,
-    });
-  });
-
-  it("يتجاهل الأسطر الحرّة — لا علم بغير أقسام معلّمة", () => {
-    expect(patientNotesFlags("ملاحظة حرّة")).toEqual({
-      allergies: false,
-      conditions: false,
-      medications: false,
-    });
+describe("genderLabel", () => {
+  it("يعيد الذكر والأنثى وnull لمن بلا جنس مسجل", () => {
+    expect(genderLabel("MALE")).toBe("ذكر");
+    expect(genderLabel("FEMALE")).toBe("أنثى");
+    expect(genderLabel(null)).toBeNull();
   });
 });
 
 describe("filterPatients", () => {
   const list: PatientDto[] = [
-    patient({ id: "a", name: "أحمد", medicalNotes: "حساسية: بنسلين" }),
-    patient({ id: "b", name: "سارة", medicalNotes: "أمراض: سكري" }),
+    patient({ id: "a", name: "أحمد", gender: "MALE" }),
+    patient({ id: "b", name: "سارة", gender: "FEMALE" }),
     patient({ id: "c", name: "خالد" }),
   ];
 
@@ -70,32 +59,29 @@ describe("filterPatients", () => {
     ]);
   });
 
-  it("يرشّح أصحاب الحساسية فقط", () => {
-    expect(filterPatients(list, "allergies").map((p) => p.id)).toEqual(["a"]);
+  it("يرشّح الذكور فقط", () => {
+    expect(filterPatients(list, "MALE").map((p) => p.id)).toEqual(["a"]);
   });
 
-  it("يرشّح أصحاب الأمراض المزمنة فقط", () => {
-    expect(filterPatients(list, "conditions").map((p) => p.id)).toEqual(["b"]);
+  it("يرشّح الإناث فقط", () => {
+    expect(filterPatients(list, "FEMALE").map((p) => p.id)).toEqual(["b"]);
   });
 
   it("لا يغيّر القائمة الأصلية", () => {
-    filterPatients(list, "allergies");
+    filterPatients(list, "MALE");
     expect(list).toHaveLength(3);
   });
 });
 
-describe("countFlags و ageFromBirthYear", () => {
-  it("يعدّ كل علم مرة واحدة عبر القائمة", () => {
+describe("countGenders و ageFromBirthYear", () => {
+  it("يعدّ كل جنس مرة واحدة عبر القائمة ويهمل من بلا جنس", () => {
     const list: PatientDto[] = [
-      patient({ medicalNotes: "حساسية: لاتكس" }),
-      patient({ medicalNotes: "حساسية: بنسلين\nأدوية: وارفارين" }),
+      patient({ gender: "MALE" }),
+      patient({ gender: "MALE" }),
+      patient({ gender: "FEMALE" }),
       patient({}),
     ];
-    expect(countFlags(list)).toEqual({
-      allergies: 2,
-      conditions: 0,
-      medications: 1,
-    });
+    expect(countGenders(list)).toEqual({ MALE: 2, FEMALE: 1 });
   });
 
   it("يحسب العمر من سنة الميلاد ويعيد null لغيابه", () => {
@@ -106,8 +92,17 @@ describe("countFlags و ageFromBirthYear", () => {
 });
 
 describe("PATIENT_FILTERS", () => {
-  it("يبدأ بفلتر الكل", () => {
-    expect(PATIENT_FILTERS[0]).toEqual({ key: "ALL", label: "الكل" });
+  it("تبدأ بفلتر الكل ثم الذكر ثم الأنثى", () => {
+    expect(PATIENT_FILTERS.map((f) => f.key)).toEqual([
+      "ALL",
+      "MALE",
+      "FEMALE",
+    ]);
+    expect(PATIENT_FILTERS.map((f) => f.label)).toEqual([
+      "الكل",
+      "ذكر",
+      "أنثى",
+    ]);
   });
 });
 
@@ -178,12 +173,18 @@ describe("buildPatientRows", () => {
 describe("searchPatientRows و sortPatientRows", () => {
   const rows: PatientRowView[] = [
     row({ id: "a", name: "أحمد", balanceSyp: 40 }),
-    row({ id: "b", name: "سارة", balanceSyp: 300 }),
+    row({
+      id: "b",
+      name: "سارة",
+      balanceSyp: 300,
+      patient: patient({ id: "b", name: "سارة", fileNo: 7 }),
+    }),
     row({ id: "c", name: "خالد", balanceSyp: 0 }),
   ];
 
-  it("البحث يطابق الاسم أو الهاتف بلا حساسية لحالة الإدخال", () => {
+  it("البحث يطابق الاسم أو الهاتف أو رقم الأيوبي", () => {
     expect(searchPatientRows(rows, "أحمد").map((r) => r.patient.id)).toEqual(["a"]);
+    expect(searchPatientRows(rows, "7").map((r) => r.patient.id)).toEqual(["b"]);
     expect(searchPatientRows(rows, "  ")).toHaveLength(3);
   });
 

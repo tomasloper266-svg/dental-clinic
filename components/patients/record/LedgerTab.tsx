@@ -1,162 +1,199 @@
 "use client";
 
-import { Plus, ReceiptText } from "lucide-react";
+import { Plus, ReceiptText, Wallet } from "lucide-react";
 import type { LedgerEntryDto } from "@/lib/services/ledger";
-import type { PlanItemDto } from "@/lib/services/treatment-plan";
 import {
-  LEDGER_ENTRY_TYPE_META,
-  ledgerEntriesWithPlan,
-} from "@/lib/ledger-view";
+  INVOICE_STATUS_CHIP,
+  INVOICE_STATUS_LABELS,
+  buildPaymentLog,
+  deriveInvoices,
+} from "@/lib/patient-finance";
+import { formatDateCell } from "@/lib/dates";
 import { formatSyp } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { Table, THead, TRow, TH, TD } from "@/components/ui/Table";
 import { cn } from "@/components/ui/cn";
 
-// تبويب «الحسابات» في ملف المريض — رصيد المريض وقيوده من دفتر العيادة.
-// الرصيد يُحسب من مجموع القيود الموقّعة (لا يُخزَّن أبداً) ويف arrives جاهزاً
-// من الخدمة، والقيود المرتبطة بعلاج تُربط ببنود الخطة عبر treatmentItemId
-// والرقم السني زر ينقل إلى تبويب مخطط الأسنان.
+// تبويب «الحساب والسجل المالي» — جدولان جنباً إلى جنب كالمرجع: الفواتير
+// المشتوبة من قيود الرسوم مع تخصيص الدفعات، وسجل الدفعات/المخزون (الدفعات
+// واستهلاك المواد). المشتقة كلها نقية في lib/patient-finance.ts.
 
 type Props = {
   entries: LedgerEntryDto[];
   balance: number;
-  planItems: PlanItemDto[];
+  /** سعر صرف الدولار من إعدادات العيادة */
+  usdRate: number;
+  /** صفوف استهلاك المواد للمريض — من MaterialUsage على الصفحة الخادمية */
+  materialRows: ReadonlyArray<{
+    createdAt: Date | string;
+    materialName: string;
+    costSyp: number;
+  }>;
   onNewEntry: () => void;
-  onFocusTooth: (fdi: number) => void;
 };
 
-const dateFmt = new Intl.DateTimeFormat("ar-SY-u-nu-latn", {
-  dateStyle: "medium",
-});
+const MATERIAL_CHIP = "border-plum-200 bg-plum-50 text-plum-700";
+const PAYMENT_CHIP = "border-primary-200 bg-primary-50 text-primary-800";
 
 export default function LedgerTab({
   entries,
   balance,
-  planItems,
+  materialRows,
   onNewEntry,
-  onFocusTooth,
 }: Props) {
-  const rows = ledgerEntriesWithPlan(entries, planItems);
+  const invoices = deriveInvoices(entries);
+  const paymentLog = buildPaymentLog(entries, materialRows);
+  const dueSyp = Math.max(balance, 0);
 
   return (
     <div className="space-y-4">
-      {/* ─── بطاقة الرصيد — دائمًا أعلى التبويب ─────────────────────── */}
-      <div className="border-warm-200 bg-surface-raised flex flex-wrap items-center justify-between gap-3 rounded-panel border px-5 py-4">
-        <div className="min-w-0">
-          <p className="text-warm-500 text-xs font-medium">الرصيد الحالي</p>
-          <p className="text-ink-900 numeric mt-0.5 text-2xl font-bold">
-            {formatSyp(balance)}
-          </p>
-          <p className="text-warm-400 mt-0.5 text-[11px]">
-            مجموع القيود الموقّعة — الرسوم موجبة والدفعات سالبة، والرصيد يُحسب
-            ولا يُخزَّن.
-          </p>
+      {/* ملخص الرصيد — المستحق الجاري من الدفتر دائماً */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-warm-200 bg-surface-raised px-5 py-3">
+        <div className="flex items-center gap-2">
+          <Wallet size={16} aria-hidden className="text-warm-400" />
+          <span className="text-warm-600 text-sm font-medium">
+            الرصيد الجاري
+          </span>
+          <span
+            className={cn(
+              "numeric text-sm font-semibold",
+              dueSyp > 0 ? "text-danger-600" : "text-primary-700",
+            )}
+          >
+            {formatSyp(dueSyp)}
+          </span>
         </div>
-        <Button onClick={onNewEntry}>
-          <Plus size={16} aria-hidden />
-          قيد جديد
+        <Button onClick={onNewEntry} className="h-8 px-3 text-xs">
+          <Plus size={14} aria-hidden />
+          سجل عملية
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ReceiptText size={16} aria-hidden className="text-warm-400" />
-            قيود الدفتر
-            <span className="text-warm-400 numeric text-xs font-normal">
-              ({entries.length})
-            </span>
-          </CardTitle>
-        </CardHeader>
-        {rows.length === 0 ? (
-          <div className="p-5">
-            <EmptyState
-              title="لا قيود مالية بعد"
-              description="سجّل أول قيد — رسوم علاج، دفعة، تسوية أو استرداد. القيود غير قابلة للتعديل أو الحذف؛ التصحيح بقيد عكسي."
-              action={
-                <Button onClick={onNewEntry} className="h-8 px-3 text-xs">
-                  <Plus size={14} aria-hidden />
-                  قيد جديد
-                </Button>
-              }
-              className="border-0 bg-transparent py-6"
-            />
-          </div>
-        ) : (
-          <div className="overflow-x-auto p-5 pt-4">
+      <div className="grid items-start gap-4 xl:grid-cols-2">
+        {/* ─── الفواتير ─────────────────────────────────────────────── */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ReceiptText size={16} aria-hidden className="text-warm-400" />
+              الفواتير
+              <span className="text-warm-400 numeric text-xs font-normal">
+                ({invoices.length})
+              </span>
+            </CardTitle>
+          </CardHeader>
+          {invoices.length === 0 ? (
+            <p className="text-warm-500 p-5 text-sm">
+              لا فواتير بعد — كل قيد رسوم يُعرض هنا كفاتورة.
+            </p>
+          ) : (
+            <Table>
+              <THead>
+                <TRow>
+                  <TH>الرقم</TH>
+                  <TH>التاريخ</TH>
+                  <TH>الإجمالي</TH>
+                  <TH>المدفوع</TH>
+                  <TH>المتبقي</TH>
+                  <TH>حالة الدفع</TH>
+                </TRow>
+              </THead>
+              <tbody>
+                {invoices.map((inv) => (
+                  <TRow key={inv.number}>
+                    <TD className="numeric text-ink-900 text-sm">
+                      {inv.number}
+                    </TD>
+                    <TD className="numeric text-warm-600 text-xs">
+                      {formatDateCell(inv.date)}
+                    </TD>
+                    <TD className="numeric text-ink-900 text-sm">
+                      {formatSyp(inv.totalSyp)}
+                    </TD>
+                    <TD className="numeric text-primary-700 text-sm">
+                      {formatSyp(inv.paidSyp)}
+                    </TD>
+                    <TD
+                      className={cn(
+                        "numeric text-sm",
+                        inv.remainingSyp > 0 ? "text-danger-600" : "text-warm-400",
+                      )}
+                    >
+                      {formatSyp(inv.remainingSyp)}
+                    </TD>
+                    <TD>
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${INVOICE_STATUS_CHIP[inv.status]}`}
+                      >
+                        {INVOICE_STATUS_LABELS[inv.status]}
+                      </span>
+                    </TD>
+                  </TRow>
+                ))}
+              </tbody>
+            </Table>
+          )}
+        </Card>
+
+        {/* ─── سجل الدفعات/المخزون ──────────────────────────────────── */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wallet size={16} aria-hidden className="text-warm-400" />
+              سجل الدفعات/المخزون
+              <span className="text-warm-400 numeric text-xs font-normal">
+                ({paymentLog.length})
+              </span>
+            </CardTitle>
+          </CardHeader>
+          {paymentLog.length === 0 ? (
+            <p className="text-warm-500 p-5 text-sm">
+              لا دفعات ولا استهلاك مواد بعد.
+            </p>
+          ) : (
             <Table>
               <THead>
                 <TRow>
                   <TH>التاريخ</TH>
-                  <TH>النوع</TH>
+                  <TH>الوصف</TH>
                   <TH>المبلغ</TH>
-                  <TH>العلاج المرتبط</TH>
-                  <TH>ملاحظة</TH>
+                  <TH>النوع</TH>
                 </TRow>
               </THead>
               <tbody>
-                {rows.map((row) => {
-                  const meta = LEDGER_ENTRY_TYPE_META[row.type];
-                  const item = row.planItem;
-                  return (
-                    <TRow key={row.id}>
-                      <TD className="text-warm-600 whitespace-nowrap">
-                        {dateFmt.format(new Date(row.createdAt))}
-                      </TD>
-                      <TD>
-                        <span
-                          className={cn(
-                            "rounded-full border px-2 py-0.5 text-[11px] font-medium",
-                            meta.chipClass,
-                          )}
-                        >
-                          {meta.labelAr}
-                        </span>
-                      </TD>
-                      <TD
-                        className={cn(
-                          "numeric font-semibold whitespace-nowrap",
-                          row.amountSyp > 0
-                            ? "text-danger-700"
-                            : row.amountSyp < 0
-                              ? "text-primary-700"
-                              : "text-warm-500",
-                        )}
+                {paymentLog.map((row, index) => (
+                  <TRow key={`${row.date}-${index}`}>
+                    <TD className="numeric text-warm-600 text-xs">
+                      {formatDateCell(row.date)}
+                    </TD>
+                    <TD className="text-ink-900 max-w-48 truncate text-sm">
+                      {row.description}
+                    </TD>
+                    <TD
+                      className={cn(
+                        "numeric text-sm font-medium",
+                        row.kind === "PAYMENT"
+                          ? "text-primary-700"
+                          : "text-warm-700",
+                      )}
+                    >
+                      {row.kind === "PAYMENT" ? "−" : "+"}
+                      {formatSyp(Math.abs(row.amountSyp))}
+                    </TD>
+                    <TD>
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${row.kind === "PAYMENT" ? PAYMENT_CHIP : MATERIAL_CHIP}`}
                       >
-                        {formatSyp(row.amountSyp)}
-                      </TD>
-                      <TD className="min-w-0">
-                        {item ? (
-                          <button
-                            type="button"
-                            onClick={() => onFocusTooth(item.toothFdi)}
-                            title="عرض السن على الأودوغرام"
-                            className="inline-flex max-w-56 items-center gap-1.5 text-xs transition-colors focus-visible:outline-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2"
-                          >
-                            <span className="border-ink-200 bg-ink-50 text-ink-800 numeric rounded border px-1.5 py-0.5 text-[11px] font-bold">
-                              {item.toothFdi}
-                            </span>
-                            <span className="text-warm-700 truncate hover:text-primary-700 hover:underline">
-                              {item.procedure}
-                            </span>
-                          </button>
-                        ) : (
-                          <span className="text-warm-400 text-xs">—</span>
-                        )}
-                      </TD>
-                      <TD className="max-w-64 truncate text-warm-600">
-                        {row.note ?? "—"}
-                      </TD>
-                    </TRow>
-                  );
-                })}
+                        {row.kind === "PAYMENT" ? "دفعة" : "مخزون"}
+                      </span>
+                    </TD>
+                  </TRow>
+                ))}
               </tbody>
             </Table>
-          </div>
-        )}
-      </Card>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }

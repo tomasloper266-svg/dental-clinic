@@ -1,216 +1,174 @@
 "use client";
 
-import { CalendarDays, ClipboardList } from "lucide-react";
-import type { AppointmentDto } from "@/lib/services/appointments";
-import type { PlanItemDto } from "@/lib/services/treatment-plan";
+import { Mail, MapPin, Phone, PhoneCall, ShieldAlert, Users } from "lucide-react";
+import type { PatientDto } from "@/lib/services/patients";
+import { genderLabel } from "@/lib/patients-view";
 import { parseMedicalNotes } from "@/lib/medical-notes";
-import { planTotals } from "@/lib/treatment-plan-view";
-import { splitAppointments } from "@/lib/patient-profile";
-import { formatSyp } from "@/lib/utils";
-import {
-  STATUS_META as APPT_STATUS_META,
-  formatDayLabel,
-  formatTime,
-} from "@/lib/appointment-ui";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
-import { EmptyState } from "@/components/ui/EmptyState";
+import PatientEditModal from "@/components/patients/PatientEditModal";
 
-// تبويب «نظرة عامة» في ملف المريض — الملاحظات الطبية المهيكلة أولًا (الأخطر
-// سريرياً)، ثم ملخص خطة العلاج والمواعيد القادمة كنقاط انطلاق إلى تبويبَيها.
+// تبويب «الملف» — بطاقتان كالمرجع: البيانات الشخصية (الهواتف، سنة الميلاد،
+// العنوان، البريد، الرقم الوطني، جهات اتصال الطوارئ) والسجل الطبي
+// والملاحظات (التحذيرات، الأمراض المزمنة، الملاحظات) مع زر تعديل البيانات.
 
-type Props = {
-  medicalNotes: string | null;
-  planItems: PlanItemDto[];
-  appointments: AppointmentDto[];
-  onOpenPlans: () => void;
-  onOpenAppointments: () => void;
-};
-
-function NoteSection({
-  title,
+function DataItem({
+  icon: Icon,
+  label,
   value,
-  tone = "plain",
+  ltr = false,
 }: {
-  title: string;
+  icon: React.ElementType;
+  label: string;
   value: string;
-  tone?: "plain" | "danger";
+  ltr?: boolean;
 }) {
   return (
-    <div className="min-w-0">
-      <p
-        className={`text-xs font-semibold ${tone === "danger" ? "text-danger-700" : "text-warm-600"}`}
+    <div className="flex items-start gap-2.5">
+      <span
+        aria-hidden
+        className="grid size-8 shrink-0 place-items-center rounded-full bg-primary-500/10 text-primary-700"
       >
-        {title}
-      </p>
-      <p className="text-ink-900 mt-1 text-sm leading-6 whitespace-pre-line">
-        {value}
-      </p>
+        <Icon size={14} />
+      </span>
+      <div className="min-w-0">
+        <p className="text-warm-500 text-[11px] font-medium">{label}</p>
+        <p
+          className={`text-ink-900 text-sm font-medium ${ltr ? "numeric text-start" : ""}`}
+          dir={ltr ? "ltr" : undefined}
+        >
+          {value}
+        </p>
+      </div>
     </div>
   );
 }
 
-const PLAN_STATUS_LABELS = {
-  PROPOSED: "مخطط",
-  ACCEPTED: "مقبول",
-  DONE: "منفذ",
-} as const;
+export default function OverviewTab({ patient }: { patient: PatientDto }) {
+  // الحقول المهيكلة أولاً — والسطور المركّبة القديمة احتياطاً للبيانات السابقة
+  const notes = parseMedicalNotes(patient.medicalNotes);
+  const allergies = patient.allergies ?? notes.allergies;
+  const chronic = patient.chronicDiseases ?? notes.conditions;
 
-export default function OverviewTab({
-  medicalNotes,
-  planItems,
-  appointments,
-  onOpenPlans,
-  onOpenAppointments,
-}: Props) {
-  const notes = parseMedicalNotes(medicalNotes);
-  const hasNotes = Boolean(
-    notes.allergies || notes.conditions || notes.medications || notes.other,
-  );
-
-  const totals = planTotals(planItems);
-  const now = new Date();
-  const { upcoming } = splitAppointments(appointments, now);
+  const personal: Array<{
+    icon: React.ElementType;
+    label: string;
+    value: string;
+    ltr?: boolean;
+  }> = [
+    {
+      icon: Phone,
+      label: "الهاتف الرئيسي",
+      value: patient.phone ?? "—",
+      ltr: true,
+    },
+    {
+      icon: PhoneCall,
+      label: "هاتف إضافي",
+      value: patient.secondaryPhone ?? "—",
+      ltr: true,
+    },
+    {
+      icon: Phone,
+      label: "هاتف المنزل",
+      value: patient.homePhone ?? "—",
+      ltr: true,
+    },
+    {
+      icon: Mail,
+      label: "البريد الإلكتروني",
+      value: patient.email ?? "—",
+      ltr: true,
+    },
+    {
+      icon: MapPin,
+      label: "العنوان",
+      value: patient.address ?? "—",
+    },
+    {
+      icon: ShieldAlert,
+      label: "الرقم الوطني / الهوية",
+      value: patient.nationalId ?? "—",
+      ltr: true,
+    },
+    {
+      icon: Users,
+      label: "جهات اتصال الطوارئ",
+      value: patient.emergencyContacts ?? "—",
+    },
+  ];
 
   return (
-    <div className="grid items-start gap-4 lg:grid-cols-3">
-      {/* ─── الملاحظات الطبية المهيكلة ─────────────────────────────── */}
-      <Card className="lg:col-span-2">
+    <div className="grid items-start gap-4 lg:grid-cols-2">
+      {/* ─── البيانات الشخصية ─────────────────────────────────────── */}
+      <Card>
         <CardHeader>
-          <CardTitle>الملاحظات الطبية</CardTitle>
+          <CardTitle>البيانات الشخصية</CardTitle>
         </CardHeader>
-        {hasNotes ? (
-          <div className="grid gap-5 p-5 sm:grid-cols-3">
-            <NoteSection title="حساسية" value={notes.allergies} tone="danger" />
-            <NoteSection title="أمراض مزمنة" value={notes.conditions} />
-            <NoteSection title="أدوية حالية" value={notes.medications} />
-            {notes.other && (
-              <div className="sm:col-span-3">
-                <NoteSection title="ملاحظات أخرى" value={notes.other} />
-              </div>
-            )}
-          </div>
-        ) : (
-          <p className="text-warm-500 p-5 text-sm">
-            لا ملاحظات طبية مسجلة — تُدخل من «تحرير البيانات».
-          </p>
-        )}
+        <div className="grid gap-4 p-5 sm:grid-cols-2">
+          <DataItem
+            icon={Users}
+            label="الجنس"
+            value={genderLabel(patient.gender) ?? "—"}
+          />
+          <DataItem
+            icon={Mail}
+            label="سنة الميلاد"
+            value={patient.birthYear !== null ? String(patient.birthYear) : "—"}
+          />
+          {personal.map((item) => (
+            <DataItem key={item.label} {...item} />
+          ))}
+        </div>
       </Card>
 
-      {/* ─── عمود جانبي: ملخص الخطة ثم المواعيد القادمة ─────────────── */}
-      <div className="flex flex-col gap-4">
-        <Card>
-          <CardHeader className="flex items-center justify-between gap-2">
-            <CardTitle className="flex items-center gap-2">
-              <ClipboardList size={16} aria-hidden className="text-warm-400" />
-              خطة العلاج
-            </CardTitle>
-            <button
-              type="button"
-              onClick={onOpenPlans}
-              className="text-primary-700 hover:text-primary-800 text-xs font-medium hover:underline"
-            >
-              إدارة الخطة ←
-            </button>
-          </CardHeader>
-          {planItems.length === 0 ? (
-            <div className="p-5">
-              <EmptyState
-                title="لا بنود علاج مسجلة"
-                description="تُضاف بنود الخطة المسعّرة من تبويب خطط العلاج باختيار سن ثم إدخال الإجراء وسعره."
-                action={
-                  <button
-                    type="button"
-                    onClick={onOpenPlans}
-                    className="bg-primary-600 hover:bg-primary-700 active:bg-primary-800 inline-flex h-8 items-center rounded-field px-3 text-xs font-medium text-white transition-colors"
-                  >
-                    افتح تبويب الخطة
-                  </button>
-                }
-                className="border-0 bg-transparent py-4"
-              />
-            </div>
-          ) : (
-            <div className="space-y-2 p-5">
-              <div className="grid grid-cols-3 gap-2">
-                {(["PROPOSED", "ACCEPTED", "DONE"] as const).map((status) => {
-                  const summary = totals.byStatus[status];
-                  return (
-                    <div
-                      key={status}
-                      className="border-warm-200 bg-surface rounded-panel border px-2.5 py-2 text-center"
-                    >
-                      <span className="text-warm-500 text-[11px]">
-                        {PLAN_STATUS_LABELS[status]}
-                      </span>
-                      <p className="text-ink-900 numeric text-sm font-semibold">
-                        {formatSyp(summary.total)}
-                      </p>
-                      <span className="text-warm-400 numeric text-[11px]">
-                        {summary.count} بند
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="border-primary-200 bg-primary-50 flex items-center justify-between rounded-panel border px-3 py-2">
-                <span className="text-primary-800 text-xs font-medium">
-                  إجمالي الخطة
-                </span>
-                <span className="numeric text-primary-800 text-sm font-semibold">
-                  {formatSyp(totals.grandTotal)}
-                </span>
-              </div>
+      {/* ─── السجل الطبي والملاحظات ───────────────────────────────── */}
+      <Card>
+        <CardHeader className="flex items-center justify-between gap-2">
+          <CardTitle>السجل الطبي والملاحظات</CardTitle>
+          <PatientEditModal patient={patient} />
+        </CardHeader>
+        <div className="space-y-5 p-5">
+          <div>
+            <p className="text-danger-700 flex items-center gap-1.5 text-xs font-semibold">
+              <ShieldAlert size={13} aria-hidden />
+              تحذيرات
+            </p>
+            {allergies ? (
+              <p className="text-ink-900 mt-1.5 whitespace-pre-line text-sm leading-6">
+                {allergies}
+              </p>
+            ) : (
+              <p className="text-warm-400 mt-1.5 text-sm">لا حساسيات مسجلة</p>
+            )}
+          </div>
+          <div>
+            <p className="text-warning-700 text-xs font-semibold">
+              الأمراض المزمنة
+            </p>
+            {chronic ? (
+              <p className="text-ink-900 mt-1.5 whitespace-pre-line text-sm leading-6">
+                {chronic}
+              </p>
+            ) : (
+              <p className="text-warm-400 mt-1.5 text-sm">لا أمراض مزمنة مسجلة</p>
+            )}
+          </div>
+          {patient.medicalNotes && (
+            <div>
+              <p className="text-warm-600 text-xs font-semibold">ملاحظات</p>
+              <p className="text-ink-900 mt-1.5 whitespace-pre-line text-sm leading-6">
+                {patient.medicalNotes}
+              </p>
             </div>
           )}
-        </Card>
-
-        <Card>
-          <CardHeader className="flex items-center justify-between gap-2">
-            <CardTitle className="flex items-center gap-2">
-              <CalendarDays size={16} aria-hidden className="text-warm-400" />
-              المواعيد القادمة
-            </CardTitle>
-            <button
-              type="button"
-              onClick={onOpenAppointments}
-              className="text-primary-700 hover:text-primary-800 text-xs font-medium hover:underline"
-            >
-              كل المواعيد ←
-            </button>
-          </CardHeader>
-          {upcoming.length === 0 ? (
-            <p className="text-warm-500 p-5 text-sm">لا مواعيد قادمة.</p>
-          ) : (
-            <ul className="divide-warm-200 divide-y">
-              {upcoming.slice(0, 5).map((a) => (
-                <li
-                  key={a.id}
-                  className="flex items-start justify-between gap-2 px-5 py-3"
-                >
-                  <div className="min-w-0">
-                    <p className="text-ink-900 text-sm font-medium">
-                      {formatDayLabel(a.startsAt)}
-                    </p>
-                    <p className="text-warm-500 numeric text-xs">
-                      {formatTime(a.startsAt)} · {a.durationMin} دقيقة
-                    </p>
-                    {a.reason && (
-                      <p className="text-warm-600 mt-0.5 truncate text-xs">
-                        {a.reason}
-                      </p>
-                    )}
-                  </div>
-                  <span
-                    className={`mt-0.5 shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${APPT_STATUS_META[a.status].chip}`}
-                  >
-                    {APPT_STATUS_META[a.status].label}
-                  </span>
-                </li>
-              ))}
-            </ul>
+          {!allergies && !chronic && !patient.medicalNotes && (
+            <p className="text-warm-400 text-sm">
+              لا سجل طبي بعد — أضف التحذيرات والأمراض المزمنة من «تعديل
+              البيانات».
+            </p>
           )}
-        </Card>
-      </div>
+        </div>
+      </Card>
     </div>
   );
 }

@@ -456,3 +456,41 @@ export async function listMaterialUsages(
     materialName: row.material.name,
   }));
 }
+
+export type PatientUsageRow = {
+  createdAt: Date;
+  materialName: string;
+  quantityUsed: number;
+  /** كلفة الاستهلاك = كلفة الوحدة × الكمية — null بلا كلفة مسجلة على المادة */
+  costSyp: number | null;
+};
+
+/** استهلاك المواد على مريض بعينه — لسجل الدفعات/المخزون في ملفه */
+export async function listPatientMaterialUsages(
+  ctx: TenantContext,
+  patientId: string,
+): Promise<PatientUsageRow[]> {
+  const db = clinicScope(ctx.clinicId);
+  const rows = await db.materialUsage.findMany({
+    where: { patientId },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+    select: {
+      createdAt: true,
+      quantityUsed: true,
+      material: { select: { name: true, costSyp: true } },
+    },
+  });
+  return rows.map((row) => {
+    const quantityUsed = Number(row.quantityUsed);
+    return {
+      createdAt: row.createdAt,
+      materialName: row.material.name,
+      quantityUsed,
+      costSyp:
+        row.material.costSyp === null
+          ? null
+          : row.material.costSyp * quantityUsed,
+    };
+  });
+}

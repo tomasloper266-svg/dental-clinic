@@ -28,9 +28,9 @@ export default function PatientEditModal({ patient }: { patient: PatientDto }) {
     <>
       <Button variant="secondary" onClick={() => setOpen(true)}>
         <Pencil size={16} aria-hidden />
-        تحرير البيانات
+        تعديل البيانات
       </Button>
-      <Modal open={open} onClose={close} title="تحرير مريض">
+      <Modal open={open} onClose={close} title="تعديل بيانات المريض">
         <PatientForm editing={patient} onSaved={onSaved} onCancel={close} />
       </Modal>
     </>

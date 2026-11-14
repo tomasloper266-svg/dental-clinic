@@ -2,6 +2,8 @@ import { cn } from "./cn";
 
 type PageHeaderProps = {
   title: string;
+  /** عقدة تُعرض بجوار العنوان — أفاتار المريض في ملف المريض مثلاً */
+  leading?: React.ReactNode;
   /** سطر تاريخ/وصف صغير باهت تحت العنوان — نص أو محتوى (أيقونات بيانات) */
   description?: React.ReactNode;
   /** أزرار إجراءات الصفحة — تظهر في الطرف المقابل للعنوان (RTL) */
@@ -37,6 +39,7 @@ export function HeaderDivider({ className }: { className?: string }) {
 /** ترويسة صفحة موحّدة: عنوان كبير بخط الرقعة المزخرف + سطر باهت + إجراءات + فاصل بمعيّن */
 export function PageHeader({
   title,
+  leading,
   description,
   actions,
   className,
@@ -44,13 +47,16 @@ export function PageHeader({
   return (
     <header className={cn("mb-5", className)}>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="font-display text-[25px] font-normal leading-[1.45] text-ink-900">
-            {title}
-          </h1>
-          {description && (
-            <p className="mt-1 text-[12.5px] text-warm-500">{description}</p>
-          )}
+        <div className="flex items-start gap-3">
+          {leading}
+          <div>
+            <h1 className="font-display text-[25px] font-normal leading-[1.45] text-ink-900">
+              {title}
+            </h1>
+            {description && (
+              <p className="mt-1 text-[12.5px] text-warm-500">{description}</p>
+            )}
+          </div>
         </div>
         {actions && (
           <div className="flex items-center gap-2">{actions}</div>

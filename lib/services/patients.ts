@@ -4,6 +4,8 @@ import type { TenantContext } from "@/lib/tenant/context";
 // خدمة المرضى — نمط مرجعي لخدمات العيادة: كل استعلام عبر clinicScope
 // بمعرّف العيادة من سياق الجلسة، ولا يلمس الـ route handler العميل مباشرة.
 
+export type Gender = "MALE" | "FEMALE";
+
 export type PatientDto = {
   id: string;
   name: string;
@@ -11,6 +13,16 @@ export type PatientDto = {
   phone: string | null;
   address: string | null;
   medicalNotes: string | null;
+  gender: Gender | null;
+  secondaryPhone: string | null;
+  homePhone: string | null;
+  email: string | null;
+  nationalId: string | null;
+  bloodType: string | null;
+  allergies: string | null;
+  chronicDiseases: string | null;
+  emergencyContacts: string | null;
+  fileNo: number | null;
   createdAt: Date;
 };
 
@@ -21,6 +33,16 @@ const PATIENT_SELECT = {
   phone: true,
   address: true,
   medicalNotes: true,
+  gender: true,
+  secondaryPhone: true,
+  homePhone: true,
+  email: true,
+  nationalId: true,
+  bloodType: true,
+  allergies: true,
+  chronicDiseases: true,
+  emergencyContacts: true,
+  fileNo: true,
   createdAt: true,
 } as const;
 
@@ -29,15 +51,23 @@ export async function listPatients(
   search?: string,
 ): Promise<PatientDto[]> {
   const db = clinicScope(ctx.clinicId);
+  // البحث بالاسم أو الهاتف أو الرقم الوطني أو رقم الملف (الأيوبي) —
+  // الرقم الصرف يطابق fileNo وnationalId بدقة، والنص يطابق الاسم والهواتف.
+  const needle = search?.trim();
+  const numeric = /^\d+$/.test(needle ?? "") ? Number(needle) : null;
+  const where = needle
+    ? {
+        OR: [
+          { name: { contains: needle, mode: "insensitive" as const } },
+          { phone: { contains: needle } },
+          { secondaryPhone: { contains: needle } },
+          { nationalId: { contains: needle } },
+          ...(numeric !== null ? [{ fileNo: numeric }] : []),
+        ],
+      }
+    : {};
   const patients = await db.patient.findMany({
-    where: search
-      ? {
-          OR: [
-            { name: { contains: search, mode: "insensitive" } },
-            { phone: { contains: search, mode: "insensitive" } },
-          ],
-        }
-      : {},
+    where,
     orderBy: { createdAt: "desc" },
     take: 100,
     select: PATIENT_SELECT,
@@ -62,11 +92,55 @@ export type CreatePatientInput = {
   phone?: string;
   address?: string;
   medicalNotes?: string;
+  gender?: Gender;
+  secondaryPhone?: string;
+  homePhone?: string;
+  email?: string;
+  nationalId?: string;
+  bloodType?: string;
+  allergies?: string;
+  chronicDiseases?: string;
+  emergencyContacts?: string;
 };
 
-export type UpdatePatientInput = Partial<CreatePatientInput>;
+export type UpdatePatientInput = Omit<
+  Partial<CreatePatientInput>,
+  "birthYear" | "gender"
+> & {
+  // null يمسح الحقل في التحديث — أوسع من نوع الإنشاء الذي لا يمسح شيئاً.
+  // Omit لأن التقاطع مع Partial يضيّق النوع ويحجب null.
+  birthYear?: number | null;
+  gender?: Gender | null;
+};
 
-function validateFields(
+// حقول نصية حرة — القيم تُقتطع من الفراغات ويُحوَّل الفراغ إلى undefined
+// ليعني «أُفرغ الحقل» بدل «أُهمل».
+function optionalString(
+  value: unknown,
+  guard: string,
+): { value?: string } | { error: string } {
+  if (value === undefined) return {};
+  if (typeof value !== "string") return { error: guard };
+  const trimmed = value.trim();
+  return { value: trimmed || undefined };
+}
+
+// حقول نصية حرة — مفاتيحها النصية فقط (سنة الميلاد والجنس يُعالجان صراحة)؛
+// المصفوفتان في validatePatientFields وparseUpdatePatient هما المصدر التشغيلي.
+type StringField =
+  | "phone"
+  | "secondaryPhone"
+  | "homePhone"
+  | "address"
+  | "email"
+  | "nationalId"
+  | "bloodType"
+  | "allergies"
+  | "chronicDiseases"
+  | "emergencyContacts"
+  | "medicalNotes";
+
+export function validatePatientFields(
   b: Record<string, unknown>,
 ): { ok: true; value: CreatePatientInput } | { ok: false; error: string } {
   const name = typeof b.name === "string" ? b.name.trim() : "";
@@ -80,16 +154,36 @@ function validateFields(
   if (birthYear !== undefined && (birthYear < 1900 || birthYear > 2100)) {
     return { ok: false, error: "سنة الميلاد غير صالحة" };
   }
-  const phone = typeof b.phone === "string" ? b.phone.trim() : undefined;
-  const address =
-    typeof b.address === "string" ? b.address.trim() : undefined;
-  const medicalNotes =
-    typeof b.medicalNotes === "string" ? b.medicalNotes.trim() : undefined;
+  let gender: Gender | undefined;
+  if (b.gender !== undefined && b.gender !== null) {
+    if (b.gender !== "MALE" && b.gender !== "FEMALE") {
+      return { ok: false, error: "الجنس غير صالح" };
+    }
+    gender = b.gender;
+  }
 
-  return {
-    ok: true,
-    value: { name, birthYear, phone, address, medicalNotes },
-  };
+  const strings: ReadonlyArray<[StringField, string]> = [
+    ["phone", "رقم الهاتف غير صالح"],
+    ["secondaryPhone", "الهاتف الإضافي غير صالح"],
+    ["homePhone", "هاتف المنزل غير صالح"],
+    ["address", "العنوان غير صالح"],
+    ["email", "البريد الإلكتروني غير صالح"],
+    ["nationalId", "الرقم الوطني غير صالح"],
+    ["bloodType", "فصيلة الدم غير صالحة"],
+    ["allergies", "الحساسيات غير صالحة"],
+    ["chronicDiseases", "الأمراض المزمنة غير صالحة"],
+    ["emergencyContacts", "جهات اتصال الطوارئ غير صالحة"],
+    ["medicalNotes", "الملاحظات الطبية غير صالحة"],
+  ];
+
+  const value: CreatePatientInput = { name, birthYear, gender };
+  for (const [key, guard] of strings) {
+    const parsed = optionalString(b[key], guard);
+    if ("error" in parsed) return { ok: false, error: parsed.error };
+    if (parsed.value !== undefined) value[key] = parsed.value;
+  }
+
+  return { ok: true, value };
 }
 
 // تحقق نقي — يُختبر في وحدة منفصلة عن قاعدة البيانات.
@@ -99,7 +193,7 @@ export function parseCreatePatient(
   if (typeof body !== "object" || body === null) {
     return { ok: false, error: "طلب غير صالح" };
   }
-  return validateFields(body as Record<string, unknown>);
+  return validatePatientFields(body as Record<string, unknown>);
 }
 
 // نفس القواعد لكن كل حقل اختياري — يُحدَّث ما ورد فقط.
@@ -120,36 +214,58 @@ export function parseUpdatePatient(
     partial.name = name;
   }
   if (b.birthYear !== undefined) {
-    if (
+    if (b.birthYear === null) {
+      partial.birthYear = null;
+    } else if (
       typeof b.birthYear !== "number" ||
       !Number.isInteger(b.birthYear) ||
       b.birthYear < 1900 ||
       b.birthYear > 2100
     ) {
       return { ok: false, error: "سنة الميلاد غير صالحة" };
+    } else {
+      partial.birthYear = b.birthYear;
     }
-    partial.birthYear = b.birthYear;
   }
-  if (b.phone !== undefined) {
-    if (typeof b.phone !== "string") {
-      return { ok: false, error: "رقم الهاتف غير صالح" };
+  if (b.gender !== undefined) {
+    if (b.gender === null) {
+      partial.gender = null;
+    } else if (b.gender !== "MALE" && b.gender !== "FEMALE") {
+      return { ok: false, error: "الجنس غير صالح" };
+    } else {
+      partial.gender = b.gender;
     }
-    partial.phone = b.phone.trim();
   }
-  if (b.address !== undefined) {
-    if (typeof b.address !== "string") {
-      return { ok: false, error: "العنوان غير صالح" };
-    }
-    partial.address = b.address.trim();
-  }
-  if (b.medicalNotes !== undefined) {
-    if (typeof b.medicalNotes !== "string") {
-      return { ok: false, error: "الملاحظات الطبية غير صالحة" };
-    }
-    partial.medicalNotes = b.medicalNotes.trim();
+
+  const strings: ReadonlyArray<[StringField, string]> = [
+    ["phone", "رقم الهاتف غير صالح"],
+    ["secondaryPhone", "الهاتف الإضافي غير صالح"],
+    ["homePhone", "هاتف المنزل غير صالح"],
+    ["address", "العنوان غير صالح"],
+    ["email", "البريد الإلكتروني غير صالح"],
+    ["nationalId", "الرقم الوطني غير صالح"],
+    ["bloodType", "فصيلة الدم غير صالحة"],
+    ["allergies", "الحساسيات غير صالحة"],
+    ["chronicDiseases", "الأمراض المزمنة غير صالحة"],
+    ["emergencyContacts", "جهات اتصال الطوارئ غير صالحة"],
+    ["medicalNotes", "الملاحظات الطبية غير صالحة"],
+  ];
+
+  for (const [key, guard] of strings) {
+    if (b[key] === undefined) continue;
+    const parsed = optionalString(b[key], guard);
+    if ("error" in parsed) return { ok: false, error: parsed.error };
+    // حقل ورد فارغاً يعني «أُفرغ» — يُخزَّن سلسلة فارغة لا إهمالاً للتحديث
+    partial[key] = parsed.value ?? "";
   }
 
   return { ok: true, value: partial };
+}
+
+// رقم الأيوبي — أول رقم حر داخل العيادة بدءاً من 1. نقية؛ تُستدعى داخل
+// معاملة الإنشاء حيث يمنع القيد الفريد (clinicId, fileNo) أي تزاحم.
+export function nextFileNo(existing: ReadonlyArray<number | null>): number {
+  return existing.reduce<number>((max, no) => Math.max(max, no ?? 0), 0) + 1;
 }
 
 export async function createPatient(
@@ -157,19 +273,22 @@ export async function createPatient(
   input: CreatePatientInput,
 ): Promise<PatientDto> {
   const db = clinicScope(ctx.clinicId);
-  const patient = await db.patient.create({
-    // clinicId صريح أيضاً — الحقن الآلي في clinicScope يبقى ضمانة إضافية.
-    data: {
-      clinicId: ctx.clinicId,
-      name: input.name,
-      birthYear: input.birthYear,
-      phone: input.phone,
-      address: input.address,
-      medicalNotes: input.medicalNotes,
-    },
-    select: PATIENT_SELECT,
+  return db.$transaction(async (tx) => {
+    const numbers = await tx.patient.findMany({
+      where: { clinicId: ctx.clinicId },
+      select: { fileNo: true },
+    });
+    const patient = await tx.patient.create({
+      // clinicId صريح أيضاً — الحقن الآلي في clinicScope يبقى ضمانة إضافية.
+      data: {
+        clinicId: ctx.clinicId,
+        ...input,
+        fileNo: nextFileNo(numbers.map((p) => p.fileNo)),
+      },
+      select: PATIENT_SELECT,
+    });
+    return patient;
   });
-  return patient;
 }
 
 // التحديث محصور بالعيادة عبر clinicScope — مريض عيادة أخرى يعيد null
@@ -196,9 +315,11 @@ export async function updatePatient(
 export type DeletePatientResult = { ok: true } | { ok: false; error: string };
 
 /**
- * حذف مريض محصور بالعيادة عبر clinicScope — مسموح فقط لمن بلا أي سجل
- * (مواعيد، قيود، مخطط أسنان، خطة، انتظار، استهلاك مواد، إرسال تعليمات).
- * السجل السريري والمالي لا يُحذف أبداً — الحذف للسجلات الخاطئة الفارغة حصراً.
+ * حذف مريض بكل سجلاته، محصوراً بالعيادة عبر clinicScope — بموافقة صريحة
+ * من الواجهة (تأكيد قبل الحذف). داخل معاملة واحدة: استهلاك المواد المرتبط
+ * بمواعيده يُحذف أولاً (بلا حذف تعاقبي في المخطط)، ثم سجلات المريض، ثم
+ * مواعيده (تجرّ معها التذكيرات وسجل الحالات بحذف تعاقبي)، ثم المريض نفسه.
+ * القيود المالية وكل السجل يُزالون مع المريض — طلب المستخدم الصريح للحذف.
  */
 export async function deletePatient(
   ctx: TenantContext,
@@ -211,41 +332,27 @@ export async function deletePatient(
   });
   if (!existing) return { ok: false, error: "المريض غير موجود" };
 
-  const [
-    appointments,
-    ledgerEntries,
-    toothFindings,
-    treatmentPlanItems,
-    waitlistEntries,
-    materialUsages,
-    instructionSends,
-  ] = await Promise.all([
-    db.appointment.count({ where: { patientId } }),
-    db.ledgerEntry.count({ where: { patientId } }),
-    db.toothFinding.count({ where: { patientId } }),
-    db.treatmentPlanItem.count({ where: { patientId } }),
-    db.waitlistEntry.count({ where: { patientId } }),
-    db.materialUsage.count({ where: { patientId } }),
-    db.instructionSend.count({ where: { patientId } }),
-  ]);
+  await db.$transaction(async (tx) => {
+    const appointmentIds = await tx.appointment
+      .findMany({
+        where: { patientId },
+        select: { id: true },
+      })
+      .then((rows) => rows.map((r) => r.id));
 
-  if (
-    appointments +
-      ledgerEntries +
-      toothFindings +
-      treatmentPlanItems +
-      waitlistEntries +
-      materialUsages +
-      instructionSends >
-    0
-  ) {
-    return {
-      ok: false,
-      error:
-        "لا يمكن حذف مريض له سجل سريري أو مالي — السجل محفوظ ويبقى في مكانه",
-    };
-  }
+    // استهلاك مواد مرتبط بمواعيد المريض بلا patientId لا يحجب حذف المواعيد
+    await tx.materialUsage.deleteMany({
+      where: { appointmentId: { in: appointmentIds } },
+    });
+    await tx.materialUsage.deleteMany({ where: { patientId } });
+    await tx.instructionSend.deleteMany({ where: { patientId } });
+    await tx.ledgerEntry.deleteMany({ where: { patientId } });
+    await tx.toothFinding.deleteMany({ where: { patientId } });
+    await tx.treatmentPlanItem.deleteMany({ where: { patientId } });
+    await tx.waitlistEntry.deleteMany({ where: { patientId } });
+    await tx.appointment.deleteMany({ where: { patientId } });
+    await tx.patient.delete({ where: { id: patientId } });
+  });
 
-  await db.patient.delete({ where: { id: patientId } });
   return { ok: true };
 }

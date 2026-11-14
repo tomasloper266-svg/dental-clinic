@@ -1,17 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import {
-  composeMedicalNotes,
-  parseMedicalNotes,
-} from "@/lib/medical-notes";
-import type { PatientDto } from "@/lib/services/patients";
+import { TriangleAlert } from "lucide-react";
+import type { Gender, PatientDto } from "@/lib/services/patients";
 import { Button } from "@/components/ui/Button";
-import { Field, Input, Textarea } from "@/components/ui/Field";
+import { Field, Input, Select, Textarea } from "@/components/ui/Field";
 
-// نموذج إنشاء/تحرير مريض — نفس النموذج للحالتين: يُرسل POST عند الإنشاء
-// وPATCH عند التحرير، والأخطاء تعرض حسب الرد من الخادم.
-// يُعرض داخل Modal في صفحة المرضى وملف المريض — بلا سطح خاص به.
+// نموذج إنشاء/تعديل بيانات المريض — نفس النموذج للحالتين: يُرسل POST عند
+// الإنشاء وPATCH عند التعديل. الحقول وترتيبها من المرجع: الاسم الكامل،
+// الهاتفان، الجنس، سنة الميلاد، العنوان، البريد، الرقم الوطني، فصيلة الدم،
+// الحساسيات، الأمراض المزمنة، هاتف المنزل، جهات اتصال الطوارئ، الملاحظات.
+
+const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] as const;
 
 type Props = {
   // null = إنشاء مريض جديد
@@ -22,27 +22,37 @@ type Props = {
 
 type FormState = {
   name: string;
-  birthYear: string;
   phone: string;
+  secondaryPhone: string;
+  homePhone: string;
+  gender: "" | Gender;
+  birthYear: string;
   address: string;
+  email: string;
+  nationalId: string;
+  bloodType: string;
   allergies: string;
-  conditions: string;
-  medications: string;
-  // أسطر حرمة موجودة سابقاً خارج الأقسام — تُحفظ ولا تُعرض للتحرير.
-  other: string;
+  chronicDiseases: string;
+  emergencyContacts: string;
+  medicalNotes: string;
 };
 
 function initialState(patient: PatientDto | null): FormState {
-  const notes = parseMedicalNotes(patient?.medicalNotes);
   return {
     name: patient?.name ?? "",
-    birthYear: patient?.birthYear ? String(patient.birthYear) : "",
     phone: patient?.phone ?? "",
+    secondaryPhone: patient?.secondaryPhone ?? "",
+    homePhone: patient?.homePhone ?? "",
+    gender: patient?.gender ?? "",
+    birthYear: patient?.birthYear ? String(patient.birthYear) : "",
     address: patient?.address ?? "",
-    allergies: notes.allergies,
-    conditions: notes.conditions,
-    medications: notes.medications,
-    other: notes.other,
+    email: patient?.email ?? "",
+    nationalId: patient?.nationalId ?? "",
+    bloodType: patient?.bloodType ?? "",
+    allergies: patient?.allergies ?? "",
+    chronicDiseases: patient?.chronicDiseases ?? "",
+    emergencyContacts: patient?.emergencyContacts ?? "",
+    medicalNotes: patient?.medicalNotes ?? "",
   };
 }
 
@@ -51,7 +61,7 @@ export default function PatientForm({ editing, onSaved, onCancel }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  function set<K extends keyof FormState>(key: K, value: string) {
+  function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -60,19 +70,23 @@ export default function PatientForm({ editing, onSaved, onCancel }: Props) {
     setSubmitting(true);
     setError(null);
 
-    const birthYear = form.birthYear.trim() ? Number(form.birthYear) : undefined;
+    const birthYear = form.birthYear.trim() ? Number(form.birthYear) : null;
+    // الحقول الفارغة تُرسل فارغة صراحة — «أُفرغ الحقل» لا «أُهمل»
     const body = {
       name: form.name,
       birthYear,
-      phone: form.phone.trim() || undefined,
-      address: form.address.trim() || undefined,
-      medicalNotes:
-        composeMedicalNotes({
-          allergies: form.allergies,
-          conditions: form.conditions,
-          medications: form.medications,
-          other: form.other,
-        }) || undefined,
+      gender: form.gender || null,
+      phone: form.phone.trim(),
+      secondaryPhone: form.secondaryPhone.trim(),
+      homePhone: form.homePhone.trim(),
+      address: form.address.trim(),
+      email: form.email.trim(),
+      nationalId: form.nationalId.trim(),
+      bloodType: form.bloodType.trim(),
+      allergies: form.allergies.trim(),
+      chronicDiseases: form.chronicDiseases.trim(),
+      emergencyContacts: form.emergencyContacts.trim(),
+      medicalNotes: form.medicalNotes.trim(),
     };
 
     try {
@@ -104,7 +118,7 @@ export default function PatientForm({ editing, onSaved, onCancel }: Props) {
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <Field label="الاسم" htmlFor="name">
+          <Field label="الاسم الكامل *" htmlFor="name">
             <Input
               id="name"
               type="text"
@@ -115,6 +129,41 @@ export default function PatientForm({ editing, onSaved, onCancel }: Props) {
             />
           </Field>
         </div>
+
+        <Field label="الهاتف الأساسي" htmlFor="phone">
+          <Input
+            id="phone"
+            type="tel"
+            dir="ltr"
+            className="text-start"
+            value={form.phone}
+            onChange={(e) => set("phone", e.target.value)}
+            placeholder="09xxxxxxxx"
+          />
+        </Field>
+
+        <Field label="هاتف إضافي" htmlFor="secondaryPhone">
+          <Input
+            id="secondaryPhone"
+            type="tel"
+            dir="ltr"
+            className="text-start"
+            value={form.secondaryPhone}
+            onChange={(e) => set("secondaryPhone", e.target.value)}
+          />
+        </Field>
+
+        <Field label="الجنس" htmlFor="gender">
+          <Select
+            id="gender"
+            value={form.gender}
+            onChange={(e) => set("gender", e.target.value as FormState["gender"])}
+          >
+            <option value="">—</option>
+            <option value="MALE">ذكر</option>
+            <option value="FEMALE">أنثى</option>
+          </Select>
+        </Field>
 
         <Field label="سنة الميلاد" htmlFor="birthYear" hint="لحساب العمر في القائمة والملف">
           <Input
@@ -128,66 +177,122 @@ export default function PatientForm({ editing, onSaved, onCancel }: Props) {
           />
         </Field>
 
-        <Field label="الهاتف" htmlFor="phone">
+        <Field label="العنوان" htmlFor="address">
           <Input
-            id="phone"
+            id="address"
+            type="text"
+            value={form.address}
+            onChange={(e) => set("address", e.target.value)}
+            placeholder="المدينة - الحي"
+          />
+        </Field>
+
+        <Field label="البريد الإلكتروني" htmlFor="email">
+          <Input
+            id="email"
+            type="email"
+            dir="ltr"
+            className="text-start"
+            value={form.email}
+            onChange={(e) => set("email", e.target.value)}
+          />
+        </Field>
+
+        <Field label="الرقم الوطني / الهوية" htmlFor="nationalId">
+          <Input
+            id="nationalId"
+            type="text"
+            dir="ltr"
+            className="text-start"
+            value={form.nationalId}
+            onChange={(e) => set("nationalId", e.target.value)}
+          />
+        </Field>
+
+        <Field label="فصيلة الدم" htmlFor="bloodType">
+          <Select
+            id="bloodType"
+            value={form.bloodType}
+            onChange={(e) => set("bloodType", e.target.value)}
+          >
+            <option value="">—</option>
+            {BLOOD_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </Select>
+        </Field>
+
+        <div className="sm:col-span-2">
+          <Field
+            label={
+              <span className="inline-flex items-center gap-1.5">
+                <TriangleAlert
+                  size={14}
+                  aria-hidden
+                  className="text-warning-500"
+                />
+                الحساسيات
+              </span>
+            }
+            htmlFor="allergies"
+          >
+            <Input
+              id="allergies"
+              type="text"
+              className="border-danger-300"
+              value={form.allergies}
+              onChange={(e) => set("allergies", e.target.value)}
+              placeholder="حساسية البنسلين…"
+            />
+          </Field>
+        </div>
+
+        <div className="sm:col-span-2">
+          <Field label="الأمراض المزمنة" htmlFor="chronicDiseases">
+            <Input
+              id="chronicDiseases"
+              type="text"
+              value={form.chronicDiseases}
+              onChange={(e) => set("chronicDiseases", e.target.value)}
+              placeholder="ضغط دم مرتفع، سكري…"
+            />
+          </Field>
+        </div>
+
+        <Field label="هاتف المنزل" htmlFor="homePhone">
+          <Input
+            id="homePhone"
             type="tel"
             dir="ltr"
             className="text-start"
-            value={form.phone}
-            onChange={(e) => set("phone", e.target.value)}
-            placeholder="09xxxxxxxx"
+            value={form.homePhone}
+            onChange={(e) => set("homePhone", e.target.value)}
+          />
+        </Field>
+
+        <Field label="جهات اتصال الطوارئ" htmlFor="emergencyContacts">
+          <Input
+            id="emergencyContacts"
+            type="text"
+            value={form.emergencyContacts}
+            onChange={(e) => set("emergencyContacts", e.target.value)}
+            placeholder="الاسم — رقم الهاتف"
           />
         </Field>
 
         <div className="sm:col-span-2">
-          <Field label="العنوان" htmlFor="address">
-            <Input
-              id="address"
-              type="text"
-              value={form.address}
-              onChange={(e) => set("address", e.target.value)}
+          <Field label="الملاحظات" htmlFor="medicalNotes">
+            <Textarea
+              id="medicalNotes"
+              rows={3}
+              value={form.medicalNotes}
+              onChange={(e) => set("medicalNotes", e.target.value)}
             />
           </Field>
         </div>
       </div>
-
-      {/* الملاحظات الطبية — الحساسية أولى بالتلميح البصري لأنها الأخطر سريرياً */}
-      <fieldset className="rounded-field border border-warm-200 bg-surface px-3 py-3">
-        <legend className="text-warm-700 px-1 text-xs font-semibold">
-          الملاحظات الطبية
-        </legend>
-        <div className="space-y-3">
-          <Field label="حساسية" htmlFor="allergies">
-            <Textarea
-              id="allergies"
-              rows={2}
-              className="border-danger-300"
-              value={form.allergies}
-              onChange={(e) => set("allergies", e.target.value)}
-              placeholder="بنسلين، لاتكس…"
-            />
-          </Field>
-          <Field label="أمراض مزمنة" htmlFor="conditions">
-            <Textarea
-              id="conditions"
-              rows={2}
-              value={form.conditions}
-              onChange={(e) => set("conditions", e.target.value)}
-              placeholder="سكري، ضغط…"
-            />
-          </Field>
-          <Field label="أدوية حالية" htmlFor="medications">
-            <Textarea
-              id="medications"
-              rows={2}
-              value={form.medications}
-              onChange={(e) => set("medications", e.target.value)}
-              placeholder="وارفارين، إنسولين…"
-            />
-          </Field>
-        </div>
-      </fieldset>
 
       {error && (
         <p
@@ -200,9 +305,9 @@ export default function PatientForm({ editing, onSaved, onCancel }: Props) {
 
       <div className="flex justify-start gap-2 pt-1">
         <Button type="submit" loading={submitting}>
-          {submitting ? "جارٍ الحفظ…" : "حفظ"}
+          {submitting ? "جارٍ الحفظ…" : "حفظ البيانات"}
         </Button>
-        <Button variant="ghost" onClick={onCancel} disabled={submitting}>
+        <Button variant="secondary" onClick={onCancel} disabled={submitting}>
           إلغاء
         </Button>
       </div>

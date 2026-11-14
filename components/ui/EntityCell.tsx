@@ -5,6 +5,8 @@ type EntityCellProps = {
   name: string;
   /** السطر الفرعي الباهت تحت الاسم (هاتف، تاريخ…) */
   subtitle?: string | null;
+  /** أيقونة صغيرة بجانب الاسم (الجنس في المرضى مثلاً) */
+  icon?: React.ReactNode;
   className?: string;
 };
 
@@ -17,7 +19,7 @@ export function firstLetter(name: string): string {
  * خلية كيان موحّدة — أفاتار دائري بالحرف الأول + اسم بارز وسطر فرعي باهت،
  * لصفوف المرضى والمدفوعات والمواد في كل الجداول.
  */
-export function EntityCell({ name, subtitle, className }: EntityCellProps) {
+export function EntityCell({ name, subtitle, icon, className }: EntityCellProps) {
   return (
     <div className={cn("flex items-center gap-2.5", className)}>
       <span
@@ -27,8 +29,11 @@ export function EntityCell({ name, subtitle, className }: EntityCellProps) {
         {firstLetter(name)}
       </span>
       <span className="min-w-0">
-        <span className="block truncate text-sm font-semibold text-ink-900">
-          {name}
+        <span className="flex items-center gap-1">
+          <span className="block truncate text-sm font-semibold text-ink-900">
+            {name}
+          </span>
+          {icon}
         </span>
         {subtitle && (
           <span className="numeric block truncate text-xs text-warm-500">

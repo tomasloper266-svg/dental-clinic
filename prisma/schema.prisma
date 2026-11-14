@@ -85,6 +85,12 @@ enum NotificationChannel {
   EMAIL
 }
 
+// نوع الجنس — لعرض القائمة بأيقونتي ذكر/أنثى وللتبويب حسب الجنس
+enum Gender {
+  MALE
+  FEMALE
+}
+
 enum SupportRequestStatus {
   OPEN
   IN_PROGRESS
@@ -212,6 +218,20 @@ model Patient {
   medicalNotes String?
   createdAt    DateTime @default(now())
 
+  // حقول الهوية والاتصال الموسّعة — كلها اختيارية حفاظاً على البيانات القائمة
+  gender          Gender?
+  secondaryPhone  String?
+  homePhone       String?
+  email           String?
+  nationalId      String?
+  bloodType       String?
+  allergies       String?
+  chronicDiseases String?
+  emergencyContacts String?
+  // رقم الأيوبي (رقم الملف) — تسلسل تلقائي داخل العيادة يُعرَض في القائمة
+  // ويُبحث به؛ يُنشأ عند التسجيل ولا يُعاد ترقيمه أبداً.
+  fileNo          Int?
+
   clinic             Clinic              @relation(fields: [clinicId], references: [id])
   appointments       Appointment[]
   waitlistEntries    WaitlistEntry[]
@@ -223,6 +243,7 @@ model Patient {
 
   @@index([clinicId, name])
   @@index([clinicId, phone])
+  @@unique([clinicId, fileNo])
 }
 
 // ─── المواعيد وقائمة الانتظار ────────────────────────────────────────────────

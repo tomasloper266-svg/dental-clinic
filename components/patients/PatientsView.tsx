@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Pencil, Plus, Trash2, Users } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Mars, Pencil, Plus, Trash2, Users, Venus } from "lucide-react";
 import { formatDateCell } from "@/lib/dates";
 import { formatDayLabel } from "@/lib/appointment-ui";
 import { formatSyp } from "@/lib/utils";
@@ -10,8 +10,9 @@ import type { PatientDto } from "@/lib/services/patients";
 import {
   PATIENT_FILTERS,
   ageFromBirthYear,
-  countFlags,
+  countGenders,
   filterPatients,
+  genderLabel,
   searchPatientRows,
   sortPatientRows,
   type PatientFilterKey,
@@ -38,10 +39,35 @@ import { useToast } from "@/components/ui/Toast";
 // البيانات كلها من الصفحة الخادمية — التصفية والترتيب هنا زبونية نقية.
 
 const SORT_OPTIONS: ReadonlyArray<{ value: PatientSortKey; label: string }> = [
-  { value: "name", label: "الاسم" },
-  { value: "newest", label: "الأحدث تسجيلاً" },
-  { value: "balance", label: "الرصيد المستحق" },
+  { value: "name", label: "ترتيب: الاسم" },
+  { value: "newest", label: "ترتيب: الأحدث تسجيلاً" },
+  { value: "balance", label: "ترتيب: الرصيد المستحق" },
 ];
+
+/** أيقونة الجنس — ذكر/أنثى، بلا أيقونة لمن بلا جنس مسجل */
+function GenderIcon({ gender }: { gender: PatientDto["gender"] }) {
+  if (gender === "MALE")
+    return <Mars size={13} aria-hidden className="text-primary-700 shrink-0" />;
+  if (gender === "FEMALE")
+    return <Venus size={13} aria-hidden className="text-plum-700 shrink-0" />;
+  return null;
+}
+
+/** خلية المريض — أفاتار بالحرف الأول، الاسم، ثم الجنس والهاتف ورقم الملف */
+function PatientCell({ patient }: { patient: PatientDto }) {
+  const parts = [
+    genderLabel(patient.gender),
+    patient.phone,
+    patient.fileNo !== null ? `رقم ${patient.fileNo}` : null,
+  ].filter(Boolean);
+  return (
+    <EntityCell
+      name={patient.name}
+      subtitle={parts.length > 0 ? parts.join(" · ") : undefined}
+      icon={<GenderIcon gender={patient.gender} />}
+    />
+  );
+}
 
 function AgeCell({ birthYear }: { birthYear: number | null }) {
   const age = ageFromBirthYear(birthYear);
@@ -83,13 +109,17 @@ export default function PatientsView({ rows }: Props) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<PatientFilterKey>("ALL");
   const [sortKey, setSortKey] = useState<PatientSortKey>("name");
-  const [showForm, setShowForm] = useState(false);
+  const searchParams = useSearchParams();
+  // «+ مريض جديد» من ملف المريض يصل عبر ?create=1 — تُفتح نافذة الإنشاء فوراً
+  const [showForm, setShowForm] = useState(
+    () => searchParams.get("create") === "1",
+  );
   const [editing, setEditing] = useState<PatientDto | null>(null);
   const [deleting, setDeleting] = useState<PatientDto | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const counts = useMemo(() => countFlags(rows.map((r) => r.patient)), [rows]);
+  const counts = useMemo(() => countGenders(rows.map((r) => r.patient)), [rows]);
 
   const visible = useMemo(() => {
     const afterFilter = filterPatients(
@@ -184,8 +214,9 @@ export default function PatientsView({ rows }: Props) {
       >
         <div className="flex flex-col gap-4">
           <p className="text-sm text-warm-700">
-            هل تريد حذف «{deleting?.name}» نهائياً؟ الحذف متاح فقط لمن بلا أي
-            سجل مواعيد أو قيود مالية — والسجلات المحفوظة لا تُحذف.
+            هل تريد حذف «{deleting?.name}» نهائياً؟ سيُحذف المريض وكل سجلاته
+            (المواعيد، القيود المالية، مخطط الأسنان، خطة العلاج) — ولا يمكن
+            التراجع.
           </p>
           {deleteError && (
             <p role="alert" className="text-xs text-danger-600">
@@ -288,10 +319,7 @@ export default function PatientsView({ rows }: Props) {
               {visible.map(({ patient, balanceSyp, lastVisit, nextVisit }) => (
                 <TRow key={patient.id}>
                   <TD>
-                    <EntityCell
-                      name={patient.name}
-                      subtitle={patient.phone ?? undefined}
-                    />
+                    <PatientCell patient={patient} />
                   </TD>
                   <TD className="hidden md:table-cell">
                     <AgeCell birthYear={patient.birthYear} />

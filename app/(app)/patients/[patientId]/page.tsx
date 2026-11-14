@@ -7,13 +7,14 @@ import { listFindings } from "@/lib/services/findings";
 import { listPlan } from "@/lib/services/treatment-plan";
 import { listPatientAppointments } from "@/lib/services/appointments";
 import { listLedgerEntries } from "@/lib/services/ledger";
+import { listPatientMaterialUsages } from "@/lib/services/inventory";
 import { getClinicUsdRate } from "@/lib/services/account";
 import PatientRecord from "@/components/patients/record/PatientRecord";
 
-// ملف المريض المتكامل — وحدة عمل سريرية بخمسة تبويبات (نظرة عامة، مخطط
-// الأسنان، خطط العلاج، المواعيد، الحسابات). هذه الصفحة تنسيق خادمي فقط:
-// كل البيانات تُقرأ من خدمات العيادة المحصورة بالجلسة (findings، الخطة،
-// المواعيد، الدفتر) وتُمرَّر لمكوّن العميل الذي ينظّمها في تبويبات.
+// ملف المريض — أربعة تبويبات (الملف، المواعيد، مخطط الأسنان وخطط العلاج،
+// الحساب والسجل المالي). هذه الصفحة تنسيق خادمي فقط: كل البيانات تُقرأ من
+// خدمات العيادة المحصورة بالجلسة (findings، الخطة، المواعيد، الدفتر،
+// استهلاك المواد) وتُمرَّر لمكوّن العميل الذي ينظّمها في تبويبات.
 // لا مسارات جديدة ولا منطق هنا — وعزل clinicScope كما هو.
 
 export default async function PatientProfilePage({
@@ -31,11 +32,19 @@ export default async function PatientProfilePage({
   const patient = await getPatient(ctx, patientId);
   if (!patient) notFound();
 
-  const [findings, planItems, appointments, ledger, usdRate] = await Promise.all([
+  const [
+    findings,
+    planItems,
+    appointments,
+    ledger,
+    materialUsages,
+    usdRate,
+  ] = await Promise.all([
     listFindings(ctx, patientId),
     listPlan(ctx, patientId),
     listPatientAppointments(ctx, patientId),
     listLedgerEntries(ctx, patientId),
+    listPatientMaterialUsages(ctx, patientId),
     getClinicUsdRate(ctx),
   ]);
 
@@ -47,6 +56,11 @@ export default async function PatientProfilePage({
       appointments={appointments}
       ledgerEntries={ledger.entries}
       ledgerBalance={ledger.balance}
+      materialRows={materialUsages.map((row) => ({
+        createdAt: row.createdAt,
+        materialName: row.materialName,
+        costSyp: row.costSyp ?? 0,
+      }))}
       usdRate={usdRate}
     />
   );

@@ -1,128 +1,144 @@
 "use client";
 
-import { CalendarDays, CalendarPlus, History } from "lucide-react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { CalendarDays, CalendarPlus, Pencil } from "lucide-react";
 import type { AppointmentDto } from "@/lib/services/appointments";
-import { splitAppointments } from "@/lib/patient-profile";
 import {
   STATUS_META as APPT_STATUS_META,
   formatDayLabel,
   formatTime,
 } from "@/lib/appointment-ui";
+import type { AppointmentJson } from "@/components/appointments/AppointmentDetailsDrawer";
+import { AppointmentDetailsDrawer } from "@/components/appointments/AppointmentDetailsDrawer";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Table, THead, TRow, TH, TD } from "@/components/ui/Table";
+import { IconAction } from "@/components/ui/TableActions";
 
-// تبويب «المواعيد» في ملف المريض — القائمة الكاملة قادمة وسابقة بحالاتها،
-// نهاية القص المقطوع (أول 4 قادمة وأول 5 سابقة) في ملف المريض القديم.
+// تبويب «المواعيد» — جدول واحد لكافة المواعيد (قادمة وسابقة) بأعمدة
+// التاريخ/الوقت/الخدمة أو الطبيب/القيمة/الحالة وقلم تعديل لكل صف كالمرجع.
+// القيمة غير موجودة على الموعد في المخطط — العمود موجود ويعرض «—» حتى
+// تُربط المواعيد بالتسعير لاحقاً.
 
 type Props = {
   appointments: AppointmentDto[];
   onNewAppointment: () => void;
 };
 
+/** سطر «الخدمة أو الطبيب» — سبب الزيارة أو اسم الطبيب المسند */
+function serviceOrDoctor(a: AppointmentDto): string {
+  if (a.reason && a.staffName) return `${a.reason} · ${a.staffName}`;
+  return a.reason ?? a.staffName ?? "—";
+}
+
 export default function AppointmentsTab({
   appointments,
   onNewAppointment,
 }: Props) {
-  const now = new Date();
-  const { upcoming, past } = splitAppointments(appointments, now);
+  const router = useRouter();
+  const [editing, setEditing] = useState<AppointmentJson | null>(null);
 
   return (
-    <div className="grid items-start gap-4 xl:grid-cols-2">
-      <Card>
-        <CardHeader className="flex items-center justify-between gap-2">
-          <CardTitle className="flex items-center gap-2">
-            <CalendarDays size={16} aria-hidden className="text-warm-400" />
-            المواعيد القادمة
-            <span className="text-warm-400 numeric text-xs font-normal">
-              ({upcoming.length})
-            </span>
-          </CardTitle>
-          <Button
-            variant="secondary"
-            onClick={onNewAppointment}
-            className="h-8 px-3 text-xs"
-          >
-            <CalendarPlus size={14} aria-hidden />
-            موعد جديد
-          </Button>
-        </CardHeader>
-        {upcoming.length === 0 ? (
-          <p className="text-warm-500 p-5 text-sm">
-            لا مواعيد قادمة — احجز موعداً من زر «موعد جديد».
-          </p>
-        ) : (
-          <ul className="divide-warm-200 divide-y">
-            {upcoming.map((a) => (
-              <li
-                key={a.id}
-                className="flex items-start justify-between gap-2 px-5 py-3"
-              >
-                <div className="min-w-0">
-                  <p className="text-ink-900 text-sm font-medium">
-                    {formatDayLabel(a.startsAt)}
-                  </p>
-                  <p className="text-warm-500 numeric text-xs">
-                    {formatTime(a.startsAt)} · {a.durationMin} دقيقة
-                  </p>
-                  {a.reason && (
-                    <p className="text-warm-600 mt-0.5 truncate text-xs">
-                      {a.reason}
-                    </p>
-                  )}
-                </div>
-                <span
-                  className={`mt-0.5 shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${APPT_STATUS_META[a.status].chip}`}
-                >
-                  {APPT_STATUS_META[a.status].label}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+    <Card>
+      <CardHeader className="flex items-center justify-between gap-2">
+        <CardTitle className="flex items-center gap-2">
+          <CalendarDays size={16} aria-hidden className="text-warm-400" />
+          كافة المواعيد
+          <span className="text-warm-400 numeric text-xs font-normal">
+            ({appointments.length})
+          </span>
+        </CardTitle>
+        <Button onClick={onNewAppointment} className="h-8 px-3 text-xs">
+          <CalendarPlus size={14} aria-hidden />
+          موعد جديد
+        </Button>
+      </CardHeader>
+      {appointments.length === 0 ? (
+        <p className="text-warm-500 p-5 text-sm">
+          لا مواعيد مسجلة — احجز موعداً من زر «موعد جديد».
+        </p>
+      ) : (
+        <Table>
+          <THead>
+            <TRow>
+              <TH>التاريخ</TH>
+              <TH>الوقت</TH>
+              <TH className="hidden md:table-cell">الخدمة أو الطبيب</TH>
+              <TH>القيمة</TH>
+              <TH>الحالة</TH>
+              <TH aria-label="إجراءات" />
+            </TRow>
+          </THead>
+          <tbody>
+            {appointments.map((a) => {
+              const meta = APPT_STATUS_META[a.status];
+              return (
+                <TRow key={a.id}>
+                  <TD>
+                    <span className="text-ink-900 text-sm font-medium">
+                      {formatDayLabel(a.startsAt)}
+                    </span>
+                  </TD>
+                  <TD>
+                    <span className="numeric text-warm-700 text-sm">
+                      {formatTime(a.startsAt)}
+                      <span className="text-warm-400 text-xs">
+                        {" "}
+                        · {a.durationMin}د
+                      </span>
+                    </span>
+                  </TD>
+                  <TD className="hidden md:table-cell">
+                    <span className="text-warm-700 max-w-48 truncate text-sm">
+                      {serviceOrDoctor(a)}
+                    </span>
+                  </TD>
+                  <TD>
+                    <span className="text-warm-400 numeric text-sm">—</span>
+                  </TD>
+                  <TD>
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${meta.chip}`}
+                    >
+                      {meta.label}
+                    </span>
+                  </TD>
+                  <TD>
+                    <IconAction
+                      icon={Pencil}
+                      label="تعديل الموعد"
+                      onClick={() =>
+                        setEditing({
+                          id: a.id,
+                          patientId: a.patientId,
+                          patientName: a.patientName,
+                          startsAt: new Date(a.startsAt).toISOString(),
+                          durationMin: a.durationMin,
+                          status: a.status,
+                          reason: a.reason,
+                          note: a.note,
+                          staffId: a.staffId,
+                          staffName: a.staffName,
+                        })
+                      }
+                    />
+                  </TD>
+                </TRow>
+              );
+            })}
+          </tbody>
+        </Table>
+      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <History size={16} aria-hidden className="text-warm-400" />
-            الزيارات السابقة
-            <span className="text-warm-400 numeric text-xs font-normal">
-              ({past.length})
-            </span>
-          </CardTitle>
-        </CardHeader>
-        {past.length === 0 ? (
-          <p className="text-warm-500 p-5 text-sm">لا زيارات سابقة.</p>
-        ) : (
-          <ul className="divide-warm-200 divide-y">
-            {past.map((a) => (
-              <li
-                key={a.id}
-                className="flex items-start justify-between gap-2 px-5 py-3"
-              >
-                <div className="min-w-0">
-                  <p className="text-ink-900 text-sm font-medium">
-                    {formatDayLabel(a.startsAt)}
-                  </p>
-                  <p className="text-warm-500 numeric text-xs">
-                    {formatTime(a.startsAt)} · {a.durationMin} دقيقة
-                  </p>
-                  {a.reason && (
-                    <p className="text-warm-600 mt-0.5 truncate text-xs">
-                      {a.reason}
-                    </p>
-                  )}
-                </div>
-                <span
-                  className={`mt-0.5 shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${APPT_STATUS_META[a.status].chip}`}
-                >
-                  {APPT_STATUS_META[a.status].label}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-    </div>
+      <AppointmentDetailsDrawer
+        appointment={editing}
+        onClose={() => setEditing(null)}
+        onChanged={() => {
+          setEditing(null);
+          router.refresh();
+        }}
+      />
+    </Card>
   );
 }
