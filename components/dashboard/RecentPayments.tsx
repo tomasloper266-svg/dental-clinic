@@ -1,15 +1,22 @@
+"use client";
+
 import { HandCoins } from "lucide-react";
 import Link from "next/link";
 import type { ClinicLedgerEntryDto } from "@/lib/services/ledger";
 import { formatEntryDate } from "@/lib/finance-view";
-import { formatSyp } from "@/lib/utils";
+import { useMoney } from "@/components/ui/CurrencyContext";
 import { EntityCell } from "@/components/ui/EntityCell";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 // آخر المدفوعات — أحدث قيود الدفع من الدفتر القائم، نفس مصدر المالية حصراً.
 
 /** قائمة آخر المدفوعات — أفاتار المريض + التاريخ + المبلغ أخضر بلون الهوية */
-export function RecentPayments({ entries }: { entries: ClinicLedgerEntryDto[] }) {
+export function RecentPayments({
+  entries,
+}: {
+  entries: ClinicLedgerEntryDto[];
+}) {
+  const money = useMoney();
   if (entries.length === 0) {
     return (
       <EmptyState
@@ -28,7 +35,7 @@ export function RecentPayments({ entries }: { entries: ClinicLedgerEntryDto[] })
             subtitle={formatEntryDate(entry.createdAt)}
           />
           <span className="numeric shrink-0 text-sm font-bold text-primary-700">
-            +{formatSyp(Math.abs(entry.amountSyp))}
+            +{money(Math.abs(entry.amountSyp))}
           </span>
         </li>
       ))}

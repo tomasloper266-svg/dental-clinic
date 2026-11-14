@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatSyp } from "@/lib/utils";
+import { useMoney } from "@/components/ui/CurrencyContext";
 import InstructionSendPanel from "@/components/odontogram/InstructionSendPanel";
 import type {
   PlanItemDto,
@@ -62,6 +62,7 @@ export default function TreatmentPlanSection({
   onFocusTooth,
 }: Props) {
   const router = useRouter();
+  const money = useMoney();
   const [items, setItems] = useState<PlanItemDto[]>(initialItems);
   const [tooth, setTooth] = useState(preselectedTooth?.toString() ?? "");
   const [procedure, setProcedure] = useState("");
@@ -233,7 +234,7 @@ export default function TreatmentPlanSection({
                 <p className="text-warm-500 text-[11px]">{meta.labelAr}</p>
                 <p className="text-ink-900 numeric text-sm font-semibold">
                   <span className="numeric">{summary.count}</span> بند ·{" "}
-                  {formatSyp(summary.total)}
+                  {money(summary.total)}
                 </p>
               </div>
             );
@@ -243,7 +244,7 @@ export default function TreatmentPlanSection({
               الإجمالي الكلي
             </p>
             <p className="text-ink-900 numeric text-sm font-bold">
-              {formatSyp(totals.grandTotal)}
+              {money(totals.grandTotal)}
             </p>
           </div>
         </div>
@@ -331,7 +332,7 @@ export default function TreatmentPlanSection({
                 <p className="text-ink-700 text-xs font-semibold">{labelAr}</p>
                 <p className="text-warm-500 numeric text-xs">
                   <span className="numeric">{group.length}</span> بنود ·{" "}
-                  {formatSyp(groupTotal)}
+                  {money(groupTotal)}
                 </p>
               </div>
               <ul className="divide-warm-200 divide-y rounded-field border-warm-200 border">
@@ -396,7 +397,7 @@ export default function TreatmentPlanSection({
                           {item.procedure}
                         </span>
                         <span className="text-warm-700 numeric text-xs font-semibold">
-                          {formatSyp(item.priceSyp)}
+                          {money(item.priceSyp)}
                         </span>
                         <span
                           className={cn(
@@ -495,11 +496,11 @@ export default function TreatmentPlanSection({
         <p className="text-warm-400 mt-3 text-[11px]">
           الإجمالي الكلي{" "}
           <span className="numeric font-semibold">
-            {formatSyp(totals.grandTotal)}
+            {money(totals.grandTotal)}
           </span>{" "}
           — منه{" "}
           <span className="numeric font-semibold">
-            {formatSyp(totals.acceptedTotal)}
+            {money(totals.acceptedTotal)}
           </span>{" "}
           على بنود مقبولة بانتظار التنفيذ.
         </p>

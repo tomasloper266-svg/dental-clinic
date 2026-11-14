@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Printer, CircleDollarSign } from "lucide-react";
-import { sypToUsd } from "@/lib/currency";
 import { toothLabelAr } from "@/lib/odontogram/fdi";
 import type { LedgerEntryDto } from "@/lib/services/ledger";
 import type { PlanItemDto } from "@/lib/services/treatment-plan";
@@ -12,7 +11,8 @@ import {
   INVOICE_STATUS_LABELS,
   type DetailedInvoiceView,
 } from "@/lib/patient-finance";
-import { INVOICE_STATUS_TONE, formatUsdSpaced } from "@/lib/invoices-view";
+import { INVOICE_STATUS_TONE } from "@/lib/invoices-view";
+import { useMoney } from "@/components/ui/CurrencyContext";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { StatusPill } from "@/components/ui/Badge";
@@ -52,6 +52,8 @@ export default function InvoiceModal({
   onSettle,
   companionLine,
 }: Props) {
+  // المبالغ المعروضة تمر عبر سياق العملة — USD/SYP من الإعدادات يغيّرها كلها.
+  const money = useMoney();
   const [settleOpen, setSettleOpen] = useState(false);
 
   function itemFor(charge: LedgerEntryDto): PlanItemDto | null {
@@ -136,7 +138,7 @@ export default function InvoiceModal({
                     </td>
                     <td className="px-3 py-2.5 text-steel-600">{toothText(charge)}</td>
                     <td className="numeric px-3 py-2.5 font-semibold">
-                      {formatUsdSpaced(sypToUsd(charge.amountSyp, usdRate))}
+                      {money(charge.amountSyp)}
                     </td>
                   </tr>
                 );
@@ -147,28 +149,26 @@ export default function InvoiceModal({
           <div className="border-warm-200 divide-y divide-warm-100 border-t px-3">
             <SummaryRow
               label="المجموع"
-              value={formatUsdSpaced(sypToUsd(invoice.totalSyp, usdRate))}
+              value={money(invoice.totalSyp)}
             />
             <SummaryRow
               label="الخصم"
-              value={formatUsdSpaced(sypToUsd(invoice.discountSyp, usdRate))}
+              value={money(invoice.discountSyp)}
             />
             <SummaryRow
               label="الإجمالي"
-              value={formatUsdSpaced(
-                sypToUsd(invoice.totalSyp - invoice.discountSyp, usdRate),
-              )}
+              value={money(invoice.totalSyp - invoice.discountSyp)}
               tone="gold"
               emphasis
             />
             <SummaryRow
               label="المسدد"
-              value={formatUsdSpaced(sypToUsd(invoice.paidSyp, usdRate))}
+              value={money(invoice.paidSyp)}
               tone="success"
             />
             <SummaryRow
               label="المتبقي"
-              value={formatUsdSpaced(sypToUsd(invoice.remainingSyp, usdRate))}
+              value={money(invoice.remainingSyp)}
               tone="danger"
               emphasis
             />
@@ -195,7 +195,7 @@ export default function InvoiceModal({
                 >
                   <span className="text-steel-600">{payment.note || "دفعة"}</span>
                   <span className="numeric font-medium">
-                    {formatUsdSpaced(sypToUsd(payment.amountSyp, usdRate))}
+                    {money(payment.amountSyp)}
                   </span>
                 </li>
               ))}

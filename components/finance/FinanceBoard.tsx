@@ -5,7 +5,7 @@ import { BookOpen, Coins, Plus, ReceiptText, RotateCw, Wallet, X } from "lucide-
 import type { LedgerEntryType } from "@/lib/services/ledger";
 import { formatDateCell } from "@/lib/dates";
 import { formatDayLabel } from "@/lib/appointment-ui";
-import { formatSyp } from "@/lib/utils";
+import { useMoney } from "@/components/ui/CurrencyContext";
 import { formatDualFromSyp } from "@/lib/currency";
 import { usePatientSearch, type PatientOption } from "@/lib/use-patient-search";
 import { toCsv, withUtf8Bom } from "@/lib/csv";
@@ -101,6 +101,7 @@ function downloadCsv(filename: string, csv: string) {
 }
 
 export default function FinanceBoard({ usdRate }: { usdRate: number }) {
+  const money = useMoney();
   const { toast } = useToast();
   const [entries, setEntries] = useState<ClinicEntryJson[] | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -567,7 +568,7 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
                             {settlement === null ? (
                               <span className="text-xs text-warm-500">
                                 الرصيد بعد القيد:{" "}
-                                <span className="numeric">{formatSyp(balance)}</span>
+                                <span className="numeric">{money(balance)}</span>
                               </span>
                             ) : (
                               <StatusPill

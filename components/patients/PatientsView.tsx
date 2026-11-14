@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Mars, Pencil, Plus, Trash2, Users, Venus } from "lucide-react";
 import { formatDateCell } from "@/lib/dates";
 import { formatDayLabel } from "@/lib/appointment-ui";
-import { formatSyp } from "@/lib/utils";
+import { useMoney } from "@/components/ui/CurrencyContext";
 import type { PatientDto } from "@/lib/services/patients";
 import {
   PATIENT_FILTERS,
@@ -89,12 +89,13 @@ function VisitCell({ value }: { value: string | null }) {
 }
 
 function BalanceCell({ balanceSyp }: { balanceSyp: number }) {
+  const money = useMoney();
   if (balanceSyp <= 0) {
     return <Badge tone="success">مسدد ✓</Badge>;
   }
   return (
     <span className="numeric font-semibold text-danger-600" title="رصيد مستحق">
-      {formatSyp(balanceSyp)}
+      {money(balanceSyp)}
     </span>
   );
 }

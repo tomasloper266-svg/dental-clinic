@@ -11,13 +11,12 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
-import { sypToUsd } from "@/lib/currency";
 import { formatDateCell, formatWeekdayDateCell } from "@/lib/dates";
 import { toCsv, withUtf8Bom } from "@/lib/csv";
+import { useMoney } from "@/components/ui/CurrencyContext";
 import {
   deriveClinicInvoices,
   filterInvoicesByStatus,
-  formatUsdSpaced,
   INVOICE_FILTER_LABELS,
   INVOICE_FILTER_ORDER,
   INVOICE_STATUS_TONE,
@@ -77,6 +76,7 @@ function invoiceHasAllocation(row: ClinicInvoiceRow): boolean {
 }
 
 export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
+  const money = useMoney();
   const { toast } = useToast();
   const [entries, setEntries] = useState<ClinicEntryJson[] | null>(null);
   const [patients, setPatients] = useState<PatientDto[] | null>(null);
@@ -163,9 +163,9 @@ export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
         row.number,
         row.patientName,
         formatDateCell(row.date),
-        formatUsdSpaced(sypToUsd(row.totalSyp, usdRate)),
-        formatUsdSpaced(sypToUsd(row.paidSyp, usdRate)),
-        formatUsdSpaced(sypToUsd(row.remainingSyp, usdRate)),
+        money(row.totalSyp),
+        money(row.paidSyp),
+        money(row.remainingSyp),
         INVOICE_FILTER_LABELS[row.status],
       ]),
     );
@@ -292,14 +292,14 @@ export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
             iconClassName="bg-warning-500/10 text-warning-600"
           />
           <StatCard
-            value={formatUsdSpaced(sypToUsd(summary.totalSyp, usdRate))}
+            value={money(summary.totalSyp)}
             label="إجمالي الإصدار"
             icon={CircleDollarSign}
             valueClassName="text-warning-600"
             iconClassName="bg-primary-500/10 text-primary-700"
           />
           <StatCard
-            value={formatUsdSpaced(sypToUsd(summary.remainingSyp, usdRate))}
+            value={money(summary.remainingSyp)}
             label="المتبقي عليها"
             icon={AlertTriangle}
             tone="danger"
@@ -380,10 +380,10 @@ export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
                     </TD>
                     <TD className="numeric">{formatDateCell(row.date)}</TD>
                     <TD className="numeric">
-                      {formatUsdSpaced(sypToUsd(row.totalSyp, usdRate))}
+                      {money(row.totalSyp)}
                     </TD>
                     <TD className="numeric text-success-600">
-                      {formatUsdSpaced(sypToUsd(row.paidSyp, usdRate))}
+                      {money(row.paidSyp)}
                     </TD>
                     <TD
                       className={cn(
@@ -391,7 +391,7 @@ export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
                         row.remainingSyp > 0 ? "text-danger-600" : "text-ink-900",
                       )}
                     >
-                      {formatUsdSpaced(sypToUsd(row.remainingSyp, usdRate))}
+                      {money(row.remainingSyp)}
                     </TD>
                     <TD>
                       <StatusPill tone={INVOICE_STATUS_TONE[row.status]}>

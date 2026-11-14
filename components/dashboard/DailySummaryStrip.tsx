@@ -1,6 +1,8 @@
+"use client";
+
 import { Clock, Users } from "lucide-react";
 import { cn } from "@/components/ui/cn";
-import { formatSyp } from "@/lib/utils";
+import { useMoney } from "@/components/ui/CurrencyContext";
 
 // شريط أرقام اليوم — تسلسل بصري مقصود: الصافي هو الرقم المرجعي الأكبر،
 // وبقية الأرقام صف ثانوي. الأرقام المالية بمعالجة numeric (تبويبية).
@@ -25,6 +27,7 @@ export function DailySummaryStrip({
   patientsToday,
   waitlistCount,
 }: DailySummaryStripProps) {
+  const money = useMoney();
   const netNegative = netSyp < 0;
 
   return (
@@ -42,7 +45,7 @@ export function DailySummaryStrip({
         )}
       >
         <span className="text-warm-600 text-xs font-medium">
-          صافي اليوم (ل.س)
+          صافي اليوم
         </span>
         <span
           className={cn(
@@ -50,7 +53,7 @@ export function DailySummaryStrip({
             netNegative ? "text-danger-700" : "text-primary-800",
           )}
         >
-          {formatSyp(netSyp)}
+          {money(netSyp)}
         </span>
         <span className="text-warm-500 text-xs">
           التحصيل − المصاريف − الاستردادات
@@ -58,16 +61,16 @@ export function DailySummaryStrip({
       </div>
 
       <div className={secondaryCell}>
-        <span className="text-warm-500 text-xs">التحصيل (ل.س)</span>
+        <span className="text-warm-500 text-xs">التحصيل</span>
         <span className="numeric text-ink-900 text-lg font-semibold">
-          {formatSyp(collectedSyp)}
+          {money(collectedSyp)}
         </span>
       </div>
 
       <div className={secondaryCell}>
-        <span className="text-warm-500 text-xs">المصاريف (ل.س)</span>
+        <span className="text-warm-500 text-xs">المصاريف</span>
         <span className="numeric text-ink-900 text-lg font-semibold">
-          {formatSyp(expensesSyp)}
+          {money(expensesSyp)}
         </span>
       </div>
 

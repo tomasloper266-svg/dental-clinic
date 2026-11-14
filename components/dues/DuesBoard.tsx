@@ -10,11 +10,11 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-import { sypToUsd } from "@/lib/currency";
+import { useMoney } from "@/components/ui/CurrencyContext";
 import { formatDateCell, formatWeekdayDateCell } from "@/lib/dates";
 import { toCsv, withUtf8Bom } from "@/lib/csv";
 import { buildDuesRows, sortDuesRows, type DuesRowView } from "@/lib/dues-view";
-import { deriveClinicInvoices, formatUsdSpaced } from "@/lib/invoices-view";
+import { deriveClinicInvoices } from "@/lib/invoices-view";
 import type { ClinicLedgerEntryDto } from "@/lib/services/ledger";
 import type { PatientDto } from "@/lib/services/patients";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -74,6 +74,7 @@ function PatientCell({ row, index }: { row: DuesRowView; index: number }) {
 }
 
 export default function DuesBoard({ usdRate }: { usdRate: number }) {
+  const money = useMoney();
   const { toast } = useToast();
   const [entries, setEntries] = useState<ClinicEntryJson[] | null>(null);
   const [patients, setPatients] = useState<PatientDto[] | null>(null);
@@ -142,9 +143,9 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
       rows.map((row) => [
         row.patientName,
         row.patientPhone ?? "",
-        formatUsdSpaced(sypToUsd(row.chargesSyp, usdRate)),
-        formatUsdSpaced(sypToUsd(row.paidSyp, usdRate)),
-        formatUsdSpaced(sypToUsd(row.dueSyp, usdRate)),
+        money(row.chargesSyp),
+        money(row.paidSyp),
+        money(row.dueSyp),
         row.lastPaymentAt === null ? "" : formatDateCell(row.lastPaymentAt),
       ]),
     );
@@ -170,7 +171,7 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
           value={
             summary === null
               ? "—"
-              : formatUsdSpaced(sypToUsd(summary.totalDuesSyp, usdRate))
+              : money(summary.totalDuesSyp)
           }
           label="إجمالي المستحقات غير المسددة"
           icon={CircleDollarSign}
@@ -186,7 +187,7 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
           value={
             summary === null
               ? "—"
-              : formatUsdSpaced(sypToUsd(summary.maxDueSyp, usdRate))
+              : money(summary.maxDueSyp)
           }
           label="أعلى رصيد فردي"
           icon={DollarSign}
@@ -196,7 +197,7 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
           value={
             summary === null
               ? "—"
-              : formatUsdSpaced(sypToUsd(summary.avgDueSyp, usdRate))
+              : money(summary.avgDueSyp)
           }
           label="متوسط الرصيد"
           icon={BarChart3}
@@ -284,13 +285,13 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
                           {row.patientPhone ?? "—"}
                         </TD>
                         <TD className="numeric whitespace-nowrap text-end">
-                          {formatUsdSpaced(sypToUsd(row.chargesSyp, usdRate))}
+                          {money(row.chargesSyp)}
                         </TD>
                         <TD className="numeric whitespace-nowrap text-end">
-                          {formatUsdSpaced(sypToUsd(row.paidSyp, usdRate))}
+                          {money(row.paidSyp)}
                         </TD>
                         <TD className="numeric whitespace-nowrap text-end font-semibold text-danger-600">
-                          {formatUsdSpaced(sypToUsd(row.dueSyp, usdRate))}
+                          {money(row.dueSyp)}
                         </TD>
                         <TD className="numeric hidden whitespace-nowrap text-xs text-warning-600 lg:table-cell">
                           {row.lastPaymentAt === null
@@ -334,7 +335,7 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
                           <div className="flex items-center justify-between gap-2 text-xs">
                             <span className="text-warm-500">الفرقة المتبقية</span>
                             <span className="numeric font-semibold text-danger-600">
-                              {formatUsdSpaced(sypToUsd(row.dueSyp, usdRate))}
+                              {money(row.dueSyp)}
                             </span>
                           </div>
                           {row.lastPaymentAt !== null && (

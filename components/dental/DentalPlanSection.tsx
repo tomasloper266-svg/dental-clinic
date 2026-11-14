@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2, Pencil, CheckCircle2, Check, X } from "lucide-react";
-import { formatSypAmount } from "@/lib/currency";
+import { useMoney } from "@/components/ui/CurrencyContext";
 import { allTeeth, toothLabelAr } from "@/lib/odontogram/fdi";
 import {
   TOOTH_STATUS_KEYS,
@@ -70,6 +70,8 @@ export default function DentalPlanSection({
 }: Props) {
   const router = useRouter();
   const { toast } = useToast();
+  // المبالغ المعروضة تمر عبر سياق العملة — USD/SYP من الإعدادات يغيّرها كلها.
+  const money = useMoney();
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const [issuePlan, setIssuePlan] = useState<PlanDto | null>(null);
   const [invoiceIndex, setInvoiceIndex] = useState<number | null>(null);
@@ -231,7 +233,7 @@ export default function DentalPlanSection({
                 pill={pill.label}
                 pillClass={pill.toneClass}
                 createdLabel={new Date(plan.planDate).toLocaleDateString("ar")}
-                metaLine={`${plan.items.length} بند · ${doneCount} مكتمل · إجمالي ${formatSypAmount(planTotalSyp(plan.items))}`}
+                metaLine={`${plan.items.length} بند · ${doneCount} مكتمل · إجمالي ${money(planTotalSyp(plan.items))}`}
                 items={plan.items}
                 issueDisabled={doneCount === 0}
                 onIssue={() => setIssuePlan(plan)}
@@ -254,7 +256,7 @@ export default function DentalPlanSection({
               title="بدون خطة محفوظة حالياً"
               pill="بلا خطة"
               pillClass="bg-warm-100 text-steel-600"
-              metaLine={`${unassignedItems.length} بند · إجمالي ${formatSypAmount(planTotalSyp(unassignedItems))}`}
+              metaLine={`${unassignedItems.length} بند · إجمالي ${money(planTotalSyp(unassignedItems))}`}
               items={unassignedItems}
               issueDisabled={unassignedItems.every((item) => item.status !== "DONE")}
               onIssue={() =>
@@ -379,6 +381,7 @@ function PlanOperationsCard({
   onComplete,
   onAddRow,
 }: OperationsProps) {
+  const money = useMoney();
   const totalSyp = planTotalSyp(items);
   const doneSyp = items
     .filter((item) => item.status === "DONE")
@@ -464,19 +467,19 @@ function PlanOperationsCard({
       <footer className="border-warm-200 mt-2 flex items-center justify-start gap-6 border-t pt-2 text-sm">
         <span className="text-steel-600">
           إجمالي الخطة{" "}
-          <span className="numeric text-ink-900 font-semibold">{formatSypAmount(totalSyp)}</span>
+          <span className="numeric text-ink-900 font-semibold">{money(totalSyp)}</span>
         </span>
         <span className="text-steel-600">
           المكتمل منها{" "}
           <span className="numeric font-semibold text-success-600">
-            {formatSypAmount(doneSyp)}
+            {money(doneSyp)}
           </span>
         </span>
         {remainingSyp > 0 && (
           <span className="text-steel-600">
             المتبقي منها{" "}
             <span className="numeric font-semibold text-danger-600">
-              {formatSypAmount(remainingSyp)}
+              {money(remainingSyp)}
             </span>
           </span>
         )}
@@ -552,6 +555,7 @@ function PlanRow({
   onDelete: (itemId: string) => void;
   onComplete: (itemId: string, resultStatus: ToothStatusKey) => void;
 }) {
+  const money = useMoney();
   const meta = planStatusMeta(item.status);
   const locked = item.status === "DONE";
   return (
@@ -569,7 +573,7 @@ function PlanRow({
           {toothOptions}
         </select>
       </td>
-      <td className="numeric px-2 py-2 font-semibold">{formatSypAmount(item.priceSyp)}</td>
+      <td className="numeric px-2 py-2 font-semibold">{money(item.priceSyp)}</td>
       <td className="px-2 py-2">
         <select
           value={item.status}

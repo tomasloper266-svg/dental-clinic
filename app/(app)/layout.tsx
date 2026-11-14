@@ -53,7 +53,7 @@ export default async function AppLayout({
   }
 
   return (
-    <CurrencyProvider currency={currency}>
+    <CurrencyProvider currency={currency} usdRate={usdRate}>
       <AppShell
         userName={session.name}
         clinicName={clinicName}

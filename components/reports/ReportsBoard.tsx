@@ -12,8 +12,8 @@ import {
   User,
   UserPlus,
 } from "lucide-react";
-import { formatUsdSpaced } from "@/lib/invoices-view";
 import { sypToUsd } from "@/lib/currency";
+import { useMoney } from "@/components/ui/CurrencyContext";
 import { downloadCsv } from "@/lib/csv";
 import {
   PERIOD_PRESET_OPTIONS,
@@ -155,7 +155,8 @@ export default function ReportsBoard({
     downloadCsv("تقرير الفترة.csv", buildPeriodCsv(summary, usdRate));
   }
 
-  const usd = (syp: number) => formatUsdSpaced(sypToUsd(syp, usdRate));
+  // المبالغ المعروضة تمر عبر سياق العملة — USD/SYP من الإعدادات يغيّرها كلها.
+  const usd = useMoney();
   const avgInvoiceSyp =
     summary && summary.invoiceCount > 0
       ? Math.round(summary.totalChargesSyp / summary.invoiceCount)

@@ -3,10 +3,10 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { sypToUsd, usdToSyp } from "@/lib/currency";
+import { useDisplayCurrency, useMoney } from "@/components/ui/CurrencyContext";
 import { toDateInputValue } from "@/lib/dates";
 import {
   composePaymentNote,
-  formatUsdSpaced,
   PAYMENT_METHOD_OPTIONS,
   type ClinicInvoiceRow,
   type PaymentMethod,
@@ -49,6 +49,15 @@ export default function RecordPaymentModal({
 }: Props) {
   const router = useRouter();
   const { toast } = useToast();
+  // وحدة الحقل تتبع العملة المعروضة — بالدولار يُحوَّل إلى الليرة عند
+  // التسجيل، وبالليرة يُقيَّد المبلغ كما هو دون تحويل.
+  const currency = useDisplayCurrency();
+  const money = useMoney();
+  const isUsdInput = currency === "USD";
+  const toDisplayAmount = (syp: number) =>
+    isUsdInput ? sypToUsd(syp, usdRate) : syp;
+  const fromDisplayAmount = (display: number) =>
+    isUsdInput ? usdToSyp(display, usdRate) : display;
 
   const initialInvoice = useMemo(
     () => invoices.find((row) => row.chargeId === initialChargeId) ?? null,
@@ -62,11 +71,13 @@ export default function RecordPaymentModal({
   const [amountStr, setAmountStr] = useState(() => {
     if (initialInvoice && initialInvoice.remainingSyp > 0) {
       return String(
-        Math.round(sypToUsd(initialInvoice.remainingSyp, usdRate) * 100) / 100,
+        Math.round(toDisplayAmount(initialInvoice.remainingSyp) * 100) / 100,
       );
     }
     if (initialDueSyp !== undefined && initialDueSyp > 0) {
-      return String(Math.round(sypToUsd(initialDueSyp, usdRate) * 100) / 100);
+      return String(
+        Math.round(toDisplayAmount(initialDueSyp) * 100) / 100,
+      );
     }
     return "";
   });
@@ -135,7 +146,7 @@ export default function RecordPaymentModal({
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             type: "PAYMENT",
-            amountSyp: -usdToSyp(amount, usdRate),
+            amountSyp: -fromDisplayAmount(amount),
             note: composePaymentNote(method, paymentBaseNote()),
             createdAt: dateIso.toISOString(),
           }),
@@ -211,9 +222,7 @@ export default function RecordPaymentModal({
             <option value="">فواتير على الحساب (بدون فوترة)</option>
             {outstanding.map((row) => (
               <option key={row.chargeId} value={row.chargeId}>
-                {row.number} — متبقى {formatUsdSpaced(
-                  sypToUsd(row.remainingSyp, usdRate),
-                )}
+                {row.number} — متبقى {money(row.remainingSyp)}
               </option>
             ))}
           </Select>
@@ -224,15 +233,13 @@ export default function RecordPaymentModal({
           htmlFor="pay-amount"
           hint={
             selectedInvoice
-              ? `المتبقي على الفاتورة: ${formatUsdSpaced(
-                  sypToUsd(selectedInvoice.remainingSyp, usdRate),
-                )}`
+              ? `المتبقي على الفاتورة: ${money(selectedInvoice.remainingSyp)}`
               : undefined
           }
         >
           <div className="relative">
             <span className="text-steel-500 pointer-events-none absolute inset-y-0 end-3 flex items-center text-sm">
-              $
+              {isUsdInput ? "$" : "ل.س"}
             </span>
             <Input
               id="pay-amount"

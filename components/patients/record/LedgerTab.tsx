@@ -9,7 +9,7 @@ import {
   deriveInvoices,
 } from "@/lib/patient-finance";
 import { formatDateCell } from "@/lib/dates";
-import { formatSyp } from "@/lib/utils";
+import { useMoney } from "@/components/ui/CurrencyContext";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Table, THead, TRow, TH, TD } from "@/components/ui/Table";
@@ -42,6 +42,7 @@ export default function LedgerTab({
   materialRows,
   onNewEntry,
 }: Props) {
+  const money = useMoney();
   const invoices = deriveInvoices(entries);
   const paymentLog = buildPaymentLog(entries, materialRows);
   const dueSyp = Math.max(balance, 0);
@@ -61,7 +62,7 @@ export default function LedgerTab({
               dueSyp > 0 ? "text-danger-600" : "text-primary-700",
             )}
           >
-            {formatSyp(dueSyp)}
+            {money(dueSyp)}
           </span>
         </div>
         <Button onClick={onNewEntry} className="h-8 px-3 text-xs">
@@ -108,10 +109,10 @@ export default function LedgerTab({
                       {formatDateCell(inv.date)}
                     </TD>
                     <TD className="numeric text-ink-900 text-sm">
-                      {formatSyp(inv.totalSyp)}
+                      {money(inv.totalSyp)}
                     </TD>
                     <TD className="numeric text-primary-700 text-sm">
-                      {formatSyp(inv.paidSyp)}
+                      {money(inv.paidSyp)}
                     </TD>
                     <TD
                       className={cn(
@@ -119,7 +120,7 @@ export default function LedgerTab({
                         inv.remainingSyp > 0 ? "text-danger-600" : "text-warm-400",
                       )}
                     >
-                      {formatSyp(inv.remainingSyp)}
+                      {money(inv.remainingSyp)}
                     </TD>
                     <TD>
                       <span
@@ -178,7 +179,7 @@ export default function LedgerTab({
                       )}
                     >
                       {row.kind === "PAYMENT" ? "−" : "+"}
-                      {formatSyp(Math.abs(row.amountSyp))}
+                      {money(Math.abs(row.amountSyp))}
                     </TD>
                     <TD>
                       <span

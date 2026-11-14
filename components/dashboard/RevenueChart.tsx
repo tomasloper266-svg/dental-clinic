@@ -1,5 +1,7 @@
+"use client";
+
 import type { DailySeriesPoint } from "@/lib/services/reports";
-import { formatSyp } from "@/lib/utils";
+import { useMoney } from "@/components/ui/CurrencyContext";
 import { cn } from "@/components/ui/cn";
 
 // رسم المدخول لآخر 7 أيام — أعمدة بسيطة من عناصر div حصراً بلا مكتبات جديدة.
@@ -29,6 +31,7 @@ export function barHeights(
 
 /** رسم أعمدة المدخول لآخر 7 أيام — أعمدة بلون الهوية وقيمها فوقها */
 export function RevenueChart({ points }: { points: DailySeriesPoint[] }) {
+  const money = useMoney();
   const heights = barHeights(points);
   return (
     <div
@@ -42,7 +45,7 @@ export function RevenueChart({ points }: { points: DailySeriesPoint[] }) {
           className="flex h-full flex-1 flex-col items-center justify-end gap-1.5"
         >
           <span className="numeric text-[10px] text-warm-500">
-            {point.collectedSyp > 0 ? formatSyp(point.collectedSyp) : ""}
+            {point.collectedSyp > 0 ? money(point.collectedSyp) : ""}
           </span>
           <div
             className={cn(
