@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireTenant } from "@/lib/tenant/require-tenant";
+import { requireGate } from "@/lib/tenant/require-tenant";
 import { requireRole } from "@/lib/tenant/context";
 import { buildSnapshot, restoreSnapshot } from "@/lib/services/backup";
 import { getBasePrisma } from "@/lib/db";
@@ -8,16 +8,9 @@ import { getBasePrisma } from "@/lib/db";
 // تتحقق من الملف وتعيد الإنشاء داخل معاملة واحدة (أي فشل لا يغيّر شيئاً).
 
 export async function GET(req: NextRequest) {
-  const ctx = await requireTenant(req);
-  if (ctx === "LOCKED") {
-    return NextResponse.json(
-      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
-      { status: 423 },
-    );
-  }
-  if (!ctx) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
+  const gate = await requireGate(req);
+  if (!gate.ok) return gate.response;
+  const ctx = gate.ctx;
   const snapshot = await buildSnapshot(getBasePrisma(), ctx.clinicId);
   const filename = `نسخة-احتياطية-${new Date().toISOString().slice(0, 10)}.json`;
   return new NextResponse(JSON.stringify(snapshot, null, 2), {
@@ -30,16 +23,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const ctx = await requireTenant(req);
-  if (ctx === "LOCKED") {
-    return NextResponse.json(
-      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
-      { status: 423 },
-    );
-  }
-  if (!ctx) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
+  const gate = await requireGate(req);
+  if (!gate.ok) return gate.response;
+  const ctx = gate.ctx;
   // الاستعادة تمس كل بيانات العيادة التشغيلية — الطبيب حصراً.
   const roleError = requireRole(ctx, "DENTIST");
   if (roleError) {

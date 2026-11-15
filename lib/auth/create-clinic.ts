@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { generateRecoveryCode, hashRecoveryCode } from "@/lib/auth/otp";
 import { createSession } from "@/lib/auth/session";
+import { TRIAL_DAYS, addDays } from "@/lib/billing/plans";
 import type { SignupInput } from "@/lib/auth/signup";
 
 // إنشاء العيادة + حساب الطبيب المالك + جلسة أولى في معاملة واحدة.
@@ -21,7 +22,8 @@ export async function createClinicWithOwner(
 
   const txResult = await prisma.$transaction(async (tx) => {
     const created = await tx.clinic.create({
-      data: { name: input.clinicName },
+      // التجربة المجانية تبدأ من لحظة الإنشاء — 15 يوماً بالضبط
+      data: { name: input.clinicName, trialEndsAt: addDays(new Date(), TRIAL_DAYS) },
     });
     const user = await tx.user.create({
       data: {

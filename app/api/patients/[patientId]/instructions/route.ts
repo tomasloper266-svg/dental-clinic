@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireTenant } from "@/lib/tenant/require-tenant";
+import { requireGate } from "@/lib/tenant/require-tenant";
 import {
   listInstructionSends,
   parseSendInstruction,
@@ -13,32 +13,18 @@ type Params = { params: Promise<{ patientId: string }> };
 // الإلحاقي (ما أُرسل، بأي قناة، ومتى، ومن الذي أرسله).
 
 export async function GET(req: NextRequest, { params }: Params) {
-  const ctx = await requireTenant(req);
-  if (ctx === "LOCKED") {
-    return NextResponse.json(
-      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
-      { status: 423 },
-    );
-  }
-  if (!ctx) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
+  const gate = await requireGate(req);
+  if (!gate.ok) return gate.response;
+  const ctx = gate.ctx;
   const { patientId } = await params;
   const sends = await listInstructionSends(ctx, patientId);
   return NextResponse.json({ sends }, { status: 200 });
 }
 
 export async function POST(req: NextRequest, { params }: Params) {
-  const ctx = await requireTenant(req);
-  if (ctx === "LOCKED") {
-    return NextResponse.json(
-      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
-      { status: 423 },
-    );
-  }
-  if (!ctx) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
+  const gate = await requireGate(req);
+  if (!gate.ok) return gate.response;
+  const ctx = gate.ctx;
   const { patientId } = await params;
 
   let body: unknown;

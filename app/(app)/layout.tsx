@@ -2,6 +2,10 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
 import { UNLOCK_COOKIE, isUnlocked } from "@/lib/auth/app-lock";
+import {
+  getSubscriptionState,
+  shouldWarnExpiring,
+} from "@/lib/billing/state";
 import { tenantContextFromSession } from "@/lib/tenant/context";
 import { listWaitlist } from "@/lib/services/waitlist";
 import { lowStockMaterials } from "@/lib/services/inventory";
@@ -32,6 +36,13 @@ export default async function AppLayout({
   const sessionToken = cookieStore.get(SESSION_COOKIE)?.value;
   const session = await getSessionUser(sessionToken);
   if (!session) redirect("/login");
+
+  // بوابة الاشتراك — قرار المنع من تواريخ القاعدة على السيرفر حصراً:
+  // عيادة منتهية تُحوّل كلياً قبل تحميل أي بيانات (صفر قراءة أو كتابة).
+  const subscription = await getSubscriptionState(session.clinicId);
+  if (!subscription || subscription.status === "EXPIRED") {
+    redirect("/subscription-expired");
+  }
 
   const ctx = tenantContextFromSession(session);
   const [waitlist, lowStock, ledgerEntries, usdRate, clinicName, logoLetter, currency] =
@@ -71,6 +82,15 @@ export default async function AppLayout({
         outstandingDuesUsd={outstandingDuesUsd(ledgerEntries)}
         usdRate={usdRate}
         lockEnabled={session.lockEnabled}
+        subscriptionBanner={
+          subscription && shouldWarnExpiring(subscription)
+            ? {
+                daysLeft: subscription.daysLeft,
+                endsAtIso: subscription.endsAt.toISOString(),
+                isTrial: subscription.isTrial,
+              }
+            : null
+        }
       >
         {children}
       </AppShell>

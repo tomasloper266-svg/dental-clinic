@@ -284,7 +284,7 @@ role: "DENTIST",
   async function createMaterialApi(
     token: string,
     body: Record<string, unknown>,
-  ): Promise<{ status: number; body: { material?: { id: string } } }> {
+  ): Promise<{ status: number; body: { material?: { id: string; quantityOnHand?: number } } }> {
     const res = await materialsPOST(
       authedRequest("/api/materials", token, {
         method: "POST",
