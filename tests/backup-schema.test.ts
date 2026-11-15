@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   LEGACY_SNAPSHOT_VERSION,
   SNAPSHOT_VERSION,
+  convertLegacySnapshotSurfaces,
   convertLegacySnapshotToUsd,
   validateSnapshot,
   type ClinicSnapshot,
@@ -28,7 +29,10 @@ function legacySnapshot(): ClinicSnapshot {
     appointments: [],
     waitlistEntries: [],
     appointmentStatusChanges: [],
-    toothFindings: [],
+    toothFindings: [
+      { id: "tf1", surface: "المضغية+القريبة", note: null },
+    ],
+    periodontalReadings: [],
     treatmentPlans: [],
     treatmentPlanItems: [{ id: "tpi1", priceSyp: 120_000 }],
     ledgerEntries: [
@@ -119,5 +123,63 @@ describe("validateSnapshot", () => {
     expect(check.ok).toBe(true);
     if (!check.ok) return;
     expect(check.snapshot.ledgerEntryItems).toEqual([]);
+  });
+
+  it("نسخة بلا مفتاح قراءات الدواعم (أقدم من العقد) تعامَل بقائمة فارغة", () => {
+    const partial = legacySnapshot() as unknown as Record<string, unknown>;
+    delete partial.periodontalReadings;
+    const check = validateSnapshot(partial);
+    expect(check.ok).toBe(true);
+    if (!check.ok) return;
+    expect(check.snapshot.periodontalReadings).toEqual([]);
+  });
+});
+
+describe("convertLegacySnapshotSurfaces — هجرة ترميز الأسطر في اللقطة", () => {
+  it("القيم العربية المجمعة تتحول لأكواد عبر هجرة الاستعادة", () => {
+    const result = convertLegacySnapshotSurfaces(legacySnapshot());
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const finding = result.snapshot.toothFindings[0] as Record<string, unknown>;
+    expect(finding.surface).toBe("O+M");
+  });
+
+  it("نص حر لا يطابق الكتالوج يصبح OTHER ويُحفظ أصله في الملاحظة", () => {
+    const snapshot = legacySnapshot();
+    (snapshot.toothFindings[0] as Record<string, unknown>).surface =
+      "المضغية+حشو خارجي";
+    (snapshot.toothFindings[0] as Record<string, unknown>).note = "ملاحظة قديمة";
+    const result = convertLegacySnapshotSurfaces(snapshot);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const finding = result.snapshot.toothFindings[0] as Record<string, unknown>;
+    expect(finding.surface).toBe("O+OTHER");
+    expect(finding.note).toBe("ملاحظة قديمة | السطح القديم: المضغية+حشو خارجي");
+  });
+
+  it("قيمة surface غائبة أو فارغة تعبر كما هي", () => {
+    const snapshot = legacySnapshot();
+    (snapshot.toothFindings[0] as Record<string, unknown>).surface = null;
+    const result = convertLegacySnapshotSurfaces(snapshot);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const finding = result.snapshot.toothFindings[0] as Record<string, unknown>;
+    expect(finding.surface).toBeNull();
+  });
+
+  it("اللقطة المحولة تمر كاملة عبر الاستعادة: validate ثم الأسطح ثم المبالغ", () => {
+    // نفس تسلسل restoreSnapshot — الأسطح قبل تحويل المبالغ وبلا تعارض بينهما.
+    const check = validateSnapshot(legacySnapshot());
+    expect(check.ok).toBe(true);
+    if (!check.ok) return;
+    const surfaced = convertLegacySnapshotSurfaces(check.snapshot);
+    expect(surfaced.ok).toBe(true);
+    if (!surfaced.ok) return;
+    const money = convertLegacySnapshotToUsd(surfaced.snapshot);
+    expect(money.ok).toBe(true);
+    if (!money.ok) return;
+    const finding = money.snapshot.toothFindings[0] as Record<string, unknown>;
+    expect(finding.surface).toBe("O+M");
+    expect(money.snapshot.version).toBe(SNAPSHOT_VERSION);
   });
 });

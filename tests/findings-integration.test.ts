@@ -57,6 +57,7 @@ function routeParams<T extends Record<string, string>>(params: T) {
 describeDb("مشاهدات الأسنان وخطة العلاج — integration", () => {
   beforeAll(async () => {
     await prisma.session.deleteMany();
+    await prisma.periodontalReading.deleteMany();
     await prisma.toothFinding.deleteMany();
     await prisma.treatmentPlanItem.deleteMany();
     await prisma.appointment.deleteMany();
@@ -347,6 +348,77 @@ describeDb("مشاهدات الأسنان وخطة العلاج — integration"
     expect(unchanged.clinicId).toBe(clinicAId);
     expect(clinicBId).not.toBe(clinicAId);
     expect(Number(unchanged.priceUsd)).toBe(Number(items[0].priceUsd));
+  });
+
+  it("سلسلة الإشارة: سطح بند الخطة ينتقل إلى المشاهدة وإلى بند الفاتورة المشتق", async () => {
+    const created = await planPOST(
+      authed(`/api/patients/${patientAId}/treatment-plan`, tokenA, {
+        method: "POST",
+        body: JSON.stringify({
+          toothFdi: 37,
+          procedure: "حشو ضوئي",
+          priceUsd: 800_000,
+          surface: "المضغية+القريبة",
+        }),
+      }),
+      routeParams({ patientId: patientAId }),
+    );
+    expect(created.status).toBe(201);
+    const item = ((await created.json()) as { item: PlanItemDto }).item;
+    // الواجهة القديمة ترسل أسماء عربية — تُطبَّع إلى الأكواد عند الحفظ.
+    expect(item.surface).toBe("O+M");
+
+    const started = await planStartPOST(
+      authed(
+        `/api/patients/${patientAId}/treatment-plan/${item.id}`,
+        tokenA,
+        {
+          method: "POST",
+          body: JSON.stringify({ resultStatus: "FILLED" }),
+        },
+      ),
+      routeParams({ patientId: patientAId, itemId: item.id }),
+    );
+    expect(started.status).toBe(200);
+
+    // الحلقة 1: المشاهدة الناتجة على المخطط تحمل السطح نفسه.
+    const list = await findingsGET(
+      authed(`/api/patients/${patientAId}/findings`, tokenA),
+      routeParams({ patientId: patientAId }),
+    );
+    const body = (await list.json()) as { findings: FindingDto[] };
+    const doneOn37 = body.findings.filter(
+      (f) => f.toothFdi === 37 && f.kind === "TREATMENT_DONE",
+    );
+    expect(doneOn37).toHaveLength(1);
+    expect(doneOn37[0].surface).toBe("O+M");
+
+    // الحلقة 2: بند الفاتورة المشتق يحمل السن والسطح، وcategory يبقى نظيفاً.
+    const charge = await prisma.ledgerEntry.findFirst({
+      where: { treatmentItemId: item.id },
+      include: { items: true },
+    });
+    expect(charge).not.toBeNull();
+    const derivedItem = charge?.items[0];
+    expect(derivedItem?.toothFdi).toBe(37);
+    expect(derivedItem?.surface).toBe("O+M");
+    expect(derivedItem?.category ?? null).toBeNull();
+  });
+
+  it("يرفض تسجيل سطح غير تشريحي عبر المسار (المضغية على قاطع — 400)", async () => {
+    const res = await findingsPOST(
+      authed(`/api/patients/${patientAId}/findings`, tokenA, {
+        method: "POST",
+        body: JSON.stringify({
+          toothFdi: 11,
+          kind: "EXISTING",
+          status: "DECAYED",
+          surface: "المضغية",
+        }),
+      }),
+      routeParams({ patientId: patientAId }),
+    );
+    expect(res.status).toBe(400);
   });
 
   it("يرفض سنـاً غير صالح وحالة ناتجة غير معروفة (400)", async () => {

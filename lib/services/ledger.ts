@@ -2,6 +2,8 @@ import { clinicScope } from "@/lib/tenant/clinic-client";
 import type { TenantContext } from "@/lib/tenant/context";
 import { deriveInvoicesDetailed } from "@/lib/patient-finance";
 import { isUsdAmount } from "@/lib/currency";
+import { isValidToothFdi } from "@/lib/odontogram/fdi";
+import { parseSurfaceInput } from "@/lib/odontogram/surfaces";
 
 // خدمة الدفتر المالي — دفتر غير قابل للتعديل أو الحذف: التصحيح بقيد عكسي فقط.
 // الرصيد لا يُخزَّن أبداً — يُحسب من مجموع القيود الموقّعة (معادلة الرصيد).
@@ -29,6 +31,10 @@ export type LedgerEntryDto = {
 export type LedgerEntryItemInput = {
   description: string;
   category?: string;
+  // إشارة السن والسطح المرجعي — عرضية اختيارية ولا تدخل في التجميع المالي
+  // (category يبقى نظيفاً). القيد المشتق من خطة يورّثهما من بند الخطة.
+  toothFdi?: number;
+  surface?: string;
   amountUsd: number;
   sort?: number;
 };
@@ -157,12 +163,34 @@ export function parseCreateLedgerEntry(
       ) {
         return { ok: false, error: "بنود الفاتورة غير صالحة" };
       }
+      // إشارة السن اختيارية — إن وُجدت يجب أن تكون بترقيم FDI الدائم.
+      let itemToothFdi: number | undefined;
+      if (item.toothFdi !== undefined && item.toothFdi !== null) {
+        const fdi = item.toothFdi;
+        if (
+          typeof fdi !== "number" ||
+          !Number.isInteger(fdi) ||
+          !isValidToothFdi(fdi)
+        ) {
+          return { ok: false, error: "رقم السن في البند يجب أن يكون بترقيم FDI الدائم (11–48)" };
+        }
+        itemToothFdi = fdi;
+      }
+      // السطح اختياري — يُطبَّع إلى الأكواد المرجعية بتحقق تشريحي ضد السن المرافق.
+      let itemSurface: string | undefined;
+      if (typeof item.surface === "string" && item.surface.trim()) {
+        const parsed = parseSurfaceInput(item.surface, itemToothFdi);
+        if (!parsed.ok) return { ok: false, error: parsed.error };
+        itemSurface = parsed.value;
+      }
       items.push({
         description: item.description,
         category:
           typeof item.category === "string" && item.category.trim()
             ? item.category.trim()
             : undefined,
+        toothFdi: itemToothFdi,
+        surface: itemSurface,
         amountUsd: item.amountUsd,
         sort: typeof item.sort === "number" ? item.sort : undefined,
       });
@@ -380,6 +408,8 @@ export async function createLedgerEntry(
               create: input.items.map((item, index) => ({
                 description: item.description,
                 category: item.category,
+                toothFdi: item.toothFdi,
+                surface: item.surface,
                 amountUsd: item.amountUsd,
                 sort: item.sort ?? index,
               })),
@@ -408,6 +438,9 @@ export type TreatmentChargeInput = {
   treatmentItemId: string;
   procedure: string;
   priceUsd: number;
+  // إشارة السن والسطح من بند الخطة — تُورَّث للبند المشتق في الفاتورة.
+  toothFdi?: number;
+  surface?: string;
 };
 
 // القيد التلقائي عند اكتمال علاج مخطط — يستدعيها محرّك الأودوغرام عند تحويل
@@ -450,9 +483,16 @@ export async function recordTreatmentCharge(
       note: `علاج مكتمل: ${input.procedure}`,
       treatmentItemId: input.treatmentItemId,
       // بند الفاتورة من بند الخطة (فجوة 2) — الوصف هو الإجراء نفسه،
-      // والتصنيف نص حر فارغ للبند المشتق من خطة.
+      // والتصنيف نص حر فارغ للبند المشتق من خطة، وإشارة السن/السطح
+      // تُورَّث من البند لتظهر في الصف.
       items: [
-        { description: input.procedure, amountUsd: input.priceUsd, sort: 0 },
+        {
+          description: input.procedure,
+          amountUsd: input.priceUsd,
+          sort: 0,
+          toothFdi: input.toothFdi,
+          surface: input.surface,
+        },
       ],
     },
     db,

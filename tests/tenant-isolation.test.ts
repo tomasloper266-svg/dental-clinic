@@ -67,6 +67,7 @@ describeDb("عزل العيادات — integration", () => {
   beforeAll(async () => {
     // تنظيف كامل بترتيب آمن مع القيود الخارجية.
     await prisma.session.deleteMany();
+    await prisma.periodontalReading.deleteMany();
     await prisma.materialUsage.deleteMany();
     await prisma.toothFinding.deleteMany();
     await prisma.ledgerEntry.deleteMany();

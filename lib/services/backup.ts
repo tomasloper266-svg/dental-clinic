@@ -2,6 +2,7 @@ import type { Prisma, PrismaClient } from "@/lib/generated/prisma/client";
 import {
   LEGACY_SNAPSHOT_VERSION,
   SNAPSHOT_VERSION,
+  convertLegacySnapshotSurfaces,
   convertLegacySnapshotToUsd,
   reviveDates,
   validateSnapshot,
@@ -84,6 +85,17 @@ const TABLES: {
     insert: (db, rows) =>
       db.toothFinding.createMany({
         data: rows as Prisma.ToothFindingCreateManyInput[],
+      }),
+  },
+  {
+    key: "periodontalReadings",
+    // قراءات الدواعم — إلحاقية بالكامل، بترتيب المشاهدات نفسه (مرجع قبل مُحال).
+    list: (db, c) => db.periodontalReading.findMany({ where: { clinicId: c } }),
+    clear: (db, c) =>
+      db.periodontalReading.deleteMany({ where: { clinicId: c } }),
+    insert: (db, rows) =>
+      db.periodontalReading.createMany({
+        data: rows as Prisma.PeriodontalReadingCreateManyInput[],
       }),
   },
   {
@@ -301,12 +313,15 @@ export async function restoreSnapshot(
 ): Promise<RestoreResult> {
   const check = validateSnapshot(input);
   if (!check.ok) return { ok: false, error: check.error };
-  // لقطة قديمة (v1، ليرة) تُحوَّل إلى دولار بسعرها المحفوظ قبل اللمس —
-  // واللقطات الحالية (v2، دولار) تعبر كما هي بلا أي تحويل.
+  // هجرة ترميز الأسطح أولاً (لقطات v1 وv2 معاً — لقطة سابقة على هذا النشر قد
+  // تحمل قيماً عربية)، ثم لقطة قديمة (v1، ليرة) تُحوَّل إلى دولار بسعرها
+  // المحفوظ — واللقطات الحالية (v2، دولار) تعبر كما هي بلا أي تحويل.
+  const surfaced = convertLegacySnapshotSurfaces(check.snapshot);
+  if (!surfaced.ok) return { ok: false, error: surfaced.error };
   const legacy =
     check.snapshot.version === LEGACY_SNAPSHOT_VERSION
-      ? convertLegacySnapshotToUsd(check.snapshot)
-      : { ok: true as const, snapshot: check.snapshot };
+      ? convertLegacySnapshotToUsd(surfaced.snapshot)
+      : { ok: true as const, snapshot: surfaced.snapshot };
   if (!legacy.ok) return { ok: false, error: legacy.error };
   const snapshot = legacy.snapshot;
 

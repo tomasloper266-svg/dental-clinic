@@ -1,6 +1,7 @@
 import { clinicScope } from "@/lib/tenant/clinic-client";
 import type { TenantContext } from "@/lib/tenant/context";
 import { isValidToothFdi } from "@/lib/odontogram/fdi";
+import { parseSurfaceInput } from "@/lib/odontogram/surfaces";
 import {
   TOOTH_STATUS_KEYS,
   FINDING_KINDS,
@@ -106,10 +107,15 @@ export function parseCreateFinding(
     return { ok: false, error: "حالة السن غير صالحة" };
   }
 
-  const surface =
-    typeof b.surface === "string" && b.surface.trim()
-      ? b.surface.trim().slice(0, 50)
-      : undefined;
+  // السطح يُخزن بأكواد مرجعية (مثال O+M) — القادم كأسماء عربية من الواجهة
+  // القديمة يُطبَّع عبر نفس خريطة هجرة القاعدة، وأي شيء خارج كتالوج تشريح
+  // السن نفسه يُرفض (القاطع بلا «المضغية» مثلاً).
+  let surface: string | undefined;
+  if (typeof b.surface === "string" && b.surface.trim()) {
+    const parsed = parseSurfaceInput(b.surface, toothFdi);
+    if (!parsed.ok) return { ok: false, error: parsed.error };
+    surface = parsed.value;
+  }
   const note =
     typeof b.note === "string" && b.note.trim()
       ? b.note.trim().slice(0, 500)
