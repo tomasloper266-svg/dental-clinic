@@ -141,3 +141,13 @@ export function formatSurfaceAr(stored: string): string {
     })
     .join("+");
 }
+
+/** نقّي — أكواد الأسطح المرسومة من قيمة مخزنة: «O+M» → [«O», «M»]. القيم غير المرجعية (نص قديم، OTHER) تعيد قائمة فارغة — فالتلوين الجزئي ينسحب للسن كاملاً. */
+export function surfaceCodesOf(stored: string | null | undefined): string[] {
+  if (!stored) return [];
+  const codes = stored
+    .split("+")
+    .map((code) => code.trim())
+    .filter((code) => code.length > 0);
+  return codes.every((code) => SURFACE_CODE_KEYS.includes(code)) ? codes : [];
+}

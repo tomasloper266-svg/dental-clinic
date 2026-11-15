@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Trash2, Pencil, CheckCircle2, Check, X } from "lucide-react";
 import { useMoney } from "@/components/ui/CurrencyContext";
 import { allTeeth, toothLabelAr } from "@/lib/odontogram/fdi";
+import { toothAnatomy, type SurfaceKey } from "@/lib/odontogram/anatomy";
+import { formatSurfaceAr } from "@/lib/odontogram/surfaces";
 import {
   TOOTH_STATUS_KEYS,
   TOOTH_STATUS_META,
@@ -136,14 +138,20 @@ export default function DentalPlanSection({
     router.refresh();
   }
 
-  async function addRow(planId: string | null, procedure: string, toothFdi: number, priceUsd: number) {
+  async function addRow(
+    planId: string | null,
+    procedure: string,
+    toothFdi: number,
+    priceUsd: number,
+    surface?: string,
+  ) {
     setRowError(null);
     const res = await fetch(
       `/api/patients/${encodeURIComponent(patientId)}/treatment-plan`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ procedure, toothFdi, priceUsd, planId }),
+        body: JSON.stringify({ procedure, toothFdi, priceUsd, planId, surface }),
       },
     );
     if (!res.ok) {
@@ -243,8 +251,8 @@ export default function DentalPlanSection({
                 onToothChange={(itemId, toothFdi) => void patchItem(itemId, { toothFdi })}
                 onItemDelete={(itemId) => void deleteItem(itemId)}
                 onComplete={(itemId, resultStatus) => void completeItem(itemId, resultStatus)}
-                onAddRow={(procedure, toothFdi, priceUsd) =>
-                  void addRow(plan.id, procedure, toothFdi, priceUsd)
+                onAddRow={(procedure, toothFdi, priceUsd, surface) =>
+                  void addRow(plan.id, procedure, toothFdi, priceUsd, surface)
                 }
               />
             );
@@ -274,8 +282,8 @@ export default function DentalPlanSection({
               onToothChange={(itemId, toothFdi) => void patchItem(itemId, { toothFdi })}
               onItemDelete={(itemId) => void deleteItem(itemId)}
               onComplete={(itemId, resultStatus) => void completeItem(itemId, resultStatus)}
-              onAddRow={(procedure, toothFdi, priceUsd) =>
-                void addRow(null, procedure, toothFdi, priceUsd)
+              onAddRow={(procedure, toothFdi, priceUsd, surface) =>
+                void addRow(null, procedure, toothFdi, priceUsd, surface)
               }
             />
           )}
@@ -360,7 +368,12 @@ type OperationsProps = {
   onToothChange: (itemId: string, toothFdi: number) => void;
   onItemDelete: (itemId: string) => void;
   onComplete: (itemId: string, resultStatus: ToothStatusKey) => void;
-  onAddRow: (procedure: string, toothFdi: number, priceUsd: number) => void;
+  onAddRow: (
+    procedure: string,
+    toothFdi: number,
+    priceUsd: number,
+    surface?: string,
+  ) => void;
 };
 
 /** بطاقة عمليات خطة واحدة — الجدول وصفي الإضافة والتذييل */
@@ -492,20 +505,37 @@ function PlanOperationsCard({
 function AddRow({
   onAdd,
 }: {
-  onAdd: (procedure: string, toothFdi: number, priceUsd: number) => void;
+  onAdd: (
+    procedure: string,
+    toothFdi: number,
+    priceUsd: number,
+    surface?: string,
+  ) => void;
 }) {
   const [procedure, setProcedure] = useState("");
   const [toothFdi, setToothFdi] = useState(0);
+  const [surfaces, setSurfaces] = useState<SurfaceKey[]>([]);
   const [priceStr, setPriceStr] = useState("0");
 
   const price = Number(priceStr);
+  // أسطح السن من تشريحه حصراً — تظهر فقط عند اختيار سن دائم 11–48
+  const surfaceOptions =
+    toothFdi >= 11 && toothFdi <= 48
+      ? (toothAnatomy(toothFdi)?.surfaces ?? [])
+      : [];
 
   function submit() {
     if (procedure.trim().length < 2) return;
     if (!Number.isInteger(price) || price < 0) return;
-    onAdd(procedure.trim(), toothFdi, price);
+    onAdd(
+      procedure.trim(),
+      toothFdi,
+      price,
+      surfaces.length > 0 ? surfaces.join("+") : undefined,
+    );
     setProcedure("");
     setToothFdi(0);
+    setSurfaces([]);
     setPriceStr("0");
   }
 
@@ -520,7 +550,11 @@ function AddRow({
       />
       <select
         value={toothFdi}
-        onChange={(event) => setToothFdi(Number(event.target.value))}
+        onChange={(event) => {
+          setToothFdi(Number(event.target.value));
+          // السن تغيّر — أسطح السن القديم قد لا تكون تشريحية للجديد
+          setSurfaces([]);
+        }}
         aria-label="سن الإجراء"
         className="focus-ring w-28 rounded-field border border-warm-300 bg-surface px-2 py-1.5 text-xs text-ink-900"
       >
@@ -538,6 +572,43 @@ function AddRow({
       <Button variant="gold" size="sm" onClick={submit} disabled={procedure.trim().length < 2}>
         + إضافة
       </Button>
+      {surfaceOptions.length > 0 && (
+        <div
+          className="flex w-full flex-wrap items-center gap-1.5"
+          role="group"
+          aria-label="سطح السن للإجراء الجديد"
+        >
+          <span className="text-steel-500 text-xs font-medium">
+            سطح السن (اختياري):
+          </span>
+          {surfaceOptions.map((surface) => {
+            const active = surfaces.includes(surface);
+            return (
+              <button
+                key={surface}
+                type="button"
+                aria-pressed={active}
+                onClick={() =>
+                  setSurfaces((prev) =>
+                    prev.includes(surface)
+                      ? prev.filter((s) => s !== surface)
+                      : [...prev, surface],
+                  )
+                }
+                className={cn(
+                  "rounded-field border px-2 py-1 text-[11px] font-medium transition-colors",
+                  "focus-visible:outline-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2",
+                  active
+                    ? "border-primary-600 bg-primary-600 text-white"
+                    : "border-warm-300 bg-surface text-warm-600 hover:bg-surface-hover",
+                )}
+              >
+                {surface}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -560,7 +631,14 @@ function PlanRow({
   const locked = item.status === "DONE";
   return (
     <tr>
-      <td className="text-ink-900 px-2 py-2">{item.procedure}</td>
+      <td className="text-ink-900 px-2 py-2">
+        {item.procedure}
+        {item.surface && (
+          <span className="border-steel-200 bg-steel-50 text-steel-700 rounded-field ms-2 inline-block border px-1.5 py-0.5 text-[11px]">
+            {formatSurfaceAr(item.surface)}
+          </span>
+        )}
+      </td>
       <td className="px-2 py-2">
         <select
           value={item.toothFdi}

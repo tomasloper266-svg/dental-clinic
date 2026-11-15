@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { PlanItemDto } from "@/lib/services/treatment-plan";
 import { isUsdAmount } from "@/lib/currency";
 import { planStatusMeta } from "@/lib/treatment-plan-view";
+import { formatSurfaceAr } from "@/lib/odontogram/surfaces";
 import {
   buildChargeWithItemsBody,
   type InvoiceItemPayload,
@@ -90,11 +91,14 @@ export default function IssueInvoiceModal({
     setSaving(true);
     try {
       // بنود الفاتورة من بنود الخطة المختارة — الوصف هو الإجراء نفسه
-      // والتصنيف نص حر أساس تجميع الإيراد حسب نوع العلاج.
+      // والتصنيف نص حر أساس تجميع الإيراد حسب نوع العلاج. السن والسطح
+      // يورَّسان من البند إن وُجدا — الإشارة السريرية تصل إلى بند الفاتورة.
       const payloadItems: InvoiceItemPayload[] = selectedItems.map((item) => ({
         description: item.procedure,
         category: item.procedure,
         amountUsd: item.priceUsd,
+        ...(item.toothFdi > 0 ? { toothFdi: item.toothFdi } : {}),
+        ...(item.surface ? { surface: item.surface } : {}),
       }));
       const res = await fetch(`/api/patients/${encodeURIComponent(patientId)}/ledger`, {
         method: "POST",
@@ -220,6 +224,12 @@ export default function IssueInvoiceModal({
                   className="accent-warning-500 h-4 w-4"
                 />
                 <span className="text-ink-900">{item.procedure}</span>
+                {item.toothFdi > 0 && (
+                  <span className="numeric text-steel-500 text-xs">
+                    سن {item.toothFdi}
+                    {item.surface ? ` — ${formatSurfaceAr(item.surface)}` : ""}
+                  </span>
+                )}
                 <span
                   className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${meta.toneClass}`}
                 >

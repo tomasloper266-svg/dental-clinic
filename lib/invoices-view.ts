@@ -156,6 +156,10 @@ export type InvoiceItemPayload = {
   description: string;
   category?: string;
   amountUsd: number;
+  /** الإشارة السريرية الاختيارية — سن FDI دائم 11–48 */
+  toothFdi?: number;
+  /** أكواد الأسطح المجمّعة (مثال «O+M») — تُرسل مع السن فقط */
+  surface?: string;
 };
 
 /**
@@ -189,20 +193,30 @@ export function buildChargeWithItemsBody({
     items: items.map((item) => ({
       description: item.description,
       ...(item.category !== undefined ? { category: item.category } : {}),
+      ...(item.toothFdi !== undefined ? { toothFdi: item.toothFdi } : {}),
+      ...(item.surface !== undefined ? { surface: item.surface } : {}),
       amountUsd: item.amountUsd,
     })),
   };
 }
 
-/** نقي — وصف بند فاتورة يدوية كما كان يُكتب بالملاحظة: الإجراء مع السن إن وُجد */
+/**
+ * نقي — وصف بند فاتورة يدوية كما كان يُكتب بالملاحظة: الإجراء مع السن إن وُجد،
+ * والسطح يُعرض صراحة بعد السن (مواصفة الأسطح): «حشو ضوئي (السن 36 — المضغية)».
+ */
 export function invoiceItemDescription(
   procedure: string,
   tooth?: string,
+  surface?: string,
 ): string {
   const trimmedTooth = tooth?.trim();
-  return trimmedTooth
-    ? `${procedure.trim()} (السن ${trimmedTooth})`
-    : procedure.trim();
+  if (trimmedTooth) {
+    const trimmedSurface = surface?.trim();
+    return trimmedSurface
+      ? `${procedure.trim()} (السن ${trimmedTooth} — ${trimmedSurface})`
+      : `${procedure.trim()} (السن ${trimmedTooth})`;
+  }
+  return procedure.trim();
 }
 
 /**

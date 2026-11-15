@@ -6,21 +6,35 @@ import {
   isChartFaded,
   type ToothStatusKey,
 } from "@/lib/odontogram/statuses";
+import {
+  CROWN_PAINT,
+  CrownSurfaceOverlay,
+} from "@/components/odontogram/CrownPaint";
 import { toothDisplayNameAr } from "@/lib/odontogram/fdi";
 import { cn } from "@/components/ui/cn";
 
 // خلية سن واحدة في المخطط الوطني — رقم السن واسمه التشريحي حول رسم SVG،
 // والحالة تُلوِّن التعبئة واسم السن معاً (كما في المرجع: 17 حمراء لتسوس،
 // 36 زرقاء لحشوة). الفك العلوي: الرقم أعلى والاسم أسفل؛ السفلي بالعكس.
+// عند مشاهدة بأسطح محددة تُلوَّن الأسطح المصابة حصراً بنظام CROWN_PAINT
+// (لون + نقش — لا لون وحده) وتظل بقية التاج عاجية.
 
 type Props = {
   tooth: ToothAnatomy;
   status: ToothStatusKey | null;
+  /** أكواد الأسطح المصابة في آخر مشاهدة (مثال O+M) — فارغ يعني تلوين التاج كاملاً. */
+  affectedSurfaces?: readonly string[];
   selected: boolean;
   onSelect: (fdi: number) => void;
 };
 
-export default function ChartTooth({ tooth, status, selected, onSelect }: Props) {
+export default function ChartTooth({
+  tooth,
+  status,
+  affectedSurfaces,
+  selected,
+  onSelect,
+}: Props) {
   const fill =
     status && status !== "HEALTHY" && status !== "WATCH"
       ? TOOTH_CHART_FILL[status]
@@ -40,6 +54,18 @@ export default function ChartTooth({ tooth, status, selected, onSelect }: Props)
       {name}
     </span>
   ) : null;
+
+  // التلوين الجزئي بنظام CROWN_PAINT — لون الحالة ونقشها على الأسطح المصابة حصراً.
+  const paint = status ? CROWN_PAINT[status] : null;
+  const overlay =
+    paint && affectedSurfaces && affectedSurfaces.length > 0 ? (
+      <CrownSurfaceOverlay
+        anatomy={tooth}
+        codes={affectedSurfaces}
+        paint={paint}
+        idPrefix={`chart-tooth-${tooth.fdi}`}
+      />
+    ) : null;
 
   return (
     <button
@@ -87,12 +113,15 @@ export default function ChartTooth({ tooth, status, selected, onSelect }: Props)
           />
           <path
             d={tooth.crownPath}
-            fill={fill ?? "var(--color-warm-100)"}
+            fill={
+              overlay ? "var(--color-warm-100)" : (fill ?? "var(--color-warm-100)")
+            }
             stroke={faded ? "var(--color-warning-500)" : "var(--color-warm-500)"}
             strokeWidth={fill ? "1.6" : "1.2"}
             strokeLinejoin="round"
             strokeDasharray={faded ? "3 2.5" : undefined}
           />
+          {overlay}
         </g>
       </svg>
     );

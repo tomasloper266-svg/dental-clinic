@@ -33,6 +33,7 @@ function entry(
     doctorId: null,
     appliedChargeId: null,
     createdAt: new Date(base + minutes * 60_000),
+    items: [],
   };
 }
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Printer, CircleDollarSign } from "lucide-react";
 import { toothLabelAr } from "@/lib/odontogram/fdi";
+import { formatSurfaceAr } from "@/lib/odontogram/surfaces";
 import type { LedgerEntryDto } from "@/lib/services/ledger";
 import type { PlanItemDto } from "@/lib/services/treatment-plan";
 import { planStatusMeta } from "@/lib/treatment-plan-view";
@@ -69,8 +70,18 @@ export default function InvoiceModal({
   };
 
   const toothText = (charge: LedgerEntryDto) => {
+    // بند الفاتورة المهيكل يحمل السن مباشرة (يدوي أو مشتق) — والبند المرتبط
+    // بخطة يحمل السن في البند نفسه للقيود القديمة بلا بنود مهيكلة.
+    const firstItem = charge.items[0];
+    if (firstItem?.toothFdi) return toothLabelAr(firstItem.toothFdi);
     const item = itemFor(charge);
     return item && item.toothFdi > 0 ? toothLabelAr(item.toothFdi) : "—";
+  };
+
+  // السطح يُعرض صراحة تحت السن — «المضغية» أو «المضغية+القريبة»
+  const surfaceText = (charge: LedgerEntryDto): string | null => {
+    const code = charge.items[0]?.surface ?? itemFor(charge)?.surface ?? null;
+    return code ? formatSurfaceAr(code) : null;
   };
 
   const itemText = (charge: LedgerEntryDto) => {
@@ -136,7 +147,14 @@ export default function InvoiceModal({
                         )}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-steel-600">{toothText(charge)}</td>
+                    <td className="px-3 py-2.5 text-steel-600">
+                      {toothText(charge)}
+                      {surfaceText(charge) && (
+                        <span className="text-steel-500 block text-[11px]">
+                          {surfaceText(charge)}
+                        </span>
+                      )}
+                    </td>
                     <td className="numeric px-3 py-2.5 font-semibold">
                       {money(charge.amountUsd)}
                     </td>
