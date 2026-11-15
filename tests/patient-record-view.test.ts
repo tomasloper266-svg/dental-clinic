@@ -21,6 +21,7 @@ function entry(overrides: Partial<LedgerEntryDto> = {}): LedgerEntryDto {
     doctorId: null,
     appliedChargeId: null,
     createdAt: new Date("2026-01-01T10:00:00Z"),
+    items: [],
     ...overrides,
   };
 }
@@ -33,6 +34,7 @@ function planItem(overrides: Partial<PlanItemDto> = {}): PlanItemDto {
     priceUsd: 150_000,
     status: "DONE",
     priority: 1,
+    surface: null,
     ...overrides,
   };
 }

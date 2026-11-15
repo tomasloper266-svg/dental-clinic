@@ -24,6 +24,7 @@ function entry(
     doctorId: null,
     appliedChargeId: null,
     createdAt: new Date("2026-11-14T10:00:00Z"),
+    items: [],
     ...overrides,
   };
 }

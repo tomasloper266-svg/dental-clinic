@@ -12,6 +12,17 @@ import { parseSurfaceInput } from "@/lib/odontogram/surfaces";
 
 export type LedgerEntryType = "CHARGE" | "PAYMENT" | "ADJUSTMENT" | "REFUND";
 
+/** بند فاتورة مهيكل داخل قيد رسوم — إشارة السن والسطح عرضية حصراً */
+export type LedgerEntryItemDto = {
+  id: string;
+  description: string;
+  category: string | null;
+  toothFdi: number | null;
+  surface: string | null;
+  amountUsd: number;
+  sort: number;
+};
+
 export type LedgerEntryDto = {
   id: string;
   patientId: string;
@@ -26,6 +37,8 @@ export type LedgerEntryDto = {
   /** ترشيح تخصيص الدفعة لفاتورة — للعرض حصراً ولا يدخل في معادلة الرصيد */
   appliedChargeId: string | null;
   createdAt: Date;
+  /** بنود الفاتورة المهيكلة — قائمة فارغة للقيود القديمة والقيود بلا بنود */
+  items: LedgerEntryItemDto[];
 };
 
 export type LedgerEntryItemInput = {
@@ -225,6 +238,42 @@ function toEntryDto<Row extends { amountUsd: unknown }>(row: Row): Omit<Row, "am
   return { ...row, amountUsd: Number(row.amountUsd) };
 }
 
+// بنود الفاتورة — نفس التحويل العشري عند حدود القراءة، بترتيب sort.
+type LedgerEntryItemRow = {
+  id: string;
+  description: string;
+  category: string | null;
+  toothFdi: number | null;
+  surface: string | null;
+  amountUsd: unknown;
+  sort: number;
+};
+
+function toItemDto(row: LedgerEntryItemRow): LedgerEntryItemDto {
+  return {
+    id: row.id,
+    description: row.description,
+    category: row.category,
+    toothFdi: row.toothFdi,
+    surface: row.surface,
+    amountUsd: Number(row.amountUsd),
+    sort: row.sort,
+  };
+}
+
+const ENTRY_ITEMS_SELECT = {
+  orderBy: [{ sort: "asc" as const }],
+  select: {
+    id: true,
+    description: true,
+    category: true,
+    toothFdi: true,
+    surface: true,
+    amountUsd: true,
+    sort: true,
+  },
+};
+
 export async function listLedgerEntries(
   ctx: TenantContext,
   patientId: string,
@@ -244,9 +293,13 @@ export async function listLedgerEntries(
       doctorId: true,
       appliedChargeId: true,
       createdAt: true,
+      items: ENTRY_ITEMS_SELECT,
     },
   });
-  const entries = rows.map(toEntryDto);
+  const entries = rows.map((row) => ({
+    ...toEntryDto(row),
+    items: row.items.map(toItemDto),
+  }));
   return { entries, balance: computeBalance(entries) };
 }
 
@@ -268,6 +321,7 @@ const CLINIC_ENTRY_SELECT = {
   doctorId: true,
   appliedChargeId: true,
   createdAt: true,
+  items: ENTRY_ITEMS_SELECT,
   patient: { select: { name: true, phone: true } },
 } as const;
 
@@ -295,6 +349,7 @@ export async function listClinicLedgerEntries(
     doctorId: row.doctorId,
     appliedChargeId: row.appliedChargeId,
     createdAt: row.createdAt,
+    items: row.items.map(toItemDto),
     patientName: row.patient.name,
     patientPhone: row.patient.phone,
   }));
@@ -428,9 +483,13 @@ export async function createLedgerEntry(
       doctorId: true,
       appliedChargeId: true,
       createdAt: true,
+      items: ENTRY_ITEMS_SELECT,
     },
   });
-  return toEntryDto(entry);
+  return {
+    ...toEntryDto(entry),
+    items: entry.items.map(toItemDto),
+  };
 }
 
 export type TreatmentChargeInput = {
@@ -464,10 +523,14 @@ export async function recordTreatmentCharge(
       doctorId: true,
       appliedChargeId: true,
       createdAt: true,
+      items: ENTRY_ITEMS_SELECT,
     },
   });
   if (existing) {
-    return { entry: toEntryDto(existing), alreadyCharged: true };
+    return {
+      entry: { ...toEntryDto(existing), items: existing.items.map(toItemDto) },
+      alreadyCharged: true,
+    };
   }
 
   if (!isUsdAmount(input.priceUsd) || input.priceUsd <= 0) {
@@ -544,8 +607,12 @@ export async function deleteUnallocatedCharge(
         doctorId: true,
         appliedChargeId: true,
         createdAt: true,
+        items: ENTRY_ITEMS_SELECT,
       },
-    })).map(toEntryDto);
+    })).map((row) => ({
+      ...toEntryDto(row),
+      items: row.items.map(toItemDto),
+    }));
     const invoices = deriveInvoicesDetailed(entries);
     const index = entries
       .filter((e) => e.type === "CHARGE")

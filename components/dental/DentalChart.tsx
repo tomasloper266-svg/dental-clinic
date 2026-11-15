@@ -10,6 +10,7 @@ import {
   latestFindingByTooth,
   findingsForTooth,
 } from "@/lib/odontogram/findings-view";
+import { surfaceCodesOf } from "@/lib/odontogram/surfaces";
 import type { FindingDto } from "@/lib/services/findings";
 import ChartTooth from "./ChartTooth";
 import ToothRecordPanel, { toothPanelTitle } from "./ToothRecordPanel";
@@ -102,6 +103,7 @@ export default function DentalChart({
                 key={anatomy.fdi}
                 tooth={anatomy}
                 status={meta?.value ?? null}
+                affectedSurfaces={surfaceCodesOf(current?.surface)}
                 selected={selectedTooth === anatomy.fdi}
                 onSelect={setSelectedTooth}
               />

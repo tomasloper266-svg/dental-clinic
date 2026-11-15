@@ -3,102 +3,35 @@
 import type { ReactElement } from "react";
 import type { ToothAnatomy } from "@/lib/odontogram/anatomy";
 import {
-  type ToothStatusKey,
   type ToothStatusMeta,
 } from "@/lib/odontogram/statuses";
+import {
+  CROWN_PAINT,
+  CrownPatternDefs,
+  CrownSurfaceOverlay,
+} from "@/components/odontogram/CrownPaint";
 import { cn } from "@/components/ui/cn";
 
 // رسم سن تشريحي واحد كزر SVG. التمييز مزدوج: لون + نقش على التاج
 // (خطوط مائلة للحشوة، تعبئة للتسوس، خيوط للغرسة…) — لا اللون وحده.
+// عند مشاهدة مسجلة بأسطح محددة تُلوَّن الأسطح المصابة حصراً داخل التاج
+// (تلوين سطح جزئي بنظام CROWN_PAINT نفسه)، وما عداها يبقى عاجياً.
 // الجذور تبقى عاجية دائماً، والصف العلوي يُدار 180° ليواجه التيجان خط الإطباق.
 
 type Props = {
   tooth: ToothAnatomy;
   // الحالة الحالية للسن من latestFindingByTooth — null يعني سليماً غير ملوّن.
   meta: ToothStatusMeta | null;
+  /** أكواد الأسطح المصابة في آخر مشاهدة (مثال O+M) — فارغ يعني تلوين التاج كاملاً. */
+  affectedSurfaces?: readonly string[];
   selected: boolean;
   onSelect: (fdi: number) => void;
 };
 
-type CrownPaint = {
-  fill: string;
-  /** نقش مزدوج فوق اللون — لتمييز الحالة دون الاعتماد على اللون وحده. */
-  pattern?: "hatch" | "dots" | "threads";
-  /** حد متقطع (المراقبة، المقلوع). */
-  dashed?: boolean;
-  /** رسم باهت مع علامة X (المقلوع). */
-  faded?: boolean;
-  /** حلقة داخلية ثانية (التاج التعويضي). */
-  innerRing?: boolean;
-};
-
-const CROWN_PAINT: Record<ToothStatusKey, CrownPaint> = {
-  HEALTHY: { fill: "var(--color-warm-100)" },
-  DECAYED: { fill: "var(--color-danger-500)" },
-  FILLED: { fill: "var(--color-ink-200)", pattern: "hatch" },
-  ROOT_CANAL: { fill: "var(--color-plum-200)", pattern: "dots" },
-  EXTRACTED: { fill: "var(--color-warm-100)", dashed: true, faded: true },
-  CROWN: { fill: "var(--color-warning-300)", innerRing: true },
-  IMPLANT: { fill: "var(--color-primary-300)", pattern: "threads" },
-  WATCH: { fill: "transparent", dashed: true },
-  // حالتان إضافيتان — برتقالي المكسور وزيتي الحساسية كما في المخطط المرجعي
-  BROKEN: { fill: "var(--color-warning-500)" },
-  SENSITIVITY: { fill: "var(--color-warning-300)" },
-};
-
-function PatternDefs({
-  id,
-  kind,
-}: {
-  id: string;
-  kind: NonNullable<CrownPaint["pattern"]>;
-}) {
-  if (kind === "hatch") {
-    return (
-      <pattern
-        id={id}
-        width="6"
-        height="6"
-        patternUnits="userSpaceOnUse"
-        patternTransform="rotate(45)"
-      >
-        <line
-          x1="0"
-          y1="0"
-          x2="0"
-          y2="6"
-          stroke="rgba(255,255,255,0.9)"
-          strokeWidth="2"
-        />
-      </pattern>
-    );
-  }
-  if (kind === "dots") {
-    return (
-      <pattern id={id} width="6" height="6" patternUnits="userSpaceOnUse">
-        <circle cx="1.5" cy="1.5" r="1.1" fill="rgba(255,255,255,0.9)" />
-        <circle cx="4.5" cy="4.5" r="1.1" fill="rgba(255,255,255,0.9)" />
-      </pattern>
-    );
-  }
-  // threads — خيوط لولبية أفقية توحي بغرسة التيتانيوم
-  return (
-    <pattern id={id} width="4" height="4" patternUnits="userSpaceOnUse">
-      <line
-        x1="0"
-        y1="2"
-        x2="4"
-        y2="2"
-        stroke="rgba(255,255,255,0.75)"
-        strokeWidth="1.1"
-      />
-    </pattern>
-  );
-}
-
 export default function ToothSvg({
   tooth,
   meta,
+  affectedSurfaces,
   selected,
   onSelect,
 }: Props): ReactElement {
@@ -108,6 +41,21 @@ export default function ToothSvg({
     ? `tooth-${paint.pattern}-${tooth.fdi}`
     : null;
   const flipped = tooth.row === "upper";
+
+  // التلوين الجزئي حينما تكون للأسطح مناطق مرسومة — وإلا يعود التاج للتلوين الكامل
+  const hasBands =
+    paint !== null &&
+    affectedSurfaces !== undefined &&
+    affectedSurfaces.length > 0;
+  const partial =
+    hasBands && affectedSurfaces !== undefined ? (
+      <CrownSurfaceOverlay
+        anatomy={tooth}
+        codes={affectedSurfaces}
+        paint={paint as NonNullable<typeof paint>}
+        idPrefix={`tooth-svg-${tooth.fdi}`}
+      />
+    ) : null;
 
   return (
     <button
@@ -124,7 +72,7 @@ export default function ToothSvg({
       <svg viewBox="0 0 40 60" className="h-12 w-8" aria-hidden>
         {patternId && paint?.pattern && (
           <defs>
-            <PatternDefs kind={paint.pattern} id={patternId} />
+            <CrownPatternDefs kind={paint.pattern} id={patternId} />
           </defs>
         )}
         <g
@@ -139,10 +87,16 @@ export default function ToothSvg({
             strokeWidth="1.2"
             strokeLinejoin="round"
           />
-          {/* التاج — يُلوّن بالحالة */}
+          {/* التاج — يُلوّن بالحالة كاملاً، أو بالأسطح المصابة حصراً */}
           <path
             d={tooth.crownPath}
-            fill={paint ? paint.fill : "var(--color-warm-100)"}
+            fill={
+              partial
+                ? "var(--color-warm-100)"
+                : paint
+                  ? paint.fill
+                  : "var(--color-warm-100)"
+            }
             stroke={
               paint?.dashed
                 ? "var(--color-warning-500)"
@@ -152,7 +106,8 @@ export default function ToothSvg({
             strokeLinejoin="round"
             strokeDasharray={paint?.dashed ? "3 2.5" : undefined}
           />
-          {paint?.pattern && patternId && (
+          {partial}
+          {!partial && paint?.pattern && patternId && (
             <path
               d={tooth.crownPath}
               fill={`url(#${patternId})`}

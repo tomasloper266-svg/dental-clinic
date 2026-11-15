@@ -9,6 +9,11 @@ import type {
   PlanItemStatus,
 } from "@/lib/services/treatment-plan";
 import { toothStatusMeta } from "@/lib/odontogram/statuses";
+import { toothAnatomy, type SurfaceKey } from "@/lib/odontogram/anatomy";
+import {
+  formatSurfaceAr,
+} from "@/lib/odontogram/surfaces";
+import { isValidToothFdi } from "@/lib/odontogram/fdi";
 import { isUsdAmount } from "@/lib/currency";
 import { planTotals, planByTooth } from "@/lib/treatment-plan-view";
 import { Button } from "@/components/ui/Button";
@@ -66,6 +71,8 @@ export default function TreatmentPlanSection({
   const money = useMoney();
   const [items, setItems] = useState<PlanItemDto[]>(initialItems);
   const [tooth, setTooth] = useState(preselectedTooth?.toString() ?? "");
+  // أسطح البند — تظهر فقط عند إدخال سن دائم 11–48، وخياراتها من تشريح السن حصراً.
+  const [surfaces, setSurfaces] = useState<SurfaceKey[]>([]);
   const [procedure, setProcedure] = useState("");
   const [price, setPrice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -81,8 +88,17 @@ export default function TreatmentPlanSection({
 
   // اختيار سن على الأودوغرام يعبّئ بند الخطة الجديد — حتى بعد أول تركيب.
   useEffect(() => {
-    if (preselectedTooth !== null) setTooth(preselectedTooth.toString());
+    if (preselectedTooth !== null) {
+      setTooth(preselectedTooth.toString());
+      setSurfaces([]);
+    }
   }, [preselectedTooth]);
+
+  function handleToothChange(value: string) {
+    setTooth(value);
+    // السن تغيّر — أسطح السن القديم قد لا تكون تشريحية للجديد.
+    setSurfaces([]);
+  }
 
   const base = `/api/patients/${encodeURIComponent(patientId)}/treatment-plan`;
 
@@ -99,6 +115,7 @@ export default function TreatmentPlanSection({
           toothFdi: Number(tooth),
           procedure,
           priceUsd: Number(price),
+          surface: surfaces.length > 0 ? surfaces.join("+") : undefined,
         }),
       });
       const data = (await res.json()) as { item?: PlanItemDto; error?: string };
@@ -109,6 +126,7 @@ export default function TreatmentPlanSection({
       setItems((prev) => [...prev, data.item as PlanItemDto]);
       setProcedure("");
       setPrice("");
+      setSurfaces([]);
     } catch {
       setError("تعذر الاتصال بالخادم");
     } finally {
@@ -264,7 +282,7 @@ export default function TreatmentPlanSection({
           min={11}
           max={48}
           value={tooth}
-          onChange={(e) => setTooth(e.target.value)}
+          onChange={(e) => handleToothChange(e.target.value)}
           placeholder="سن"
           className={cn(inputClass, "numeric")}
         />
@@ -303,6 +321,51 @@ export default function TreatmentPlanSection({
           إضافة بند
         </Button>
       </div>
+
+      {/* قائمة الأسطح — تظهر فقط عند إدخال سن دائم 11–48، وخياراتها من تشريح السن حصراً */}
+      {isValidToothFdi(toothNum) &&
+        (toothAnatomy(toothNum)?.surfaces ?? []).length > 0 && (
+          <div className="mt-2">
+            <p
+              className="text-warm-600 mb-1.5 text-xs font-semibold"
+              id="plan-surfaces-label"
+            >
+              سطح السن (اختياري)
+            </p>
+            <div
+              className="flex flex-wrap gap-1.5"
+              role="group"
+              aria-labelledby="plan-surfaces-label"
+            >
+              {(toothAnatomy(toothNum)?.surfaces ?? []).map((surface) => {
+                const active = surfaces.includes(surface);
+                return (
+                  <button
+                    key={surface}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() =>
+                      setSurfaces((prev) =>
+                        prev.includes(surface)
+                          ? prev.filter((s) => s !== surface)
+                          : [...prev, surface],
+                      )
+                    }
+                    className={cn(
+                      "rounded-field border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                      "focus-visible:outline-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2",
+                      active
+                        ? "border-primary-600 bg-primary-600 text-white"
+                        : "border-warm-300 bg-surface-raised text-warm-600 hover:bg-surface-hover active:bg-surface-sunken",
+                    )}
+                  >
+                    {surface}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
       {error && (
         <p
@@ -402,6 +465,11 @@ export default function TreatmentPlanSection({
                         <span className="text-ink-900 text-sm font-semibold">
                           {item.procedure}
                         </span>
+                        {item.surface && (
+                          <span className="border-steel-200 bg-steel-50 text-steel-700 rounded-field border px-2 py-0.5 text-[11px]">
+                            {formatSurfaceAr(item.surface)}
+                          </span>
+                        )}
                         <span className="text-warm-700 numeric text-xs font-semibold">
                           {money(item.priceUsd)}
                         </span>

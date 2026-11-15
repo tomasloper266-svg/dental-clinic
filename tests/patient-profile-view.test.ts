@@ -15,6 +15,7 @@ function item(overrides: Partial<PlanItemDto>): PlanItemDto {
     priceUsd: 50000,
     status: "PROPOSED",
     priority: 0,
+    surface: null,
     ...overrides,
   };
 }
