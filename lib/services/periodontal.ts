@@ -1,18 +1,29 @@
 import { clinicScope } from "@/lib/tenant/clinic-client";
 import type { TenantContext } from "@/lib/tenant/context";
+import {
+  MOBILITY_MAX_GRADE,
+  MOBILITY_MIN_GRADE,
+  POCKET_DEPTH_MAX_MM,
+  POCKET_DEPTH_MIN_MM,
+  RECESSION_MAX_MM,
+  RECESSION_MIN_MM,
+} from "@/lib/odontogram/periodontal-view";
 import { isValidToothFdi } from "@/lib/odontogram/fdi";
 
 // خدمة قراءات الدواعم — نمط findings.ts حرفاً: كل استعلام عبر clinicScope
 // بمعرّف العيادة من سياق الجلسة، ولا يلمس الـ handler العميل مباشرة.
 // السجل إلحاقي بالكامل: لا تعديل ولا حذف — التصحيح بقياس جديد يحمل تاريخه.
 
-// حدود القياسات السريرية — أول حقول عددية في النظام، بحدود صريحة.
-export const POCKET_DEPTH_MIN_MM = 0;
-export const POCKET_DEPTH_MAX_MM = 15;
-export const RECESSION_MIN_MM = -5;
-export const RECESSION_MAX_MM = 10;
-export const MOBILITY_MIN_GRADE = 0;
-export const MOBILITY_MAX_GRADE = 3;
+// حدود القياسات تُعاد تصديرها من الوحدة النقية — مصدر واحد يستهلكه السيرفر
+// والعميل معاً دون سحب اعتماديات قاعدة البيانات إلى حزمة المتصفح.
+export {
+  POCKET_DEPTH_MIN_MM,
+  POCKET_DEPTH_MAX_MM,
+  RECESSION_MIN_MM,
+  RECESSION_MAX_MM,
+  MOBILITY_MIN_GRADE,
+  MOBILITY_MAX_GRADE,
+} from "@/lib/odontogram/periodontal-view";
 
 export type PeriodontalReadingDto = {
   id: string;
@@ -81,6 +92,40 @@ export async function createReading(
   return serialize(reading);
 }
 
+// جلسة قياس جماعي — كل قراءات اللوحة بقيد معاملة واحدة وتوقيت قياس واحد،
+// فجلسة الاستكشاف الواحدة تحمل طابعاً زمنياً واحداً كما دوّنها الطبيب.
+// أي إدخال غير صالح يرفض الجلسة كاملة — لا جلسة جزئية صامتة.
+export async function createReadingSession(
+  ctx: TenantContext,
+  patientId: string,
+  inputs: CreateReadingInput[],
+): Promise<PeriodontalReadingDto[]> {
+  const db = clinicScope(ctx.clinicId);
+  const measuredAt = new Date();
+  return db.$transaction(async (tx) => {
+    const rows = await Promise.all(
+      inputs.map((input) =>
+        tx.periodontalReading.create({
+          data: {
+            clinicId: ctx.clinicId,
+            patientId,
+            toothFdi: input.toothFdi,
+            pocketDepthMm: input.pocketDepthMm,
+            recessionMm: input.recessionMm,
+            bleedingOnProbing: input.bleedingOnProbing ?? false,
+            mobilityGrade: input.mobilityGrade,
+            note: input.note,
+            recordedById: ctx.userId,
+            measuredAt,
+          },
+          select: READING_SELECT,
+        }),
+      ),
+    );
+    return rows.map(serialize);
+  });
+}
+
 // تحقق نقي — يُختبر في وحدة منفصلة عن قاعدة البيانات.
 export function parseCreateReading(
   body: unknown,
@@ -92,7 +137,10 @@ export function parseCreateReading(
 
   const toothFdi = b.toothFdi;
   if (typeof toothFdi !== "number" || !isValidToothFdi(toothFdi)) {
-    return { ok: false, error: "رقم السن يجب أن يكون بترقيم FDI الدائم (11–48)" };
+    return {
+      ok: false,
+      error: "رقم السن يجب أن يكون بترقيم FDI الدائم (11–48)",
+    };
   }
 
   const pocket = optionalInt(
@@ -167,8 +215,14 @@ function optionalInt(
   max: number,
   labelAr: string,
 ): { ok: true; value: number | undefined } | { ok: false; error: string } {
-  if (value === undefined || value === null) return { ok: true, value: undefined };
-  if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max) {
+  if (value === undefined || value === null)
+    return { ok: true, value: undefined };
+  if (
+    typeof value !== "number" ||
+    !Number.isInteger(value) ||
+    value < min ||
+    value > max
+  ) {
     return {
       ok: false,
       error: `${labelAr} يجب أن يكون رقماً صحيحاً بين ${min} و${max}`,

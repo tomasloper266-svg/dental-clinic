@@ -1,11 +1,20 @@
 "use client";
 
-import { Mail, MapPin, Phone, PhoneCall, ShieldAlert, Users } from "lucide-react";
+import {
+  Mail,
+  MapPin,
+  Phone,
+  PhoneCall,
+  ShieldAlert,
+  Users,
+} from "lucide-react";
 import type { PatientDto } from "@/lib/services/patients";
 import { genderLabel } from "@/lib/patients-view";
 import { parseMedicalNotes } from "@/lib/medical-notes";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import PatientEditModal from "@/components/patients/PatientEditModal";
+import PeriodontalSummaryCard from "./PeriodontalSummaryCard";
+import type { PeriodontalSummary } from "@/lib/odontogram/periodontal-view";
 
 // تبويب «الملف» — بطاقتان كالمرجع: البيانات الشخصية (الهواتف، سنة الميلاد،
 // العنوان، البريد، الرقم الوطني، جهات اتصال الطوارئ) والسجل الطبي
@@ -26,7 +35,7 @@ function DataItem({
     <div className="flex items-start gap-2.5">
       <span
         aria-hidden
-        className="grid size-8 shrink-0 place-items-center rounded-full bg-primary-500/10 text-primary-700"
+        className="bg-primary-500/10 text-primary-700 grid size-8 shrink-0 place-items-center rounded-full"
       >
         <Icon size={14} />
       </span>
@@ -43,7 +52,14 @@ function DataItem({
   );
 }
 
-export default function OverviewTab({ patient }: { patient: PatientDto }) {
+export default function OverviewTab({
+  patient,
+  periodontal,
+}: {
+  patient: PatientDto;
+  /** ملخص الدواعم — يُعرض فقط حين توجد قياسات مسجلة */
+  periodontal?: PeriodontalSummary;
+}) {
   // الحقول المهيكلة أولاً — والسطور المركّبة القديمة احتياطاً للبيانات السابقة
   const notes = parseMedicalNotes(patient.medicalNotes);
   const allergies = patient.allergies ?? notes.allergies;
@@ -134,7 +150,7 @@ export default function OverviewTab({ patient }: { patient: PatientDto }) {
               تحذيرات
             </p>
             {allergies ? (
-              <p className="text-ink-900 mt-1.5 whitespace-pre-line text-sm leading-6">
+              <p className="text-ink-900 mt-1.5 text-sm leading-6 whitespace-pre-line">
                 {allergies}
               </p>
             ) : (
@@ -146,17 +162,19 @@ export default function OverviewTab({ patient }: { patient: PatientDto }) {
               الأمراض المزمنة
             </p>
             {chronic ? (
-              <p className="text-ink-900 mt-1.5 whitespace-pre-line text-sm leading-6">
+              <p className="text-ink-900 mt-1.5 text-sm leading-6 whitespace-pre-line">
                 {chronic}
               </p>
             ) : (
-              <p className="text-warm-400 mt-1.5 text-sm">لا أمراض مزمنة مسجلة</p>
+              <p className="text-warm-400 mt-1.5 text-sm">
+                لا أمراض مزمنة مسجلة
+              </p>
             )}
           </div>
           {patient.medicalNotes && (
             <div>
               <p className="text-warm-600 text-xs font-semibold">ملاحظات</p>
-              <p className="text-ink-900 mt-1.5 whitespace-pre-line text-sm leading-6">
+              <p className="text-ink-900 mt-1.5 text-sm leading-6 whitespace-pre-line">
                 {patient.medicalNotes}
               </p>
             </div>
@@ -169,6 +187,10 @@ export default function OverviewTab({ patient }: { patient: PatientDto }) {
           )}
         </div>
       </Card>
+
+      {periodontal && periodontal.readingCount > 0 && (
+        <PeriodontalSummaryCard summary={periodontal} patientId={patient.id} />
+      )}
     </div>
   );
 }

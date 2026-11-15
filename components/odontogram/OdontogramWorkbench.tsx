@@ -4,12 +4,14 @@ import { useState, type ReactNode } from "react";
 import OdontogramBoard from "./OdontogramBoard";
 import TreatmentPlanSection from "./TreatmentPlanSection";
 import type { FindingDto } from "@/lib/services/findings";
+import type { PeriodontalReadingDto } from "@/lib/services/periodontal";
 import type { PlanItemDto } from "@/lib/services/treatment-plan";
 
 // سطح العمل الكامل لمريض واحد — اختيار السن على الأودوغرام يعبّئ بند الخطة الجديد.
 type Props = {
   patientId: string;
   initialFindings: FindingDto[];
+  initialReadings?: PeriodontalReadingDto[];
   initialPlan: PlanItemDto[];
   // سن مبدئي من رابط ?tooth= — يفتح لوحة السن عند الوصول من لوحة الخطط.
   initialTooth?: number | null;
@@ -21,6 +23,7 @@ type Props = {
 export default function OdontogramWorkbench({
   patientId,
   initialFindings,
+  initialReadings,
   initialPlan,
   initialTooth = null,
   financial = null,
@@ -34,6 +37,7 @@ export default function OdontogramWorkbench({
       <OdontogramBoard
         patientId={patientId}
         initialFindings={initialFindings}
+        initialReadings={initialReadings}
         selectedTooth={selectedTooth}
         onSelectTooth={setSelectedTooth}
       />

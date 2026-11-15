@@ -16,12 +16,14 @@ import {
 import Link from "next/link";
 import type { PatientDto } from "@/lib/services/patients";
 import type { FindingDto } from "@/lib/services/findings";
+import type { PeriodontalReadingDto } from "@/lib/services/periodontal";
 import type { PlanItemDto } from "@/lib/services/treatment-plan";
 import type { AppointmentDto } from "@/lib/services/appointments";
 import type { LedgerEntryDto } from "@/lib/services/ledger";
 import { ageFromBirthYear, genderLabel } from "@/lib/patients-view";
 import { parseMedicalNotes } from "@/lib/medical-notes";
 import { summarizePatientLedger } from "@/lib/ledger-view";
+import { summarizePeriodontal } from "@/lib/odontogram/periodontal-view";
 import { firstLetter } from "@/components/ui/EntityCell";
 import OdontogramBoard from "@/components/odontogram/OdontogramBoard";
 import TreatmentPlanSection from "@/components/odontogram/TreatmentPlanSection";
@@ -39,11 +41,7 @@ import { cn } from "@/components/ui/cn";
 // رأس الملف: أفاتار + اسم + بيانات، تحته شريط التنبيهات والملخص المالي،
 // ثم الإجراءات الثلاثة: موعد جديد، سجل عملية، مريض جديد.
 
-export type RecordTab =
-  | "overview"
-  | "appointments"
-  | "chart"
-  | "ledger";
+export type RecordTab = "overview" | "appointments" | "chart" | "ledger";
 
 function WarningPill({
   icon: Icon,
@@ -79,7 +77,7 @@ function InfoCell({
   children: React.ReactNode;
 }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-sm text-warm-700">
+    <span className="text-warm-700 inline-flex items-center gap-1.5 text-sm">
       <Icon size={15} aria-hidden className="text-warm-400" />
       {children}
     </span>
@@ -89,6 +87,8 @@ function InfoCell({
 type Props = {
   patient: PatientDto;
   findings: FindingDto[];
+  /** قراءات الدواعم الأولية — للوحتها في تبويب الرسم وللملخص في تبويب الملف */
+  readings: PeriodontalReadingDto[];
   planItems: PlanItemDto[];
   appointments: AppointmentDto[];
   ledgerEntries: LedgerEntryDto[];
@@ -106,6 +106,7 @@ type Props = {
 export default function PatientRecord({
   patient,
   findings,
+  readings,
   planItems,
   appointments,
   ledgerEntries,
@@ -132,7 +133,12 @@ export default function PatientRecord({
     count?: number;
   }> = [
     { key: "overview", label: "الملف", icon: FileText },
-    { key: "appointments", label: "المواعيد", icon: CalendarDays, count: appointments.length },
+    {
+      key: "appointments",
+      label: "المواعيد",
+      icon: CalendarDays,
+      count: appointments.length,
+    },
     {
       key: "chart",
       label: "مخطط الأسنان وخطط العلاج",
@@ -153,14 +159,16 @@ export default function PatientRecord({
           leading={
             <span
               aria-hidden
-              className="grid size-14 shrink-0 place-items-center rounded-full bg-primary-500/10 text-xl font-bold text-primary-700"
+              className="bg-primary-500/10 text-primary-700 grid size-14 shrink-0 place-items-center rounded-full text-xl font-bold"
             >
               {firstLetter(patient.name)}
             </span>
           }
           description={
             <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
-              <InfoCell icon={UserPlus}>{genderLabel(patient.gender) || "—"}</InfoCell>
+              <InfoCell icon={UserPlus}>
+                {genderLabel(patient.gender) || "—"}
+              </InfoCell>
               <InfoCell icon={CalendarDays}>
                 {patient.phone ? (
                   <span dir="ltr" className="numeric">
@@ -191,7 +199,9 @@ export default function PatientRecord({
                   )}
                 </InfoCell>
               )}
-              {patient.address && <InfoCell icon={Smile}>{patient.address}</InfoCell>}
+              {patient.address && (
+                <InfoCell icon={Smile}>{patient.address}</InfoCell>
+              )}
               {patient.fileNo !== null && (
                 <InfoCell icon={ClipboardList}>
                   <span className="numeric">رقم {patient.fileNo}</span>
@@ -206,7 +216,7 @@ export default function PatientRecord({
                 onClick={() => setApptOpen(true)}
                 className={cn(
                   actionButtonClass,
-                  "bg-primary-600 text-white hover:bg-primary-700 focus-visible:outline-primary-500",
+                  "bg-primary-600 hover:bg-primary-700 focus-visible:outline-primary-500 text-white",
                 )}
               >
                 <CalendarPlus size={16} aria-hidden />
@@ -239,7 +249,7 @@ export default function PatientRecord({
 
         {/* شريط التنبيهات والملخص المالي — تنبيهات يميناً (تنبيه مستحق،
             تنبيه مخزون، الحساسيات والأمراض) والملخص يساراً */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-warm-200 bg-surface-raised px-5 py-4">
+        <div className="rounded-panel border-warm-200 bg-surface-raised flex flex-wrap items-center justify-between gap-3 border px-5 py-4">
           <div className="flex flex-wrap items-center gap-2">
             {dueUsd > 0 && (
               <WarningPill icon={TriangleAlert} tone="danger">
@@ -261,9 +271,12 @@ export default function PatientRecord({
                 {chronic}
               </WarningPill>
             )}
-            {dueUsd === 0 && materialRows.length === 0 && !allergies && !chronic && (
-              <span className="text-xs text-warm-400">لا تنبيهات</span>
-            )}
+            {dueUsd === 0 &&
+              materialRows.length === 0 &&
+              !allergies &&
+              !chronic && (
+                <span className="text-warm-400 text-xs">لا تنبيهات</span>
+              )}
           </div>
           <div className="flex flex-wrap items-end gap-6">
             <div>
@@ -298,7 +311,7 @@ export default function PatientRecord({
                     aria-hidden
                     className="text-danger-600"
                   />
-                  <span className="text-sm font-semibold text-danger-600">
+                  <span className="text-danger-600 text-sm font-semibold">
                     مستحق
                   </span>
                 </>
@@ -306,7 +319,7 @@ export default function PatientRecord({
                 <>
                   <span
                     aria-hidden
-                    className="grid size-4 place-items-center rounded-full bg-primary-600 text-[10px] text-white"
+                    className="bg-primary-600 grid size-4 place-items-center rounded-full text-[10px] text-white"
                   >
                     ✓
                   </span>
@@ -340,7 +353,7 @@ export default function PatientRecord({
                   aria-controls={`patient-panel-${key}`}
                   onClick={() => setTab(key)}
                   className={cn(
-                    "inline-flex shrink-0 items-center gap-1.5 rounded-field px-3 py-2 text-sm font-medium transition-colors",
+                    "rounded-field inline-flex shrink-0 items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors",
                     "focus-visible:outline-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2",
                     active
                       ? "bg-primary-600 text-white"
@@ -377,7 +390,10 @@ export default function PatientRecord({
           aria-labelledby="patient-tab-overview"
           hidden={tab !== "overview"}
         >
-          <OverviewTab patient={patient} />
+          <OverviewTab
+            patient={patient}
+            periodontal={summarizePeriodontal(readings)}
+          />
         </div>
 
         <div
@@ -402,6 +418,7 @@ export default function PatientRecord({
             <OdontogramBoard
               patientId={patient.id}
               initialFindings={findings}
+              initialReadings={readings}
               selectedTooth={selectedTooth}
               onSelectTooth={setSelectedTooth}
             />

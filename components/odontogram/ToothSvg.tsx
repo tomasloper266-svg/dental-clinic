@@ -2,9 +2,11 @@
 
 import type { ReactElement } from "react";
 import type { ToothAnatomy } from "@/lib/odontogram/anatomy";
+import { type ToothStatusMeta } from "@/lib/odontogram/statuses";
 import {
-  type ToothStatusMeta,
-} from "@/lib/odontogram/statuses";
+  POCKET_SCALE_COLORS,
+  pocketScaleLevel,
+} from "@/lib/odontogram/periodontal-view";
 import {
   CROWN_PAINT,
   CrownPatternDefs,
@@ -24,6 +26,8 @@ type Props = {
   meta: ToothStatusMeta | null;
   /** أكواد الأسطح المصابة في آخر مشاهدة (مثال O+M) — فارغ يعني تلوين التاج كاملاً. */
   affectedSurfaces?: readonly string[];
+  /** حالة دواعم آخر قياس — عمق الجيب يلوّن حد التاج بمقياس المقياس، والنزيف نقشاً. */
+  periodontal?: { pocketDepthMm: number | null; bleeding: boolean } | null;
   selected: boolean;
   onSelect: (fdi: number) => void;
 };
@@ -32,6 +36,7 @@ export default function ToothSvg({
   tooth,
   meta,
   affectedSurfaces,
+  periodontal,
   selected,
   onSelect,
 }: Props): ReactElement {
@@ -41,6 +46,13 @@ export default function ToothSvg({
     ? `tooth-${paint.pattern}-${tooth.fdi}`
     : null;
   const flipped = tooth.row === "upper";
+
+  // الدواعم: حد التاج بلون مقياس عمق الجيب، والنزيف نقش نقاط حمراء فوقه —
+  // تمييز مزدوج (لون + نقش) لا يعتمد على اللون وحده.
+  const perioLevel = pocketScaleLevel(periodontal?.pocketDepthMm);
+  const perioStroke = perioLevel ? POCKET_SCALE_COLORS[perioLevel] : null;
+  const bleeding = periodontal?.bleeding === true;
+  const bleedPatternId = bleeding ? `perio-bleed-${tooth.fdi}` : null;
 
   // التلوين الجزئي حينما تكون للأسطح مناطق مرسومة — وإلا يعود التاج للتلوين الكامل
   const hasBands =
@@ -62,7 +74,7 @@ export default function ToothSvg({
       type="button"
       onClick={() => onSelect(tooth.fdi)}
       aria-pressed={selected}
-      aria-label={`سن ${tooth.fdi} — ${tooth.nameAr}${meta ? ` — ${meta.labelAr}` : ""}`}
+      aria-label={`سن ${tooth.fdi} — ${tooth.nameAr}${meta ? ` — ${meta.labelAr}` : ""}${perioLevel ? ` — عمق الجيب ${periodontal?.pocketDepthMm}مم` : ""}${bleeding ? " — نزيف عند الجس" : ""}`}
       className={cn(
         "rounded-field flex shrink-0 flex-col items-center p-0.5 transition-colors",
         "hover:bg-surface-hover focus-visible:outline-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2",
@@ -70,9 +82,33 @@ export default function ToothSvg({
       )}
     >
       <svg viewBox="0 0 40 60" className="h-12 w-8" aria-hidden>
-        {patternId && paint?.pattern && (
+        {(patternId || bleedPatternId) && (
           <defs>
-            <CrownPatternDefs kind={paint.pattern} id={patternId} />
+            {patternId && paint?.pattern && (
+              <CrownPatternDefs kind={paint.pattern} id={patternId} />
+            )}
+            {/* نقش النزيف عند الجس — نقاط حمراء قصيرة فوق التاج لا لون صريح */}
+            {bleedPatternId && (
+              <pattern
+                id={bleedPatternId}
+                width="4"
+                height="4"
+                patternUnits="userSpaceOnUse"
+              >
+                <circle
+                  cx="1.2"
+                  cy="1.2"
+                  r="0.8"
+                  fill="var(--color-danger-500)"
+                />
+                <circle
+                  cx="3.2"
+                  cy="3.2"
+                  r="0.8"
+                  fill="var(--color-danger-500)"
+                />
+              </pattern>
+            )}
           </defs>
         )}
         <g
@@ -98,15 +134,26 @@ export default function ToothSvg({
                   : "var(--color-warm-100)"
             }
             stroke={
-              paint?.dashed
-                ? "var(--color-warning-500)"
-                : "var(--color-warm-500)"
+              perioStroke
+                ? perioStroke
+                : paint?.dashed
+                  ? "var(--color-warning-500)"
+                  : "var(--color-warm-500)"
             }
-            strokeWidth={status && status !== "HEALTHY" ? "1.6" : "1.2"}
+            strokeWidth={
+              perioStroke ? "2" : status && status !== "HEALTHY" ? "1.6" : "1.2"
+            }
             strokeLinejoin="round"
             strokeDasharray={paint?.dashed ? "3 2.5" : undefined}
           />
           {partial}
+          {bleedPatternId && (
+            <path
+              d={tooth.crownPath}
+              fill={`url(#${bleedPatternId})`}
+              stroke="none"
+            />
+          )}
           {!partial && paint?.pattern && patternId && (
             <path
               d={tooth.crownPath}

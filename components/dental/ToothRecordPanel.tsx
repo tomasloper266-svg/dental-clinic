@@ -2,6 +2,7 @@
 
 import { toothNameAr } from "@/lib/odontogram/fdi";
 import type { FindingDto } from "@/lib/services/findings";
+import type { PeriodontalReadingDto } from "@/lib/services/periodontal";
 import ToothRecordForm from "@/components/odontogram/ToothRecordForm";
 
 // لوحة تسجيل حالة السن في المخطط الوطني — نموذج التسجيل مشترك (ToothRecordForm)
@@ -14,6 +15,9 @@ type Props = {
   /** سجل هذا السن — للعرض أسفل اللوحة */
   history: FindingDto[];
   onSaved: (finding: FindingDto) => void;
+  /** قراءات الدواعم للمريض — تفتح تبويب الدواعم في النموذج المشترك */
+  readings?: PeriodontalReadingDto[];
+  onReadingSaved?: (reading: PeriodontalReadingDto) => void;
 };
 
 export default function ToothRecordPanel({
@@ -21,6 +25,8 @@ export default function ToothRecordPanel({
   fdi,
   history,
   onSaved,
+  readings,
+  onReadingSaved,
 }: Props) {
   return (
     <ToothRecordForm
@@ -31,6 +37,8 @@ export default function ToothRecordPanel({
       saveVariant="gold"
       kindHeading="نوع القيد"
       noteInputId={`chart-note-${fdi}`}
+      readings={readings}
+      onReadingSaved={onReadingSaved}
     />
   );
 }
