@@ -12,6 +12,11 @@ import {
   rejectPaymentRequest,
   parsePaymentRequestInput,
 } from "@/lib/billing/requests";
+import {
+  activateClinicManually,
+  parseManualActivationInput,
+} from "@/lib/billing/manual-activation";
+import { getSubscriptionState } from "@/lib/billing/state";
 import { SUBSCRIPTION_PLANS } from "@/lib/billing/plans";
 import { verifyPlatformAdminKey, isAdminSession, adminSessionCookieValue } from "@/lib/auth/admin";
 
@@ -189,6 +194,136 @@ describeDb("طلبات التفعيل وقراراتها", () => {
       amountUsd: SUBSCRIPTION_PLANS.MONTHLY.priceUsd,
     });
     expect(second.ok).toBe(false);
+  });
+});
+
+// الدفع المبكر والتفعيل اليدوي — عيادتها الخاصة كي لا تختلط معلقات أعلاه
+describeDb("الدفع المبكر والتفعيل اليدوي الإداري", () => {
+  const EARLY_PHONE = "0955555777";
+  const EARLY_NAME = "عيادة دفع مبكر (اختبار)";
+  let earlyClinicId: string;
+
+  async function cleanEarlyDb(): Promise<void> {
+    const clinics = await prisma.clinic.findMany({
+      where: { name: { in: [EARLY_NAME, "عيادة محجوبة (اختبار)"] } },
+      select: { id: true },
+    });
+    for (const clinic of clinics) {
+      await prisma.subscriptionPayment.deleteMany({ where: { clinicId: clinic.id } });
+      await prisma.user.deleteMany({ where: { clinicId: clinic.id } });
+      await prisma.clinic.delete({ where: { id: clinic.id } });
+    }
+  }
+
+  beforeAll(async () => {
+    await cleanEarlyDb();
+    await cleanDb();
+    const created = await createClinicWithOwner({
+      clinicName: EARLY_NAME,
+      name: "د. مبكر",
+      phone: EARLY_PHONE,
+      password: "early-pass-1",
+    });
+    earlyClinicId = created.clinicId;
+  });
+
+  afterAll(cleanEarlyDb);
+
+  it("عيادة نشطة بتجربة قائمة ترفع طلب دفع → PENDING (الدفع من أول يوم)", async () => {
+    // العيادة في وسط تجربتها — نشطة وليست منتهية
+    const state = await getSubscriptionState(earlyClinicId);
+    expect(state?.status).toBe("ACTIVE");
+    expect(state?.isTrial).toBe(true);
+
+    const result = await createPaymentRequest(earlyClinicId, {
+      plan: "YEARLY",
+      transferRef: "TR-EARLY-001",
+      amountUsd: SUBSCRIPTION_PLANS.YEARLY.priceUsd,
+    });
+    expect(result.ok).toBe(true);
+
+    const payment = await prisma.subscriptionPayment.findFirstOrThrow({
+      where: { clinicId: earlyClinicId, transferRef: "TR-EARLY-001" },
+    });
+    expect(payment.status).toBe("PENDING");
+  });
+
+  it("التفعيل اليدوي لعيادة منتهية يفتح الوصول فوراً وبلا سجل دفع", async () => {
+    // اجعل العيادة منتهية: تجربة انتهت قبل أيام ولا اشتراك
+    await prisma.clinic.update({
+      where: { id: earlyClinicId },
+      data: { trialEndsAt: new Date(Date.now() - 3 * DAY) },
+    });
+    expect((await getSubscriptionState(earlyClinicId))?.status).toBe("EXPIRED");
+
+    const activated = await activateClinicManually(earlyClinicId, {
+      plan: "MONTHLY",
+      count: 3,
+    });
+    expect(activated.ok).toBe(true);
+
+    const state = await getSubscriptionState(earlyClinicId);
+    expect(state?.status).toBe("ACTIVE");
+    // 3 أشهر = 90 يوماً من لحظة التفعيل
+    expect(state!.daysLeft).toBeGreaterThanOrEqual(89);
+    expect(state!.daysLeft).toBeLessThanOrEqual(91);
+    // التفعيل اليدوي بلا طلب دفع — لا سجلات حوالات جديدة
+    const payments = await prisma.subscriptionPayment.findMany({
+      where: { clinicId: earlyClinicId },
+    });
+    expect(payments).toHaveLength(1); // طلب الدفع المبكر فقط من الاختبار السابق
+  });
+
+  it("تفعيل يدوي ثانٍ → تمدد تراكمي من نهاية الاشتراك القائم", async () => {
+    const before = await prisma.clinic.findUniqueOrThrow({
+      where: { id: earlyClinicId },
+      select: { subscriptionEndsAt: true },
+    });
+
+    const activated = await activateClinicManually(earlyClinicId, {
+      plan: "YEARLY",
+      count: 1,
+    });
+    expect(activated.ok).toBe(true);
+
+    const after = await prisma.clinic.findUniqueOrThrow({
+      where: { id: earlyClinicId },
+      select: { subscriptionEndsAt: true },
+    });
+    // الاشتراك القائم مستقبلي → يُضاف العام كاملاً إلى نهايته
+    expect(after.subscriptionEndsAt!.getTime()).toBe(
+      before.subscriptionEndsAt!.getTime() + 365 * DAY,
+    );
+    expect((await getSubscriptionState(earlyClinicId))?.status).toBe("ACTIVE");
+  });
+
+  it("إدخال التفعيل اليدوي — يرفض باقة خاطئة وعدداً غير صحيح", () => {
+    expect(parseManualActivationInput({ plan: "WEEKLY", count: 1 }).ok).toBe(false);
+    expect(parseManualActivationInput({ plan: "MONTHLY", count: 0 }).ok).toBe(false);
+    expect(parseManualActivationInput({ plan: "MONTHLY", count: 2.5 }).ok).toBe(false);
+    expect(parseManualActivationInput({ plan: "MONTHLY", count: 999 }).ok).toBe(false);
+    const ok = parseManualActivationInput({ plan: "YEARLY", count: 2 });
+    expect(ok.ok).toBe(true);
+  });
+
+  it("عيادة منتهية بلا تفعيل تبقى محجوبة — التمديد لا يعيد السيرفر تلقائياً", async () => {
+    // عيادة ثانية منتهية لا نلمسها — تبقى EXPIRED عبر قراءتين متتاليتين
+    const expired = await createClinicWithOwner({
+      clinicName: "عيادة محجوبة (اختبار)",
+      name: "د. محجوب",
+      phone: "0955555888",
+      password: "blocked-pass-1",
+    });
+    await prisma.clinic.update({
+      where: { id: expired.clinicId },
+      data: { trialEndsAt: new Date(Date.now() - DAY) },
+    });
+
+    expect((await getSubscriptionState(expired.clinicId))?.status).toBe("EXPIRED");
+    expect((await getSubscriptionState(expired.clinicId))?.status).toBe("EXPIRED");
+
+    await prisma.user.deleteMany({ where: { clinicId: expired.clinicId } });
+    await prisma.clinic.delete({ where: { id: expired.clinicId } });
   });
 });
 
