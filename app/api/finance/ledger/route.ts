@@ -1,21 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireTenant } from "@/lib/tenant/require-tenant";
+import { requireGate } from "@/lib/tenant/require-tenant";
 import { listClinicLedgerEntries } from "@/lib/services/ledger";
 
 // دفتر العيادة الموحّد — قراءة فقط بأحدث القيود. التصفية بالمريض عبر
 // ?patientId=. الإنشاء يبقى عبر مسار دفتر المريض نفسه (source of truth).
 
 export async function GET(req: NextRequest) {
-  const ctx = await requireTenant(req);
-  if (ctx === "LOCKED") {
-    return NextResponse.json(
-      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
-      { status: 423 },
-    );
-  }
-  if (!ctx) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
+  const gate = await requireGate(req);
+  if (!gate.ok) return gate.response;
+  const ctx = gate.ctx;
 
   const patientId = req.nextUrl.searchParams.get("patientId");
   const entries = await listClinicLedgerEntries(

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireTenant } from "@/lib/tenant/require-tenant";
+import { requireGate } from "@/lib/tenant/require-tenant";
 import { listMaterialMovements } from "@/lib/services/inventory";
 
 type Params = { params: Promise<{ materialId: string }> };
@@ -7,16 +7,9 @@ type Params = { params: Promise<{ materialId: string }> };
 // سجل حركات مادة — الدفتر الإلحاقي للتوريد والاستعمال والتسويات، الأحدث أولاً.
 
 export async function GET(req: NextRequest, { params }: Params) {
-  const ctx = await requireTenant(req);
-  if (ctx === "LOCKED") {
-    return NextResponse.json(
-      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
-      { status: 423 },
-    );
-  }
-  if (!ctx) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
+  const gate = await requireGate(req);
+  if (!gate.ok) return gate.response;
+  const ctx = gate.ctx;
   const { materialId } = await params;
 
   try {

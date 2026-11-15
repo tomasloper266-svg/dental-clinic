@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireTenant } from "@/lib/tenant/require-tenant";
+import { requireGate } from "@/lib/tenant/require-tenant";
 import { getPatient } from "@/lib/services/patients";
 import {
   deletePlanItem,
@@ -13,16 +13,9 @@ type Params = { params: Promise<{ patientId: string; itemId: string }> };
 
 // تعديل بند مخطط أو مقبول — البند المنفَّذ نهائي.
 export async function PATCH(req: NextRequest, { params }: Params) {
-  const ctx = await requireTenant(req);
-  if (ctx === "LOCKED") {
-    return NextResponse.json(
-      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
-      { status: 423 },
-    );
-  }
-  if (!ctx) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
+  const gate = await requireGate(req);
+  if (!gate.ok) return gate.response;
+  const ctx = gate.ctx;
 
   const { patientId, itemId } = await params;
   const patient = await getPatient(ctx, patientId);
@@ -56,16 +49,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
 // بدء التنفيذ: يتحول البند إلى منفذ ويُسجَّل مشاهدة علاج منفذ على السن.
 export async function POST(req: NextRequest, { params }: Params) {
-  const ctx = await requireTenant(req);
-  if (ctx === "LOCKED") {
-    return NextResponse.json(
-      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
-      { status: 423 },
-    );
-  }
-  if (!ctx) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
+  const gate = await requireGate(req);
+  if (!gate.ok) return gate.response;
+  const ctx = gate.ctx;
 
   const { patientId, itemId } = await params;
   const patient = await getPatient(ctx, patientId);
@@ -99,16 +85,9 @@ export async function POST(req: NextRequest, { params }: Params) {
 
 // حذف بند غير منفذ — البند المنفذ نهائي.
 export async function DELETE(_req: NextRequest, { params }: Params) {
-  const ctx = await requireTenant(_req);
-  if (ctx === "LOCKED") {
-    return NextResponse.json(
-      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
-      { status: 423 },
-    );
-  }
-  if (!ctx) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
+  const gate = await requireGate(_req);
+  if (!gate.ok) return gate.response;
+  const ctx = gate.ctx;
 
   const { patientId, itemId } = await params;
   const result = await deletePlanItem(ctx, patientId, itemId);

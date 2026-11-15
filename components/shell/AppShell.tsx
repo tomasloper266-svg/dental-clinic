@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { ToastProvider } from "@/components/ui/Toast";
 import { DEFAULT_USD_RATE } from "@/lib/currency";
 import { onLedgerChanged } from "@/lib/ledger-events";
@@ -23,6 +24,12 @@ type AppShellProps = {
   usdRate?: number;
   /** قفل حساب الجلسة مفعّل — يظهر زر القفل اليدوي في الشريط العلوي */
   lockEnabled?: boolean;
+  /** بانر تحذير الاشتراك (≤ 5 أيام متبقية) — يُحسب من التواريخ على السيرفر */
+  subscriptionBanner?: {
+    daysLeft: number;
+    endsAtIso: string;
+    isTrial: boolean;
+  } | null;
   children: React.ReactNode;
 };
 
@@ -40,6 +47,7 @@ export function AppShell({
   outstandingDuesUsd = 0,
   usdRate = DEFAULT_USD_RATE,
   lockEnabled = false,
+  subscriptionBanner = null,
   children,
 }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
@@ -115,6 +123,18 @@ export function AppShell({
           logoLetter={logoLetter}
           clinicName={clinicName}
         />
+        {subscriptionBanner && (
+          <Link
+            href="/subscription-expired"
+            className="focus-ring block border-b border-warning-300 bg-warning-50 px-4 py-2 text-center text-sm font-medium text-warning-900 transition-colors hover:bg-warning-100"
+          >
+            {subscriptionBanner.isTrial ? "تجربتك" : "اشتراكك"} تنتهي{" "}
+            {subscriptionBanner.daysLeft === 0
+              ? "اليوم"
+              : `بعد ${subscriptionBanner.daysLeft} يوم`}
+            {" "}— جدّد الآن للحفاظ على وصولك
+          </Link>
+        )}
         <main className="flex-1 pb-20 md:pb-8">{children}</main>
       </div>
       <BottomNav badges={badges} />

@@ -99,6 +99,19 @@ enum SupportRequestStatus {
   RESOLVED
 }
 
+// باقات الاشتراك — شام كاش بحوالة يدوية (v1)
+enum SubscriptionPlan {
+  MONTHLY
+  YEARLY
+}
+
+// حالة طلب التفعيل — الاعتماد فقط يمدد الاشتراك
+enum SubscriptionPaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // أدوار الطاقم — التسميات العربية للعرض في lib/services/staff.ts
 enum StaffRole {
   DENTIST
@@ -130,6 +143,14 @@ model Clinic {
   workStart      String @default("09:00 AM")
   workEnd        String @default("09:00 PM")
 
+  // ─── الاشتراك ──────────────────────────────────────────────────────────────
+  // نهاية التجربة المجانية — تُضبط عند إنشاء العيادة (15 يوماً). الافتراض على
+  // مستوى القاعدة كي لا تُنشأ عيادة بلا بوابة حتى لو تجاوزت طبقة التطبيق.
+  trialEndsAt        DateTime  @default(dbgenerated("CURRENT_TIMESTAMP + interval '15 days'"))
+  // آخر لحظة اشتراك مدفوع — null يعني لم يدفع قط. الحالة مشتقة من التاريخين
+  // حصراً (ACTIVE إذا now ≤ max(الحقول)) — لا عمود حالة يُنسى تحديثه.
+  subscriptionEndsAt DateTime?
+
   users                User[]
   patients             Patient[]
   appointments         Appointment[]
@@ -148,6 +169,7 @@ model Clinic {
   staffMembers         StaffMember[]
   materialMovements    MaterialMovement[]
   backups              ClinicBackup[]
+  subscriptionPayments SubscriptionPayment[]
 }
 
 // نسخة احتياطية تلقائية أو يدوية (JSON) — آخر نسخة تلقائية فقط تُحفظ للعيادة،
@@ -245,6 +267,29 @@ model SupportRequest {
   message      String
   status       SupportRequestStatus @default(OPEN)
   createdAt    DateTime             @default(now())
+}
+
+// طلب تفعيل بحوالة شام كاش — يرفعه طبيب العيادة، وتقرر فيه اللوحة الإدارية
+// الاعتماد أو الرفض. رقم الحوالة فريد بين المدفوعات المعتمدة فقط (فهرس جزئي
+// في الهجرة يمنع إعادة استخدام الحوالة نفسها) — القيد الجزئي غير معبَّر في
+// المخطط لذا يوثَّق هنا ويُطبَّق في SQL.
+model SubscriptionPayment {
+  id          String                    @id @default(cuid())
+  clinicId    String
+  plan        SubscriptionPlan
+  // المبلغ المُحوَّل بالدولار — يجب أن يطابق سعر الباقة (تحقق الخدمة)
+  amountUsd   Decimal                   @db.Decimal(12, 2)
+  // رقم حوالة شام كاش كما أدخله الطبيب
+  transferRef String
+  status      SubscriptionPaymentStatus @default(PENDING)
+  decidedAt   DateTime?
+  note        String?
+  createdAt   DateTime                  @default(now())
+
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId, createdAt])
+  @@index([status, createdAt])
 }
 
 // ─── المرضى ──────────────────────────────────────────────────────────────────

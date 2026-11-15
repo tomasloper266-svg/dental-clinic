@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireTenant } from "@/lib/tenant/require-tenant";
+import { requireGate } from "@/lib/tenant/require-tenant";
 import {
   deletePatient,
   getPatient,
@@ -13,16 +13,9 @@ import {
 type RouteContext = { params: Promise<{ patientId: string }> };
 
 export async function GET(_req: NextRequest, ctx: RouteContext) {
-  const tenant = await requireTenant(_req);
-  if (tenant === "LOCKED") {
-    return NextResponse.json(
-      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
-      { status: 423 },
-    );
-  }
-  if (!tenant) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
+  const gate = await requireGate(_req);
+  if (!gate.ok) return gate.response;
+  const tenant = gate.ctx;
 
   const { patientId: id } = await ctx.params;
   const patient = await getPatient(tenant, id);
@@ -33,16 +26,9 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
 }
 
 export async function PATCH(req: NextRequest, ctx: RouteContext) {
-  const tenant = await requireTenant(req);
-  if (tenant === "LOCKED") {
-    return NextResponse.json(
-      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
-      { status: 423 },
-    );
-  }
-  if (!tenant) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
+  const gate = await requireGate(req);
+  if (!gate.ok) return gate.response;
+  const tenant = gate.ctx;
 
   let body: unknown;
   try {
@@ -70,16 +56,9 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
 }
 
 export async function DELETE(_req: NextRequest, ctx: RouteContext) {
-  const tenant = await requireTenant(_req);
-  if (tenant === "LOCKED") {
-    return NextResponse.json(
-      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
-      { status: 423 },
-    );
-  }
-  if (!tenant) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
+  const gate = await requireGate(_req);
+  if (!gate.ok) return gate.response;
+  const tenant = gate.ctx;
 
   const { patientId: id } = await ctx.params;
   try {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireTenant } from "@/lib/tenant/require-tenant";
+import { requireGate } from "@/lib/tenant/require-tenant";
 import {
   requestEmailVerification,
   verifyEmail,
@@ -9,16 +9,9 @@ import {
 // «موثقاً» إلا بعد إدخال الرمز الصحيح.
 
 export async function POST(req: NextRequest) {
-  const ctx = await requireTenant(req);
-  if (ctx === "LOCKED") {
-    return NextResponse.json(
-      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
-      { status: 423 },
-    );
-  }
-  if (!ctx) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
+  const gate = await requireGate(req);
+  if (!gate.ok) return gate.response;
+  const ctx = gate.ctx;
 
   let body: unknown;
   try {

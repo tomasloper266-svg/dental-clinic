@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireTenant } from "@/lib/tenant/require-tenant";
+import { requireGate } from "@/lib/tenant/require-tenant";
 import {
   getAccountOverview,
   updateProfile,
@@ -9,31 +9,17 @@ import {
 // رقم الهاتف لا يُعدَّل هنا إطلاقاً — تغييره يتطلب إثبات ملكية منفصل.
 
 export async function GET(req: NextRequest) {
-  const ctx = await requireTenant(req);
-  if (ctx === "LOCKED") {
-    return NextResponse.json(
-      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
-      { status: 423 },
-    );
-  }
-  if (!ctx) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
+  const gate = await requireGate(req);
+  if (!gate.ok) return gate.response;
+  const ctx = gate.ctx;
   const overview = await getAccountOverview(ctx);
   return NextResponse.json(overview, { status: 200 });
 }
 
 export async function PATCH(req: NextRequest) {
-  const ctx = await requireTenant(req);
-  if (ctx === "LOCKED") {
-    return NextResponse.json(
-      { error: "التطبيق مقفل — أدخل الرمز الرقمي للفتح" },
-      { status: 423 },
-    );
-  }
-  if (!ctx) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
+  const gate = await requireGate(req);
+  if (!gate.ok) return gate.response;
+  const ctx = gate.ctx;
 
   let body: unknown;
   try {
