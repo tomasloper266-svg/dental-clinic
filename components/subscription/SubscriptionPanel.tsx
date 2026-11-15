@@ -11,8 +11,10 @@ import type { SubscriptionPlanName } from "@/lib/billing/plans";
 export type SubscriptionPanelProps = {
   /** انتهت الصلاحية — ترويسة «انتهت التجربة»؛ وإلا ترويسة تجديد مبكر */
   expired: boolean;
-  /** رقم حساب شام كاش — من إعدادات المنصة؛ يُخفى القسم إن غاب */
+  /** رقم حساب شام كاش — من إعدادات المنصة؛ النص يُخفى إن غاب */
   shamCashAccount?: string | null;
+  /** إظهار قسم الباركود — الباركود يظهر دائماً، الحساب النصي إن وُجد */
+  showShamCash?: boolean;
   /** هل يوجد طلب معلّق؟ — حالة «بانتظار التأكيد» لا تقبل رفع ثانٍ */
   hasPendingRequest: boolean;
 };
@@ -26,6 +28,7 @@ const PLAN_OPTIONS: SubscriptionPlanName[] = ["MONTHLY", "YEARLY"];
 export function SubscriptionPanel({
   expired,
   shamCashAccount,
+  showShamCash = true,
   hasPendingRequest,
 }: SubscriptionPanelProps) {
   const router = useRouter();
@@ -110,17 +113,21 @@ export function SubscriptionPanel({
         })}
       </ul>
 
-      {shamCashAccount && (
+      {showShamCash && (
         <div className="mt-5 rounded-field border border-warm-200 bg-surface p-4">
-          <p className="text-sm font-semibold text-ink-900">
-            حوّل عبر شام كاش إلى الحساب
-          </p>
-          <p
-            dir="ltr"
-            className="mt-1 select-all text-center text-lg font-bold tracking-wide text-primary-700"
-          >
-            {shamCashAccount}
-          </p>
+          {shamCashAccount && (
+            <>
+              <p className="text-sm font-semibold text-ink-900">
+                حوّل عبر شام كاش إلى الحساب
+              </p>
+              <p
+                dir="ltr"
+                className="mt-1 select-all text-center text-lg font-bold tracking-wide text-primary-700"
+              >
+                {shamCashAccount}
+              </p>
+            </>
+          )}
           <div className="mt-3 flex flex-col items-center gap-2">
             {/* الباركود الرسمي — أصل ثابت في التطبيق، قابل للمسح بتطبيق شام كاش */}
             <Image
