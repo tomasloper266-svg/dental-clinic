@@ -13,6 +13,7 @@ import { StatusPill, type BadgeTone } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Table, TD, TH, THead, TRow } from "@/components/ui/Table";
 import { cn } from "@/components/ui/cn";
+import { ManualActivationCard } from "./ManualActivationCard";
 
 export type AdminClinicRow = {
   id: string;
@@ -222,6 +223,9 @@ export function AdminBoard({ clinics, pendingPayments }: AdminBoardProps) {
           )}
         </CardBody>
       </Card>
+
+      {/* التفعيل اليدوي بلا دفع — يضبط نهاية الاشتراك مباشرة بجلسة الإدارة */}
+      <ManualActivationCard clinics={clinics} />
     </main>
   );
 }

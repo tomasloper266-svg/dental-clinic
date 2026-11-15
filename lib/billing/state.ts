@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import {
   MONTHLY_DAYS,
+  TRIAL_DAYS,
   WARNING_DAYS_LEFT,
   YEARLY_DAYS,
   addDays,
@@ -64,14 +65,38 @@ export async function getSubscriptionState(clinicId: string): Promise<Subscripti
   return deriveSubscriptionState(clinic, new Date());
 }
 
-/** صيغة التمديد التراكمي: الدفع قبل الانتهاء يُمدد من نهايته، وبعده من اليوم */
+/** صيغة التمديد التراكمي: الدفع قبل الانتهاء يُمدد من نهايته، وبعده من اليوم.
+ *  count هو عدد الدورات (أشهر شهرية / سنوات سنوية) — نفس القاعدة مضروبة. */
 export function extendedSubscriptionEnd(
   currentEndsAt: Date | null,
   plan: "MONTHLY" | "YEARLY",
   now: Date,
+  count = 1,
 ): Date {
-  const days = plan === "MONTHLY" ? MONTHLY_DAYS : YEARLY_DAYS;
+  const daysPerCycle = plan === "MONTHLY" ? MONTHLY_DAYS : YEARLY_DAYS;
+  const days = daysPerCycle * count;
   const base =
     currentEndsAt && currentEndsAt.getTime() > now.getTime() ? currentEndsAt : now;
   return addDays(base, days);
+}
+
+export type SubscriptionProgress = {
+  /** طول النافذة الحالية بالأيام — 15 للتجربة أو مدة الباقة المدفوعة */
+  totalDays: number;
+  /** الأيام المستهلكة — مقيدة بين 0 والطول */
+  elapsedDays: number;
+  /** نسبة التقدم 0–100 */
+  pct: number;
+};
+
+/** شريط تقدم الاشتراك — تجربة كاملة أو فترة الباقة المدفوعة الأخيرة */
+export function subscriptionProgress(
+  state: Pick<SubscriptionState, "daysLeft" | "isTrial">,
+  paidPlanDurationDays?: number,
+): SubscriptionProgress {
+  const totalDays =
+    state.isTrial || !paidPlanDurationDays ? TRIAL_DAYS : paidPlanDurationDays;
+  const elapsedDays = Math.min(Math.max(totalDays - state.daysLeft, 0), totalDays);
+  const pct = Math.round((elapsedDays / totalDays) * 100);
+  return { totalDays, elapsedDays, pct };
 }

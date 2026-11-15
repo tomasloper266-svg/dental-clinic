@@ -8,6 +8,7 @@ import { AuthShell } from "@/components/auth/AuthShell";
 import { PasswordInput } from "@/components/auth/PasswordInput";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
+import { SignupPlansCard } from "@/components/subscription/SignupPlansCard";
 
 // صفحة التسجيل — أنشئ العيادة ثم اعرض رمز الاسترداد الاحتياطي مرة
 // واحدة بتحذير واضح، ثم ادخل إلى صفحة الإعداد (الجلسة تُفتح تلقائياً).
@@ -163,6 +164,9 @@ export default function SignupPage() {
             إنشاء العيادة
           </Button>
         </form>
+
+        {/* العرض مرئي أثناء التسجيل نفسه — الدفع متاح من أول يوم */}
+        <SignupPlansCard />
 
         <p className="mt-6 text-sm text-warm-600">
           لديك حساب بالفعل؟{" "}

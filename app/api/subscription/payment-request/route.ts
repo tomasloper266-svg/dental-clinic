@@ -6,7 +6,8 @@ import {
 } from "@/lib/billing/requests";
 
 // رفع طلب تفعيل بحوالة شام كاش — الجلسة مطلوبة (حماية الهوية) لكن بوابة
-// الاشتراك مستثناة عمداً: العيادة المنتهية هي المعنية بالرفع حصراً.
+// الاشتراك مستثناة عمداً: العيادة المنتهية والنشطة (تجديد مبكر أو دفع من
+// أول يوم) كلها معنية بالرفع.
 export async function POST(req: NextRequest) {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   const session = await getSessionUser(token);
