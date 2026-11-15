@@ -1,11 +1,12 @@
 import { clinicScope } from "@/lib/tenant/clinic-client";
 import type { TenantContext } from "@/lib/tenant/context";
 import { deriveInvoicesDetailed } from "@/lib/patient-finance";
+import { isUsdAmount } from "@/lib/currency";
 
 // خدمة الدفتر المالي — دفتر غير قابل للتعديل أو الحذف: التصحيح بقيد عكسي فقط.
 // الرصيد لا يُخزَّن أبداً — يُحسب من مجموع القيود الموقّعة (معادلة الرصيد).
 // إشارة المبلغ حسب النوع: CHARGE وREFUND موجبة، PAYMENT سالبة،
-// وADJUSTMENT بالاتجاهين (تصحيح يضاف أو يخصم). القاعدة: balance = Σ amountSyp.
+// وADJUSTMENT بالاتجاهين (تصحيح يضاف أو يخصم). القاعدة: balance = Σ amountUsd.
 
 export type LedgerEntryType = "CHARGE" | "PAYMENT" | "ADJUSTMENT" | "REFUND";
 
@@ -13,7 +14,7 @@ export type LedgerEntryDto = {
   id: string;
   patientId: string;
   type: LedgerEntryType;
-  amountSyp: number;
+  amountUsd: number;
   note: string | null;
   treatmentItemId: string | null;
   /** تسلسل الرسوم على مستوى العيادة — أساس رقم الفاتورة، فارغ للقيود القديمة */
@@ -28,14 +29,14 @@ export type LedgerEntryDto = {
 export type LedgerEntryItemInput = {
   description: string;
   category?: string;
-  amountSyp: number;
+  amountUsd: number;
   sort?: number;
 };
 
 export type LedgerEntryInput = {
   patientId: string;
   type: LedgerEntryType;
-  amountSyp: number;
+  amountUsd: number;
   note?: string;
   treatmentItemId?: string;
   /** إسناد صريح للطبيب — غيابه في قيد رسوم يعني الاستنتاج من أحدث موعد مُسند */
@@ -58,26 +59,26 @@ const ENTRY_TYPES: readonly LedgerEntryType[] = [
 
 // معادلة الرصيد — نقية وتُختبر وحدوياً: الرصيد مجموع القيود كما هي.
 export function computeBalance(
-  entries: ReadonlyArray<{ amountSyp: number }>,
+  entries: ReadonlyArray<{ amountUsd: number }>,
 ): number {
-  return entries.reduce((sum, entry) => sum + entry.amountSyp, 0);
+  return entries.reduce((sum, entry) => sum + entry.amountUsd, 0);
 }
 
 // تحقق نقي من إشارة المبلغ حسب النوع — يمنع دفعة موجبة أو رسوم سالبة.
 export function validateEntrySign(
   type: LedgerEntryType,
-  amountSyp: number,
+  amountUsd: number,
 ): string | null {
-  if (!Number.isInteger(amountSyp) || amountSyp === 0) {
-    return "المبلغ يجب أن يكون رقماً صحيحاً غير صفري";
+  if (!isUsdAmount(amountUsd) || amountUsd === 0) {
+    return "المبلغ يجب أن يكون رقماً موجباً بمنزلتين عشريتين كحد أقصى";
   }
-  if (type === "CHARGE" && amountSyp <= 0) {
+  if (type === "CHARGE" && amountUsd <= 0) {
     return "قيد الرسوم يجب أن يكون بمبلغ موجب";
   }
-  if (type === "PAYMENT" && amountSyp >= 0) {
+  if (type === "PAYMENT" && amountUsd >= 0) {
     return "قيد الدفعة يجب أن يكون بمبلغ سالب";
   }
-  if (type === "REFUND" && amountSyp <= 0) {
+  if (type === "REFUND" && amountUsd <= 0) {
     return "قيد الاسترداد يجب أن يكون بمبلغ موجب";
   }
   return null;
@@ -88,20 +89,20 @@ export function validateEntrySign(
 // البنود فأوصافها إلزامية ومبالغها موجبة صحيحة.
 export function validateLedgerEntryItems(
   items: ReadonlyArray<LedgerEntryItemInput>,
-  amountSyp: number,
+  amountUsd: number,
 ): string | null {
   if (items.length === 0) return null;
 
-  const itemsSum = items.reduce((sum, item) => sum + item.amountSyp, 0);
-  if (itemsSum !== amountSyp) {
+  const itemsSum = items.reduce((sum, item) => sum + item.amountUsd, 0);
+  if (itemsSum !== amountUsd) {
     return "مجموع البنود يجب أن يساوي مبلغ القيد";
   }
   for (const item of items) {
     if (!item.description.trim()) {
       return "وصف البند إلزامي";
     }
-    if (!Number.isInteger(item.amountSyp) || item.amountSyp <= 0) {
-      return "مبلغ البند يجب أن يكون رقماً صحيحاً موجباً";
+    if (!isUsdAmount(item.amountUsd) || item.amountUsd <= 0) {
+      return "مبلغ البند يجب أن يكون رقماً موجباً بمنزلتين عشريتين كحد أقصى";
     }
   }
   return null;
@@ -122,8 +123,8 @@ export function parseCreateLedgerEntry(
     return { ok: false, error: "نوع القيد غير صالح" };
   }
 
-  const amountSyp = typeof b.amountSyp === "number" ? b.amountSyp : NaN;
-  const signError = validateEntrySign(type, amountSyp);
+  const amountUsd = typeof b.amountUsd === "number" ? b.amountUsd : NaN;
+  const signError = validateEntrySign(type, amountUsd);
   if (signError) {
     return { ok: false, error: signError };
   }
@@ -152,7 +153,7 @@ export function parseCreateLedgerEntry(
       const item = raw as Record<string, unknown>;
       if (
         typeof item.description !== "string" ||
-        typeof item.amountSyp !== "number"
+        typeof item.amountUsd !== "number"
       ) {
         return { ok: false, error: "بنود الفاتورة غير صالحة" };
       }
@@ -162,11 +163,11 @@ export function parseCreateLedgerEntry(
           typeof item.category === "string" && item.category.trim()
             ? item.category.trim()
             : undefined,
-        amountSyp: item.amountSyp,
+        amountUsd: item.amountUsd,
         sort: typeof item.sort === "number" ? item.sort : undefined,
       });
     }
-    const itemsError = validateLedgerEntryItems(items, amountSyp);
+    const itemsError = validateLedgerEntryItems(items, amountUsd);
     if (itemsError) {
       return { ok: false, error: itemsError };
     }
@@ -187,8 +188,13 @@ export function parseCreateLedgerEntry(
 
   return {
     ok: true,
-    value: { type, amountSyp, note, treatmentItemId, doctorId, appliedChargeId, items, createdAt },
+    value: { type, amountUsd, note, treatmentItemId, doctorId, appliedChargeId, items, createdAt },
   };
+}
+
+// Decimal → number عند حدود القراءة — وحدة الـ DTO رقمية خالصة (الدولار أساس).
+function toEntryDto<Row extends { amountUsd: unknown }>(row: Row): Omit<Row, "amountUsd"> & { amountUsd: number } {
+  return { ...row, amountUsd: Number(row.amountUsd) };
 }
 
 export async function listLedgerEntries(
@@ -203,7 +209,7 @@ export async function listLedgerEntries(
       id: true,
       patientId: true,
       type: true,
-      amountSyp: true,
+      amountUsd: true,
       note: true,
       treatmentItemId: true,
       invoiceSeq: true,
@@ -212,7 +218,8 @@ export async function listLedgerEntries(
       createdAt: true,
     },
   });
-  return { entries: rows, balance: computeBalance(rows) };
+  const entries = rows.map(toEntryDto);
+  return { entries, balance: computeBalance(entries) };
 }
 
 // قيود العيادة كلها بأحدثها أولاً — لشاشة الدفتر المالي الموحّد.
@@ -226,7 +233,7 @@ const CLINIC_ENTRY_SELECT = {
   id: true,
   patientId: true,
   type: true,
-  amountSyp: true,
+  amountUsd: true,
   note: true,
   treatmentItemId: true,
   invoiceSeq: true,
@@ -253,7 +260,7 @@ export async function listClinicLedgerEntries(
     id: row.id,
     patientId: row.patientId,
     type: row.type,
-    amountSyp: row.amountSyp,
+    amountUsd: Number(row.amountUsd),
     note: row.note,
     treatmentItemId: row.treatmentItemId,
     invoiceSeq: row.invoiceSeq,
@@ -337,7 +344,7 @@ export async function createLedgerEntry(
   // بنود الفاتورة (فجوة 2): مجموع البنود يجب أن يساوي مبلغ القيد — حاجز
   // أخير قبل الكتابة (التحقق النقي ممرّ أيضاً في parseCreateLedgerEntry).
   if (input.items?.length && input.type === "CHARGE") {
-    const itemsError = validateLedgerEntryItems(input.items, input.amountSyp);
+    const itemsError = validateLedgerEntryItems(input.items, input.amountUsd);
     if (itemsError) throw new Error(itemsError);
   }
 
@@ -357,7 +364,7 @@ export async function createLedgerEntry(
       clinicId: ctx.clinicId,
       patientId: input.patientId,
       type: input.type,
-      amountSyp: input.amountSyp,
+      amountUsd: input.amountUsd,
       note: input.note,
       treatmentItemId: input.treatmentItemId,
       invoiceSeq,
@@ -373,7 +380,7 @@ export async function createLedgerEntry(
               create: input.items.map((item, index) => ({
                 description: item.description,
                 category: item.category,
-                amountSyp: item.amountSyp,
+                amountUsd: item.amountUsd,
                 sort: item.sort ?? index,
               })),
             },
@@ -384,7 +391,7 @@ export async function createLedgerEntry(
       id: true,
       patientId: true,
       type: true,
-      amountSyp: true,
+      amountUsd: true,
       note: true,
       treatmentItemId: true,
       invoiceSeq: true,
@@ -393,14 +400,14 @@ export async function createLedgerEntry(
       createdAt: true,
     },
   });
-  return entry;
+  return toEntryDto(entry);
 }
 
 export type TreatmentChargeInput = {
   patientId: string;
   treatmentItemId: string;
   procedure: string;
-  priceSyp: number;
+  priceUsd: number;
 };
 
 // القيد التلقائي عند اكتمال علاج مخطط — يستدعيها محرّك الأودوغرام عند تحويل
@@ -417,7 +424,7 @@ export async function recordTreatmentCharge(
       id: true,
       patientId: true,
       type: true,
-      amountSyp: true,
+      amountUsd: true,
       note: true,
       treatmentItemId: true,
       invoiceSeq: true,
@@ -427,10 +434,10 @@ export async function recordTreatmentCharge(
     },
   });
   if (existing) {
-    return { entry: existing, alreadyCharged: true };
+    return { entry: toEntryDto(existing), alreadyCharged: true };
   }
 
-  if (!Number.isInteger(input.priceSyp) || input.priceSyp <= 0) {
+  if (!isUsdAmount(input.priceUsd) || input.priceUsd <= 0) {
     throw new Error("سعر العلاج غير صالح");
   }
 
@@ -439,13 +446,13 @@ export async function recordTreatmentCharge(
     {
       patientId: input.patientId,
       type: "CHARGE",
-      amountSyp: input.priceSyp,
+      amountUsd: input.priceUsd,
       note: `علاج مكتمل: ${input.procedure}`,
       treatmentItemId: input.treatmentItemId,
       // بند الفاتورة من بند الخطة (فجوة 2) — الوصف هو الإجراء نفسه،
       // والتصنيف نص حر فارغ للبند المشتق من خطة.
       items: [
-        { description: input.procedure, amountSyp: input.priceSyp, sort: 0 },
+        { description: input.procedure, amountUsd: input.priceUsd, sort: 0 },
       ],
     },
     db,
@@ -483,14 +490,14 @@ export async function deleteUnallocatedCharge(
       };
     }
 
-    const entries = await tx.ledgerEntry.findMany({
+    const entries = (await tx.ledgerEntry.findMany({
       where: { patientId },
       orderBy: { createdAt: "asc" },
       select: {
         id: true,
         patientId: true,
         type: true,
-        amountSyp: true,
+        amountUsd: true,
         note: true,
         treatmentItemId: true,
         invoiceSeq: true,
@@ -498,13 +505,13 @@ export async function deleteUnallocatedCharge(
         appliedChargeId: true,
         createdAt: true,
       },
-    });
+    })).map(toEntryDto);
     const invoices = deriveInvoicesDetailed(entries);
     const index = entries
       .filter((e) => e.type === "CHARGE")
       .findIndex((charge) => charge.id === entry.id);
     const invoice = invoices[index];
-    if (invoice && invoice.paidSyp + invoice.discountSyp > 0) {
+    if (invoice && invoice.paidUsd + invoice.discountUsd > 0) {
       return {
         ok: false as const,
         error: "لا يمكن حذف فاتورة عليها دفعات أو خصم — صححها بقيد عكسي",

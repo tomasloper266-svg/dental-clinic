@@ -62,9 +62,9 @@ export function planTotals(items: readonly PlanItemDto[]): PlanTotals {
   for (const item of items) {
     const summary = byStatus[item.status];
     summary.count += 1;
-    summary.total += item.priceSyp;
-    grandTotal += item.priceSyp;
-    if (item.status === "ACCEPTED") acceptedTotal += item.priceSyp;
+    summary.total += item.priceUsd;
+    grandTotal += item.priceUsd;
+    if (item.status === "ACCEPTED") acceptedTotal += item.priceUsd;
   }
 
   return { byStatus, grandTotal, acceptedTotal };

@@ -15,28 +15,28 @@ describe("معادلة الرصيد", () => {
 
   it("دفتر مختلط (رسوم ودفعات وتصحيح واسترداد) يعطي الرصيد الصحيح", () => {
     const balance = computeBalance([
-      { amountSyp: 500_000 }, // رسوم حشو
-      { amountSyp: -200_000 }, // دفعة
-      { amountSyp: 300_000 }, // رسوم خلع
-      { amountSyp: -50_000 }, // تصحيح خصم
-      { amountSyp: 25_000 }, // تصحيح إضافة
-      { amountSyp: 100_000 }, // استرداد
-      { amountSyp: -175_000 }, // دفعة
+      { amountUsd: 500_000 }, // رسوم حشو
+      { amountUsd: -200_000 }, // دفعة
+      { amountUsd: 300_000 }, // رسوم خلع
+      { amountUsd: -50_000 }, // تصحيح خصم
+      { amountUsd: 25_000 }, // تصحيح إضافة
+      { amountUsd: 100_000 }, // استرداد
+      { amountUsd: -175_000 }, // دفعة
     ]);
     expect(balance).toBe(500_000 - 200_000 + 300_000 - 50_000 + 25_000 + 100_000 - 175_000);
   });
 
   it("دفتر مدفوع بالكامل يعطي رصيداً صفراً", () => {
     const balance = computeBalance([
-      { amountSyp: 400_000 },
-      { amountSyp: -150_000 },
-      { amountSyp: -250_000 },
+      { amountUsd: 400_000 },
+      { amountUsd: -150_000 },
+      { amountUsd: -250_000 },
     ]);
     expect(balance).toBe(0);
   });
 
   it("المبلغ الموجب وحده يبقى كما هو", () => {
-    expect(computeBalance([{ amountSyp: 75_000 }])).toBe(75_000);
+    expect(computeBalance([{ amountUsd: 75_000 }])).toBe(75_000);
   });
 });
 
@@ -58,16 +58,17 @@ describe("التحقق من إشارة المبلغ حسب النوع", () => {
     expect(validateEntrySign("REFUND", -100_000)).not.toBeNull();
   });
 
-  it("يرفض الصفر والكسور", () => {
+  it("يرفض الصفر وما فوق منزلتين — والكسر المسموح يقبل", () => {
     expect(validateEntrySign("CHARGE", 0)).not.toBeNull();
-    expect(validateEntrySign("PAYMENT", -1.5)).not.toBeNull();
+    expect(validateEntrySign("PAYMENT", -1.5)).toBeNull();
+    expect(validateEntrySign("PAYMENT", -1.505)).not.toBeNull();
   });
 });
 
 describe("تحقق جسم طلب إنشاء قيد", () => {
   const valid = {
     type: "PAYMENT",
-    amountSyp: -100_000,
+    amountUsd: -100_000,
   };
 
   it("يقبل طلباً صحيحاً", () => {
@@ -83,7 +84,7 @@ describe("تحقق جسم طلب إنشاء قيد", () => {
 
   it("يرفض مبلغاً مخالفاً لإشارة النوع", () => {
     expect(
-      parseCreateLedgerEntry({ ...valid, amountSyp: 100_000 }).ok,
+      parseCreateLedgerEntry({ ...valid, amountUsd: 100_000 }).ok,
     ).toBe(false);
   });
 
@@ -137,10 +138,10 @@ describe("تحقق جسم طلب إنشاء قيد", () => {
   it("يقبل بنود فاتورة مجموعها يساوي المبلغ", () => {
     const parsed = parseCreateLedgerEntry({
       type: "CHARGE",
-      amountSyp: 150_000,
+      amountUsd: 150_000,
       items: [
-        { description: "حشو", category: "ترميم", amountSyp: 100_000, sort: 0 },
-        { description: "تنظيف", amountSyp: 50_000, sort: 1 },
+        { description: "حشو", category: "ترميم", amountUsd: 100_000, sort: 0 },
+        { description: "تنظيف", amountUsd: 50_000, sort: 1 },
       ],
     });
     expect(parsed.ok).toBe(true);
@@ -153,10 +154,10 @@ describe("تحقق جسم طلب إنشاء قيد", () => {
   it("يرفض بنوداً لا تجمع مبلغ القيد (فجوة 2 — تحقق صارم)", () => {
     const parsed = parseCreateLedgerEntry({
       type: "CHARGE",
-      amountSyp: 150_000,
+      amountUsd: 150_000,
       items: [
-        { description: "حشو", amountSyp: 100_000 },
-        { description: "تنظيف", amountSyp: 40_000 },
+        { description: "حشو", amountUsd: 100_000 },
+        { description: "تنظيف", amountUsd: 40_000 },
       ],
     });
     expect(parsed.ok).toBe(false);
@@ -169,7 +170,7 @@ describe("تحقق جسم طلب إنشاء قيد", () => {
     expect(
       parseCreateLedgerEntry({
         ...valid,
-        items: [{ description: "حشو", amountSyp: 100_000 }],
+        items: [{ description: "حشو", amountUsd: 100_000 }],
       }).ok,
     ).toBe(false);
   });
@@ -184,8 +185,8 @@ describe("تحقق بنود الفاتورة — مجموع البنود = مب�
     expect(
       validateLedgerEntryItems(
         [
-          { description: "حشو", amountSyp: 70_000 },
-          { description: "صيانة", amountSyp: 30_000 },
+          { description: "حشو", amountUsd: 70_000 },
+          { description: "صيانة", amountUsd: 30_000 },
         ],
         100_000,
       ),
@@ -194,16 +195,16 @@ describe("تحقق بنود الفاتورة — مجموع البنود = مب�
 
   it("مجموع مخالف يُرفض", () => {
     expect(
-      validateLedgerEntryItems([{ description: "حشو", amountSyp: 50_000 }], 100_000),
+      validateLedgerEntryItems([{ description: "حشو", amountUsd: 50_000 }], 100_000),
     ).not.toBeNull();
   });
 
   it("وصف فارغ أو مبلغ غير صحيح يُرفض", () => {
     expect(
-      validateLedgerEntryItems([{ description: "  ", amountSyp: 100_000 }], 100_000),
+      validateLedgerEntryItems([{ description: "  ", amountUsd: 100 }], 100),
     ).not.toBeNull();
     expect(
-      validateLedgerEntryItems([{ description: "حشو", amountSyp: 10.5 }], 10.5),
+      validateLedgerEntryItems([{ description: "حشو", amountUsd: 10.505 }], 10.505),
     ).not.toBeNull();
   });
 });

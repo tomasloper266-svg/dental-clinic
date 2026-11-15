@@ -34,19 +34,19 @@ export const EXPENSE_CATEGORY_TONES: Record<string, BadgeTone> = {
   OTHER: "neutral",
 };
 
-export type CategoryTotal = { category: string; totalSyp: number };
+export type CategoryTotal = { category: string; totalUsd: number };
 
 /** نقي — مجموع المصاريف حسب الفئة، تنازلياً حسب المبلغ */
 export function summarizeExpensesByCategory(
-  rows: ReadonlyArray<{ category: string; amountSyp: number }>,
+  rows: ReadonlyArray<{ category: string; amountUsd: number }>,
 ): CategoryTotal[] {
   const totals = new Map<string, number>();
   for (const row of rows) {
-    totals.set(row.category, (totals.get(row.category) ?? 0) + row.amountSyp);
+    totals.set(row.category, (totals.get(row.category) ?? 0) + row.amountUsd);
   }
   return [...totals.entries()]
-    .map(([category, totalSyp]) => ({ category, totalSyp }))
-    .sort((a, b) => b.totalSyp - a.totalSyp);
+    .map(([category, totalUsd]) => ({ category, totalUsd }))
+    .sort((a, b) => b.totalUsd - a.totalUsd);
 }
 
 /**
@@ -67,7 +67,7 @@ export function formatShortSyp(amount: number): string {
 
 /** نقي — أعلى قيمة في السلسلة لقياس مقياس المحور (تحصيل ومصاريف معاً) */
 export function seriesMax(
-  series: ReadonlyArray<{ collectedSyp: number; expensesSyp: number }>,
+  series: ReadonlyArray<{ collectedUsd: number; expensesUsd: number }>,
 ): number {
-  return Math.max(1, ...series.flatMap((p) => [p.collectedSyp, p.expensesSyp]));
+  return Math.max(1, ...series.flatMap((p) => [p.collectedUsd, p.expensesUsd]));
 }

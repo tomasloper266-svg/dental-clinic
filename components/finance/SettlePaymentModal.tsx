@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { dualFromSypParts } from "@/lib/currency";
+import { dualFromUsdParts, isUsdAmount } from "@/lib/currency";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
@@ -20,7 +20,7 @@ type Props = {
   patientId: string;
   patientName: string;
   /** المستحق الحالي — يعبّأ حقل المبلغ مسبقاً به */
-  dueSyp: number;
+  dueUsd: number;
   usdRate: number;
 };
 
@@ -30,7 +30,7 @@ export default function SettlePaymentModal({
   onSaved,
   patientId,
   patientName,
-  dueSyp,
+  dueUsd,
   usdRate,
 }: Props) {
   const router = useRouter();
@@ -42,21 +42,21 @@ export default function SettlePaymentModal({
 
   useEffect(() => {
     if (open) {
-      setAmountStr(dueSyp > 0 ? String(dueSyp) : "");
+      setAmountStr(dueUsd > 0 ? String(dueUsd) : "");
       setNote("");
       setError(null);
     }
-  }, [open, dueSyp]);
+  }, [open, dueUsd]);
 
   const amount = Number(amountStr);
   const parts =
     Number.isFinite(amount) && amount > 0
-      ? dualFromSypParts(-amount, usdRate)
+      ? dualFromUsdParts(-amount, usdRate)
       : null;
 
   async function submit() {
-    if (!Number.isInteger(amount) || amount <= 0) {
-      setError("المبلغ يجب أن يكون رقماً صحيحاً موجباً");
+    if (!isUsdAmount(amount) || amount <= 0) {
+      setError("المبلغ يجب أن يكون رقماً موجباً بمنزلتين عشريتين كحد أقصى");
       return;
     }
     setSaving(true);
@@ -69,7 +69,7 @@ export default function SettlePaymentModal({
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             type: "PAYMENT",
-            amountSyp: -amount,
+            amountUsd: -amount,
             note: note.trim() || undefined,
           }),
         },
@@ -112,7 +112,7 @@ export default function SettlePaymentModal({
           تُسجَّل الدفعة بقيمة سالبة تخفض رصيد المريض في الدفتر.
         </p>
         <Field
-          label="المبلغ (ل.س)"
+          label="المبلغ ($)"
           htmlFor="settle-amount"
           hint={
             parts !== null
@@ -123,8 +123,9 @@ export default function SettlePaymentModal({
           <Input
             id="settle-amount"
             type="number"
-            inputMode="numeric"
-            min={1}
+            inputMode="decimal"
+            step="0.01"
+            min={0.01}
             value={amountStr}
             onChange={(e) => setAmountStr(e.target.value)}
             className="numeric"

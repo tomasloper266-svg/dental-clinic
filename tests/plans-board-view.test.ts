@@ -10,7 +10,7 @@ function item(overrides: Partial<PlanItemDto>): PlanItemDto {
     id: "i1",
     toothFdi: 16,
     procedure: "حشو",
-    priceSyp: 50000,
+    priceUsd: 50000,
     status: "PROPOSED",
     priority: 0,
     ...overrides,

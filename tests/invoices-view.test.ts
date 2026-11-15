@@ -13,7 +13,7 @@ import type { ClinicLedgerEntryDto } from "@/lib/services/ledger";
 
 // عينة قيود — مريضان: أحمد (فاتورتان إحداهما مسددة) ورياض (فاتورة جزئية)
 function entry(
-  overrides: Partial<ClinicLedgerEntryDto> & { id: string; type: "CHARGE" | "PAYMENT" | "ADJUSTMENT" | "REFUND"; amountSyp: number; patientId: string },
+  overrides: Partial<ClinicLedgerEntryDto> & { id: string; type: "CHARGE" | "PAYMENT" | "ADJUSTMENT" | "REFUND"; amountUsd: number; patientId: string },
 ): ClinicLedgerEntryDto {
   return {
     patientName: overrides.patientId === "p1" ? "أحمد الخطيب" : "رياض الأكرم",
@@ -29,11 +29,11 @@ function entry(
 }
 
 const SAMPLE: ClinicLedgerEntryDto[] = [
-  entry({ id: "c1", type: "CHARGE", amountSyp: 525000, patientId: "p1", createdAt: new Date("2026-11-10T09:00:00Z") }),
-  entry({ id: "c2", type: "CHARGE", amountSyp: 70000, patientId: "p1", createdAt: new Date("2026-11-12T09:00:00Z") }),
-  entry({ id: "m1", type: "PAYMENT", amountSyp: -70000, patientId: "p1", createdAt: new Date("2026-11-13T09:00:00Z") }),
-  entry({ id: "c3", type: "CHARGE", amountSyp: 525000, patientId: "p2", createdAt: new Date("2026-11-11T09:00:00Z") }),
-  entry({ id: "m2", type: "PAYMENT", amountSyp: -262500, patientId: "p2", createdAt: new Date("2026-11-13T12:00:00Z") }),
+  entry({ id: "c1", type: "CHARGE", amountUsd: 525000, patientId: "p1", createdAt: new Date("2026-11-10T09:00:00Z") }),
+  entry({ id: "c2", type: "CHARGE", amountUsd: 70000, patientId: "p1", createdAt: new Date("2026-11-12T09:00:00Z") }),
+  entry({ id: "m1", type: "PAYMENT", amountUsd: -70000, patientId: "p1", createdAt: new Date("2026-11-13T09:00:00Z") }),
+  entry({ id: "c3", type: "CHARGE", amountUsd: 525000, patientId: "p2", createdAt: new Date("2026-11-11T09:00:00Z") }),
+  entry({ id: "m2", type: "PAYMENT", amountUsd: -262500, patientId: "p2", createdAt: new Date("2026-11-13T12:00:00Z") }),
 ];
 
 function invoiceNumbers(rows: ClinicInvoiceRow[]): string[] {
@@ -107,9 +107,9 @@ describe("summarizeInvoices", () => {
     const rows = deriveClinicInvoices(SAMPLE);
     const summary = summarizeInvoices(rows);
     expect(summary.count).toBe(3);
-    expect(summary.totalSyp).toBe(1120000);
+    expect(summary.totalUsd).toBe(1120000);
     // المسدد 70000 + 262500 = 332500 → المتبقي 787500
-    expect(summary.remainingSyp).toBe(1120000 - 332500);
+    expect(summary.remainingUsd).toBe(1120000 - 332500);
   });
 });
 

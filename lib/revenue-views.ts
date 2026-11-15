@@ -8,14 +8,14 @@ import { localDayOf, localMonthKeyOf } from "@/lib/local-day";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** صف قيد الدفتر كما تستعمله عرضات اللوحة — نوعه ومبلغه ولحظته */
-export type RevenueRow = { type: string; amountSyp: number; createdAt: string | Date };
+export type RevenueRow = { type: string; amountUsd: number; createdAt: string | Date };
 
 /** نقطة سلسلة إيراد — مفتاح فترة (يوم أو شهر) والتعريفان منفصلين */
 export type RevenueDualPoint = {
   /** مفتاح الفترة: يوم YYYY-MM-DD أو شهر YYYY-MM */
   key: string;
-  chargesSyp: number;
-  collectedSyp: number;
+  chargesUsd: number;
+  collectedUsd: number;
 };
 
 /**
@@ -34,14 +34,14 @@ export function monthlyRevenueDual(
     keys.push(cursor.toISOString().slice(0, 7));
   }
   const index = new Map(keys.map((key, i) => [key, i] as const));
-  const points = keys.map((key) => ({ key, chargesSyp: 0, collectedSyp: 0 }));
+  const points = keys.map((key) => ({ key, chargesUsd: 0, collectedUsd: 0 }));
   for (const row of rows) {
     const position = index.get(localMonthKeyOf(row.createdAt));
     if (position === undefined) continue;
     if (row.type === "CHARGE") {
-      points[position].chargesSyp += row.amountSyp;
+      points[position].chargesUsd += row.amountUsd;
     } else if (row.type === "PAYMENT") {
-      points[position].collectedSyp += Math.abs(row.amountSyp);
+      points[position].collectedUsd += Math.abs(row.amountUsd);
     }
   }
   return points;
@@ -63,15 +63,15 @@ export function dailyRevenueDual(
   for (let i = count - 1; i >= 0; i -= 1) {
     const key = new Date(base - i * DAY_MS).toISOString().slice(0, 10);
     index.set(key, points.length);
-    points.push({ key, chargesSyp: 0, collectedSyp: 0 });
+    points.push({ key, chargesUsd: 0, collectedUsd: 0 });
   }
   for (const row of rows) {
     const position = index.get(localDayOf(row.createdAt));
     if (position === undefined) continue;
     if (row.type === "CHARGE") {
-      points[position].chargesSyp += row.amountSyp;
+      points[position].chargesUsd += row.amountUsd;
     } else if (row.type === "PAYMENT") {
-      points[position].collectedSyp += Math.abs(row.amountSyp);
+      points[position].collectedUsd += Math.abs(row.amountUsd);
     }
   }
   return points;
@@ -85,17 +85,17 @@ export function dailyRevenueDual(
 export function currentMonthRevenue(
   rows: ReadonlyArray<RevenueRow>,
   now: Date,
-): { chargesSyp: number; collectedSyp: number } {
+): { chargesUsd: number; collectedUsd: number } {
   const month = localMonthKeyOf(now);
-  let chargesSyp = 0;
-  let collectedSyp = 0;
+  let chargesUsd = 0;
+  let collectedUsd = 0;
   for (const row of rows) {
     if (localMonthKeyOf(row.createdAt) !== month) continue;
     if (row.type === "CHARGE") {
-      chargesSyp += row.amountSyp;
+      chargesUsd += row.amountUsd;
     } else if (row.type === "PAYMENT") {
-      collectedSyp += Math.abs(row.amountSyp);
+      collectedUsd += Math.abs(row.amountUsd);
     }
   }
-  return { chargesSyp, collectedSyp };
+  return { chargesUsd, collectedUsd };
 }

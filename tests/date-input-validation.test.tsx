@@ -157,7 +157,6 @@ describe("نموذج فاتورة جديدة — التحقق الزمني", () 
           <NewInvoiceModal
             onClose={() => {}}
             onIssued={() => {}}
-            usdRate={1}
             patients={[patient]}
           />
         </ToastProvider>

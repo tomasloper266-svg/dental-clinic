@@ -238,7 +238,7 @@ describeDb("مشاهدات الأسنان وخطة العلاج — integration"
         body: JSON.stringify({
           toothFdi: 47,
           procedure: "علاج جذور + تاج",
-          priceSyp: 1500000,
+          priceUsd: 1500000,
         }),
       }),
       routeParams({ patientId: patientAId }),
@@ -253,13 +253,13 @@ describeDb("مشاهدات الأسنان وخطة العلاج — integration"
         tokenA,
         {
           method: "PATCH",
-          body: JSON.stringify({ priceSyp: 1600000, status: "ACCEPTED" }),
+          body: JSON.stringify({ priceUsd: 1600000, status: "ACCEPTED" }),
         },
       ),
       routeParams({ patientId: patientAId, itemId: item.id }),
     );
     expect(edited.status).toBe(200);
-    expect(((await edited.json()) as { item: PlanItemDto }).item.priceSyp).toBe(
+    expect(((await edited.json()) as { item: PlanItemDto }).item.priceUsd).toBe(
       1600000,
     );
 
@@ -297,7 +297,7 @@ describeDb("مشاهدات الأسنان وخطة العلاج — integration"
         tokenA,
         {
           method: "PATCH",
-          body: JSON.stringify({ priceSyp: 1 }),
+          body: JSON.stringify({ priceUsd: 1 }),
         },
       ),
       routeParams({ patientId: patientAId, itemId: item.id }),
@@ -334,7 +334,7 @@ describeDb("مشاهدات الأسنان وخطة العلاج — integration"
         tokenB,
         {
           method: "PATCH",
-          body: JSON.stringify({ priceSyp: 1 }),
+          body: JSON.stringify({ priceUsd: 1 }),
         },
       ),
       routeParams({ patientId: patientAId, itemId: items[0].id }),
@@ -346,7 +346,7 @@ describeDb("مشاهدات الأسنان وخطة العلاج — integration"
     });
     expect(unchanged.clinicId).toBe(clinicAId);
     expect(clinicBId).not.toBe(clinicAId);
-    expect(unchanged.priceSyp).toBe(items[0].priceSyp);
+    expect(Number(unchanged.priceUsd)).toBe(Number(items[0].priceUsd));
   });
 
   it("يرفض سنـاً غير صالح وحالة ناتجة غير معروفة (400)", async () => {
@@ -356,7 +356,7 @@ describeDb("مشاهدات الأسنان وخطة العلاج — integration"
         body: JSON.stringify({
           toothFdi: 99,
           procedure: "حشو",
-          priceSyp: 100,
+          priceUsd: 100,
         }),
       }),
       routeParams({ patientId: patientAId }),

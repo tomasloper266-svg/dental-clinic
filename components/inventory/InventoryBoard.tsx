@@ -309,8 +309,8 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
                           )}
                         </TD>
                         <TD>
-                          {m.costSyp !== null ? (
-                            <DualAmount syp={m.costSyp} usdRate={usdRate} precise />
+                          {m.costUsd !== null ? (
+                            <DualAmount usd={m.costUsd} usdRate={usdRate} precise />
                           ) : (
                             <span className="text-warm-300">—</span>
                           )}
@@ -806,9 +806,9 @@ function MaterialFormModal({
     material ? String(material.minQuantity) : "",
   );
   const [supplier, setSupplier] = useState(material?.supplier ?? "");
-  const [costSyp, setCostSyp] = useState(
-    material?.costSyp !== null && material?.costSyp !== undefined
-      ? String(material.costSyp)
+  const [costUsd, setCostUsd] = useState(
+    material?.costUsd !== null && material?.costUsd !== undefined
+      ? String(material.costUsd)
       : "",
   );
   const [error, setError] = useState<string | null>(null);
@@ -816,7 +816,7 @@ function MaterialFormModal({
   function buildBody(): Record<string, unknown> | null {
     const min = Number(minQuantity);
     const qty = Number(quantity);
-    const cost = costSyp.trim() === "" ? null : Number(costSyp);
+    const cost = costUsd.trim() === "" ? null : Number(costUsd);
     if (!name.trim() || !unit.trim()) {
       setError("اسم المادة والوحدة مطلوبان");
       return null;
@@ -844,7 +844,7 @@ function MaterialFormModal({
       minQuantity: min,
       // التكلفة بعشريات منذ ترحيل Decimal(12,2) — تُقرَّب لمنزلتين قبل الإرسال
       ...(cost !== null || editing
-        ? { costSyp: cost === null ? null : Math.round(cost * 100) / 100 }
+        ? { costUsd: cost === null ? null : Math.round(cost * 100) / 100 }
         : {}),
     };
   }
@@ -930,14 +930,15 @@ function MaterialFormModal({
               placeholder="مثال: دنتكال سول"
             />
           </Field>
-          <Field label="سعر الوحدة (ل.س)" htmlFor="material-cost">
+          <Field label="سعر الوحدة ($)" htmlFor="material-cost">
             <Input
               id="material-cost"
               type="number"
               min="0"
-              inputMode="numeric"
-              value={costSyp}
-              onChange={(e) => setCostSyp(e.target.value)}
+              step="0.01"
+              inputMode="decimal"
+              value={costUsd}
+              onChange={(e) => setCostUsd(e.target.value)}
             />
           </Field>
         </div>

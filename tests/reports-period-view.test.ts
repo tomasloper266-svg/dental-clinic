@@ -134,41 +134,41 @@ describe("monthsCovered", () => {
 describe("monthlyRevenue", () => {
   it("يوزع الرسوم على أشهر النطاق ويبقي الأشهر بلا حركة", () => {
     const charges = [
-      { amountSyp: 400, createdAt: "2026-08-20T10:00:00Z" },
-      { amountSyp: 1710, createdAt: "2026-09-02T10:00:00Z" },
-      { amountSyp: 705, createdAt: "2026-10-05T10:00:00Z" },
-      { amountSyp: 500, createdAt: "2026-10-11T10:00:00Z" },
+      { amountUsd: 400, createdAt: "2026-08-20T10:00:00Z" },
+      { amountUsd: 1710, createdAt: "2026-09-02T10:00:00Z" },
+      { amountUsd: 705, createdAt: "2026-10-05T10:00:00Z" },
+      { amountUsd: 500, createdAt: "2026-10-11T10:00:00Z" },
       // قيد خارج النطاق — الخدمة تُقصّه قبل التجميع فلا يصل إلى هنا
-      { amountSyp: 999, createdAt: "2025-01-01T10:00:00Z" },
+      { amountUsd: 999, createdAt: "2025-01-01T10:00:00Z" },
     ];
     const months = monthlyRevenue(charges, { from: "2026-08-16", to: "2026-10-14" });
-    expect(months.map((m) => m.chargesSyp)).toEqual([400, 1710, 1205]);
+    expect(months.map((m) => m.chargesUsd)).toEqual([400, 1710, 1205]);
     expect(months.map((m) => m.month)).toEqual(["2026-08", "2026-09", "2026-10"]);
   });
 
   it("قيد منتصف الليل المحلي (00:30 دمشق من أول الشهر) يقع في شهره المحلي", () => {
     // 00:30 دمشق يوم 1-11 = 21:30 يوم 31-10 بتوقيت UTC
     const months = monthlyRevenue(
-      [{ amountSyp: 300, createdAt: "2026-10-31T21:30:00.000Z" }],
+      [{ amountUsd: 300, createdAt: "2026-10-31T21:30:00.000Z" }],
       { from: "2026-11-01", to: "2026-11-30" },
     );
-    expect(months.map((m) => m.chargesSyp)).toEqual([300]);
+    expect(months.map((m) => m.chargesUsd)).toEqual([300]);
   });
 });
 
 describe("summarizePeriodLedger", () => {
   it("يجمع الرسوم وعددها وعدد الدفعات وتحصيل الفترة منفصلاً", () => {
     const entries = [
-      { type: "CHARGE", amountSyp: 1000 },
-      { type: "CHARGE", amountSyp: 500 },
-      { type: "PAYMENT", amountSyp: -300 },
-      { type: "PAYMENT", amountSyp: -200 },
-      { type: "ADJUSTMENT", amountSyp: -50 },
-      { type: "REFUND", amountSyp: 25 },
+      { type: "CHARGE", amountUsd: 1000 },
+      { type: "CHARGE", amountUsd: 500 },
+      { type: "PAYMENT", amountUsd: -300 },
+      { type: "PAYMENT", amountUsd: -200 },
+      { type: "ADJUSTMENT", amountUsd: -50 },
+      { type: "REFUND", amountUsd: 25 },
     ];
     expect(summarizePeriodLedger(entries)).toEqual({
-      totalChargesSyp: 1500,
-      totalPaymentsSyp: 500,
+      totalChargesUsd: 1500,
+      totalPaymentsUsd: 500,
       invoiceCount: 2,
       paymentCount: 2,
     });
@@ -176,8 +176,8 @@ describe("summarizePeriodLedger", () => {
 
   it("فترة بلا حركة تعيد أصفاراً للتعريفين", () => {
     expect(summarizePeriodLedger([])).toEqual({
-      totalChargesSyp: 0,
-      totalPaymentsSyp: 0,
+      totalChargesUsd: 0,
+      totalPaymentsUsd: 0,
       invoiceCount: 0,
       paymentCount: 0,
     });
@@ -212,9 +212,9 @@ describe("revenueByDoctor", () => {
 
   it("ينسب الرسم إلى طبيب أحدث موعد المريض قبله", () => {
     const charges = [
-      { patientId: "p1", amountSyp: 200, createdAt: "2026-09-10T10:00:00Z" },
-      { patientId: "p1", amountSyp: 100, createdAt: "2026-09-20T10:00:00Z" },
-      { patientId: "p2", amountSyp: 300, createdAt: "2026-09-15T10:00:00Z" },
+      { patientId: "p1", amountUsd: 200, createdAt: "2026-09-10T10:00:00Z" },
+      { patientId: "p1", amountUsd: 100, createdAt: "2026-09-20T10:00:00Z" },
+      { patientId: "p2", amountUsd: 300, createdAt: "2026-09-15T10:00:00Z" },
     ];
     const appointments = [
       { patientId: "p1", staffId: "s1", startsAt: "2026-09-01T10:00:00Z" },
@@ -223,17 +223,17 @@ describe("revenueByDoctor", () => {
       { patientId: "p2", staffId: "s1", startsAt: "2026-09-14T10:00:00Z" },
     ];
     expect(revenueByDoctor(charges, appointments, staffName)).toEqual([
-      { doctor: "د. سامر درويش", chargesSyp: 500 },
-      { doctor: "د. رنا الحلقي", chargesSyp: 100 },
+      { doctor: "د. سامر درويش", chargesUsd: 500 },
+      { doctor: "د. رنا الحلقي", chargesUsd: 100 },
     ]);
   });
 
   it("القيود بلا موعد مسند تجتمع تحت بند مستقل", () => {
     const charges = [
-      { patientId: "p3", amountSyp: 150, createdAt: "2026-09-10T10:00:00Z" },
+      { patientId: "p3", amountUsd: 150, createdAt: "2026-09-10T10:00:00Z" },
     ];
     expect(revenueByDoctor(charges, [], staffName)).toEqual([
-      { doctor: "بدون طبيب محدد", chargesSyp: 150 },
+      { doctor: "بدون طبيب محدد", chargesUsd: 150 },
     ]);
   });
 
@@ -242,7 +242,7 @@ describe("revenueByDoctor", () => {
     const charges = [
       {
         patientId: "p1",
-        amountSyp: 400,
+        amountUsd: 400,
         createdAt: "2026-09-10T10:00:00Z",
         doctorId: "s2",
       },
@@ -251,7 +251,7 @@ describe("revenueByDoctor", () => {
       { patientId: "p1", staffId: "s1", startsAt: "2026-09-01T10:00:00Z" },
     ];
     expect(revenueByDoctor(charges, appointments, staffName)).toEqual([
-      { doctor: "د. رنا الحلقي", chargesSyp: 400 },
+      { doctor: "د. رنا الحلقي", chargesUsd: 400 },
     ]);
   });
 
@@ -259,7 +259,7 @@ describe("revenueByDoctor", () => {
     const charges = [
       {
         patientId: "p1",
-        amountSyp: 400,
+        amountUsd: 400,
         createdAt: "2026-09-10T10:00:00Z",
         doctorId: null,
       },
@@ -268,7 +268,7 @@ describe("revenueByDoctor", () => {
       { patientId: "p1", staffId: "s1", startsAt: "2026-09-01T10:00:00Z" },
     ];
     expect(revenueByDoctor(charges, appointments, staffName)).toEqual([
-      { doctor: "د. سامر درويش", chargesSyp: 400 },
+      { doctor: "د. سامر درويش", chargesUsd: 400 },
     ]);
   });
 
@@ -276,7 +276,7 @@ describe("revenueByDoctor", () => {
     const charges = [
       {
         patientId: "p1",
-        amountSyp: 200,
+        amountUsd: 200,
         createdAt: "2026-09-10T10:00:00Z",
         doctorId: "deleted",
       },
@@ -285,7 +285,7 @@ describe("revenueByDoctor", () => {
       { patientId: "p1", staffId: "s1", startsAt: "2026-09-01T10:00:00Z" },
     ];
     expect(revenueByDoctor(charges, appointments, staffName)).toEqual([
-      { doctor: "بدون طبيب محدد", chargesSyp: 200 },
+      { doctor: "بدون طبيب محدد", chargesUsd: 200 },
     ]);
   });
 });
@@ -297,15 +297,15 @@ describe("revenueByProcedure", () => {
       ["i2", "تنظيف"],
     ]);
     const charges = [
-      { treatmentItemId: "i1", amountSyp: 800 },
-      { treatmentItemId: "i2", amountSyp: 300 },
-      { treatmentItemId: "i2", amountSyp: 250 },
-      { treatmentItemId: null, amountSyp: 90 },
+      { treatmentItemId: "i1", amountUsd: 800 },
+      { treatmentItemId: "i2", amountUsd: 300 },
+      { treatmentItemId: "i2", amountUsd: 250 },
+      { treatmentItemId: null, amountUsd: 90 },
     ];
     expect(revenueByProcedure(charges, procedureByItemId)).toEqual([
-      { procedure: "زراعة", chargesSyp: 800 },
-      { procedure: "تنظيف", chargesSyp: 550 },
-      { procedure: "بدون تصنيف", chargesSyp: 90 },
+      { procedure: "زراعة", chargesUsd: 800 },
+      { procedure: "تنظيف", chargesUsd: 550 },
+      { procedure: "بدون تصنيف", chargesUsd: 90 },
     ]);
   });
 
@@ -314,22 +314,22 @@ describe("revenueByProcedure", () => {
     const charges = [
       {
         treatmentItemId: null,
-        amountSyp: 500,
+        amountUsd: 500,
         items: [
-          { category: "تبييض ليزر", amountSyp: 300 },
-          { category: "تنظيف جير", amountSyp: 200 },
+          { category: "تبييض ليزر", amountUsd: 300 },
+          { category: "تنظيف جير", amountUsd: 200 },
         ],
       },
       {
         treatmentItemId: "i1",
-        amountSyp: 800,
-        items: [{ category: "زراعة", amountSyp: 800 }],
+        amountUsd: 800,
+        items: [{ category: "زراعة", amountUsd: 800 }],
       },
     ];
     expect(revenueByProcedure(charges, procedureByItemId)).toEqual([
-      { procedure: "زراعة", chargesSyp: 800 },
-      { procedure: "تبييض ليزر", chargesSyp: 300 },
-      { procedure: "تنظيف جير", chargesSyp: 200 },
+      { procedure: "زراعة", chargesUsd: 800 },
+      { procedure: "تبييض ليزر", chargesUsd: 300 },
+      { procedure: "تنظيف جير", chargesUsd: 200 },
     ]);
   });
 
@@ -338,18 +338,18 @@ describe("revenueByProcedure", () => {
     const charges = [
       {
         treatmentItemId: null,
-        amountSyp: 300,
+        amountUsd: 300,
         items: [
-          { category: null, amountSyp: 180 },
-          { category: "  ", amountSyp: 120 },
+          { category: null, amountUsd: 180 },
+          { category: "  ", amountUsd: 120 },
         ],
       },
-      { treatmentItemId: "i1", amountSyp: 250, items: [] },
-      { treatmentItemId: null, amountSyp: 90 },
+      { treatmentItemId: "i1", amountUsd: 250, items: [] },
+      { treatmentItemId: null, amountUsd: 90 },
     ];
     expect(revenueByProcedure(charges, procedureByItemId)).toEqual([
-      { procedure: "بدون تصنيف", chargesSyp: 390 },
-      { procedure: "تنظيف", chargesSyp: 250 },
+      { procedure: "بدون تصنيف", chargesUsd: 390 },
+      { procedure: "تنظيف", chargesUsd: 250 },
     ]);
   });
 });
@@ -357,15 +357,15 @@ describe("revenueByProcedure", () => {
 describe("topPatientsByCharges", () => {
   it("يجمع لكل مريض ويرتب تنازلياً ويقص بالحد", () => {
     const charges = [
-      { patientId: "p1", patientName: "يوسف النجار", amountSyp: 1000 },
-      { patientId: "p1", patientName: "يوسف النجار", amountSyp: 245 },
-      { patientId: "p2", patientName: "ليلى مرعي", amountSyp: 965 },
-      { patientId: "p3", patientName: "محمد رياضان", amountSyp: 280 },
+      { patientId: "p1", patientName: "يوسف النجار", amountUsd: 1000 },
+      { patientId: "p1", patientName: "يوسف النجار", amountUsd: 245 },
+      { patientId: "p2", patientName: "ليلى مرعي", amountUsd: 965 },
+      { patientId: "p3", patientName: "محمد رياضان", amountUsd: 280 },
     ];
     const top = topPatientsByCharges(charges, 2);
     expect(top).toEqual([
-      { patientId: "p1", patientName: "يوسف النجار", chargesSyp: 1245 },
-      { patientId: "p2", patientName: "ليلى مرعي", chargesSyp: 965 },
+      { patientId: "p1", patientName: "يوسف النجار", chargesUsd: 1245 },
+      { patientId: "p2", patientName: "ليلى مرعي", chargesUsd: 965 },
     ]);
   });
 
@@ -373,14 +373,14 @@ describe("topPatientsByCharges", () => {
     const charges = Array.from({ length: 30 }, (_, i) => ({
       patientId: `p${i + 1}`,
       patientName: `مريض ${i + 1}`,
-      amountSyp: 100 + i,
+      amountUsd: 100 + i,
     }));
     const top = topPatientsByCharges(charges);
     expect(top).toHaveLength(25);
     expect(top[0]).toEqual({
       patientId: "p30",
       patientName: "مريض 30",
-      chargesSyp: 129,
+      chargesUsd: 129,
     });
   });
 });
@@ -409,20 +409,21 @@ describe("patientGrowthMonthly", () => {
 
 describe("buildPeriodCsv", () => {
   it("يشمل أقسام التقرير كلها بمبالغ دولار وليرة", () => {
+    // المبالغ المخزنة دولار — عمود الليرة مشتق بالضرب في السعر (4465 × 15000).
     const summary = {
       from: "2026-08-16",
       to: "2026-11-14",
-      totalChargesSyp: 66_975_000,
-      totalPaymentsSyp: 66_975_000,
+      totalChargesUsd: 4_465,
+      totalPaymentsUsd: 4_465,
       invoiceCount: 32,
       paymentCount: 41,
-      outstandingSyp: 9_300_000,
-      monthlyRevenue: [{ month: "2026-08", chargesSyp: 6_000_000 }],
+      outstandingUsd: 620,
+      monthlyRevenue: [{ month: "2026-08", chargesUsd: 400 }],
       appointmentOutcomes: [{ status: "SCHEDULED" as const, count: 15 }],
-      revenueByDoctor: [{ doctor: "د. سامر درويش", chargesSyp: 27_300_000 }],
-      revenueByProcedure: [{ procedure: "زراعة", chargesSyp: 12_000_000 }],
+      revenueByDoctor: [{ doctor: "د. سامر درويش", chargesUsd: 1_820 }],
+      revenueByProcedure: [{ procedure: "زراعة", chargesUsd: 800 }],
       topPatients: [
-        { patientId: "p1", patientName: "يوسف النجار", chargesSyp: 18_675_000 },
+        { patientId: "p1", patientName: "يوسف النجار", chargesUsd: 1_245 },
       ],
       patientGrowth: [{ month: "2026-08", count: 2 }],
       rangeStart: "2026-08-16",

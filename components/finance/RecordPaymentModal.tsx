@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { sypToUsd, usdToSyp } from "@/lib/currency";
+import { roundUsd2, sypToUsd, usdToSyp } from "@/lib/currency";
 import { useDisplayCurrency, useMoney } from "@/components/ui/CurrencyContext";
 import {
   isDateInputFuture,
@@ -41,7 +41,7 @@ type Props = {
   initialPatientId?: string | null;
   initialChargeId?: string | null;
   /** تعبئة مبلغ مسبق من رصيد المريض — من صفحة المستحقات دون فاتورة محددة */
-  initialDueSyp?: number;
+  initialDueUsd?: number;
 };
 
 export default function RecordPaymentModal({
@@ -52,7 +52,7 @@ export default function RecordPaymentModal({
   invoices,
   initialPatientId,
   initialChargeId,
-  initialDueSyp,
+  initialDueUsd,
 }: Props) {
   const router = useRouter();
   const { toast } = useToast();
@@ -61,10 +61,14 @@ export default function RecordPaymentModal({
   const currency = useDisplayCurrency();
   const money = useMoney();
   const isUsdInput = currency === "USD";
-  const toDisplayAmount = (syp: number) =>
-    isUsdInput ? sypToUsd(syp, usdRate) : syp;
+  // المخزن الآن دولار: بإدخال الدولار يُقيَّد كما هو (بمنزلتين)، وبالليرة
+  // يُقسم على السعر عند التسجيل. العرض بالمقلوب: الليرة تُشتق بالضرب.
+  const toDisplayAmount = (usd: number) =>
+    isUsdInput ? usd : usdToSyp(usd, usdRate);
   const fromDisplayAmount = (display: number) =>
-    isUsdInput ? usdToSyp(display, usdRate) : display;
+    isUsdInput
+      ? roundUsd2(display)
+      : roundUsd2(sypToUsd(display, usdRate));
 
   const initialInvoice = useMemo(
     () => invoices.find((row) => row.chargeId === initialChargeId) ?? null,
@@ -76,14 +80,14 @@ export default function RecordPaymentModal({
   );
   const [chargeId, setChargeId] = useState(initialInvoice?.chargeId ?? "");
   const [amountStr, setAmountStr] = useState(() => {
-    if (initialInvoice && initialInvoice.remainingSyp > 0) {
+    if (initialInvoice && initialInvoice.remainingUsd > 0) {
       return String(
-        Math.round(toDisplayAmount(initialInvoice.remainingSyp) * 100) / 100,
+        Math.round(toDisplayAmount(initialInvoice.remainingUsd) * 100) / 100,
       );
     }
-    if (initialDueSyp !== undefined && initialDueSyp > 0) {
+    if (initialDueUsd !== undefined && initialDueUsd > 0) {
       return String(
-        Math.round(toDisplayAmount(initialDueSyp) * 100) / 100,
+        Math.round(toDisplayAmount(initialDueUsd) * 100) / 100,
       );
     }
     return "";
@@ -99,7 +103,7 @@ export default function RecordPaymentModal({
   const outstanding = useMemo(
     () =>
       invoices.filter(
-        (row) => row.patientId === patientId && row.remainingSyp > 0,
+        (row) => row.patientId === patientId && row.remainingUsd > 0,
       ),
     [invoices, patientId],
   );
@@ -154,7 +158,7 @@ export default function RecordPaymentModal({
           headers: { "content-type": "application/json" },
           body: JSON.stringify(
             buildPaymentBody({
-              amountSyp: -fromDisplayAmount(amount),
+              amountUsd: -fromDisplayAmount(amount),
               note: composePaymentNote(method, paymentBaseNote()),
               createdAt: dateIso.toISOString(),
               appliedChargeId: chargeId || undefined,
@@ -233,7 +237,7 @@ export default function RecordPaymentModal({
             <option value="">فواتير على الحساب (بدون فوترة)</option>
             {outstanding.map((row) => (
               <option key={row.chargeId} value={row.chargeId}>
-                {row.number} — متبقى {money(row.remainingSyp)}
+                {row.number} — متبقى {money(row.remainingUsd)}
               </option>
             ))}
           </Select>
@@ -244,7 +248,7 @@ export default function RecordPaymentModal({
           htmlFor="pay-amount"
           hint={
             selectedInvoice
-              ? `المتبقي على الفاتورة: ${money(selectedInvoice.remainingSyp)}`
+              ? `المتبقي على الفاتورة: ${money(selectedInvoice.remainingUsd)}`
               : undefined
           }
         >

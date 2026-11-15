@@ -71,7 +71,7 @@ export function materialsToCsv(
     supplier: string | null;
     quantityOnHand: number;
     minQuantity: number;
-    costSyp: number | null;
+    costUsd: number | null;
   }[],
 ): string {
   const header = [
@@ -81,7 +81,7 @@ export function materialsToCsv(
     "الرصيد",
     "حد التنبيه",
     "المورد",
-    "سعر الوحدة (ل.س)",
+    "سعر الوحدة ($)",
   ];
   const rows = materials.map((m) =>
     [
@@ -91,7 +91,7 @@ export function materialsToCsv(
       String(m.quantityOnHand),
       String(m.minQuantity),
       m.supplier ?? "",
-      m.costSyp === null ? "" : String(m.costSyp),
+      m.costUsd === null ? "" : String(m.costUsd),
     ]
       .map(csvCell)
       .join(","),

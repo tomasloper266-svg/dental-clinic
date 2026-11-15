@@ -175,27 +175,30 @@ describe("التحقق النقي لخطة العلاج", () => {
     const r = parseCreatePlanItem({
       toothFdi: 36,
       procedure: "علاج جذور",
-      priceSyp: 500000,
+      priceUsd: 500000,
       priority: 2,
     });
     expect(r.ok).toBe(true);
   });
 
-  it("يرفض سعراً سالباً أو غير صحيح", () => {
+  it("يرفض سعراً سالباً أو غير صحيح — والكسر المسموح يقبل", () => {
     expect(
-      parseCreatePlanItem({ toothFdi: 36, procedure: "حشو", priceSyp: -1 }).ok,
+      parseCreatePlanItem({ toothFdi: 36, procedure: "حشو", priceUsd: -1 }).ok,
     ).toBe(false);
     expect(
-      parseCreatePlanItem({ toothFdi: 36, procedure: "حشو", priceSyp: 12.5 }).ok,
+      parseCreatePlanItem({ toothFdi: 36, procedure: "حشو", priceUsd: 12.505 }).ok,
     ).toBe(false);
+    expect(
+      parseCreatePlanItem({ toothFdi: 36, procedure: "حشو", priceUsd: 12.5 }).ok,
+    ).toBe(true);
   });
 
   it("يرفض إجراءً قصيراً أو سناً غير صالحة", () => {
-    expect(parseCreatePlanItem({ toothFdi: 36, procedure: "ح", priceSyp: 1 }).ok).toBe(
+    expect(parseCreatePlanItem({ toothFdi: 36, procedure: "ح", priceUsd: 1 }).ok).toBe(
       false,
     );
     expect(
-      parseCreatePlanItem({ toothFdi: 99, procedure: "حشو", priceSyp: 1 }).ok,
+      parseCreatePlanItem({ toothFdi: 99, procedure: "حشو", priceUsd: 1 }).ok,
     ).toBe(false);
   });
 

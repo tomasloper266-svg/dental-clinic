@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireTenant } from "@/lib/tenant/require-tenant";
 import { listClinicLedgerEntries } from "@/lib/services/ledger";
 import {
-  outstandingDuesSyp,
+  outstandingDuesUsd,
   patientsWithDuesCount,
 } from "@/lib/finance-view";
 
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
 
   const entries = await listClinicLedgerEntries(ctx);
   return NextResponse.json({
-    outstandingDuesSyp: outstandingDuesSyp(entries),
+    outstandingDuesUsd: outstandingDuesUsd(entries),
     patientsWithDues: patientsWithDuesCount(entries),
   });
 }

@@ -7,37 +7,37 @@ import { clinicScope } from "@/lib/tenant/clinic-client";
 export type PeriodReport = {
   from: Date;
   to: Date;
-  collectedSyp: number;
-  expensesSyp: number;
-  netSyp: number;
-  refundsSyp: number;
+  collectedUsd: number;
+  expensesUsd: number;
+  netUsd: number;
+  refundsUsd: number;
 };
 
 // تجميع نقي — يُختبر وحدوياً: التحصيل = مجموع الدفعات بقيمة مطلقة،
 // والمصروفات مجموع سجل المصاريف، والصافي = التحصيل − المصاريف.
 export function summarizePeriod(
-  ledgerAmounts: ReadonlyArray<{ type: string; amountSyp: number }>,
-  expenseAmounts: ReadonlyArray<{ amountSyp: number }>,
-): { collectedSyp: number; expensesSyp: number; netSyp: number; refundsSyp: number } {
-  let collectedSyp = 0;
-  let refundsSyp = 0;
+  ledgerAmounts: ReadonlyArray<{ type: string; amountUsd: number }>,
+  expenseAmounts: ReadonlyArray<{ amountUsd: number }>,
+): { collectedUsd: number; expensesUsd: number; netUsd: number; refundsUsd: number } {
+  let collectedUsd = 0;
+  let refundsUsd = 0;
   for (const entry of ledgerAmounts) {
     if (entry.type === "PAYMENT") {
-      collectedSyp += Math.abs(entry.amountSyp);
+      collectedUsd += Math.abs(entry.amountUsd);
     } else if (entry.type === "REFUND") {
-      refundsSyp += entry.amountSyp;
+      refundsUsd += entry.amountUsd;
     }
   }
-  const expensesSyp = expenseAmounts.reduce(
-    (sum, expense) => sum + expense.amountSyp,
+  const expensesUsd = expenseAmounts.reduce(
+    (sum, expense) => sum + expense.amountUsd,
     0,
   );
   // التحصيل الصافي بعد الاستردادات المطروحة من المقبوضات.
   return {
-    collectedSyp,
-    expensesSyp,
-    netSyp: collectedSyp - refundsSyp - expensesSyp,
-    refundsSyp,
+    collectedUsd,
+    expensesUsd,
+    netUsd: collectedUsd - refundsUsd - expensesUsd,
+    refundsUsd,
   };
 }
 
@@ -67,17 +67,19 @@ export async function getPeriodReport(
       where: {
         createdAt: { gte: period.from, lt: period.to },
       },
-      select: { type: true, amountSyp: true },
+      select: { type: true, amountUsd: true },
     }),
     db.expense.findMany({
       where: {
         spentAt: { gte: period.from, lt: period.to },
       },
-      select: { amountSyp: true },
+      select: { amountUsd: true },
     }),
   ]);
-
-  const summary = summarizePeriod(ledgerRows, expenseRows);
+  const summary = summarizePeriod(
+    ledgerRows.map((r) => ({ ...r, amountUsd: Number(r.amountUsd) })),
+    expenseRows.map((r) => ({ ...r, amountUsd: Number(r.amountUsd) })),
+  );
   return { from: period.from, to: period.to, ...summary };
 }
 
@@ -99,10 +101,10 @@ export async function getMonthlyReport(
 export type DailySeriesPoint = {
   /** يوم السلسلة بصيغة YYYY-MM-DD (UTC) */
   date: string;
-  collectedSyp: number;
-  expensesSyp: number;
-  netSyp: number;
-  refundsSyp: number;
+  collectedUsd: number;
+  expensesUsd: number;
+  netUsd: number;
+  refundsUsd: number;
 };
 
 /**
@@ -110,8 +112,8 @@ export type DailySeriesPoint = {
  * summarizePeriod فلا يُعاد تفسير أي حساب مالي. الأيام بلا حركة تعيد أصفاراً.
  */
 export function bucketDailySeries(
-  ledgerRows: ReadonlyArray<{ type: string; amountSyp: number; createdAt: Date }>,
-  expenseRows: ReadonlyArray<{ amountSyp: number; spentAt: Date }>,
+  ledgerRows: ReadonlyArray<{ type: string; amountUsd: number; createdAt: Date }>,
+  expenseRows: ReadonlyArray<{ amountUsd: number; spentAt: Date }>,
   days: number,
   endDate: Date,
 ): DailySeriesPoint[] {
@@ -123,10 +125,10 @@ export function bucketDailySeries(
     const key = day.toISOString().slice(0, 10);
     const point: DailySeriesPoint = {
       date: key,
-      collectedSyp: 0,
-      expensesSyp: 0,
-      netSyp: 0,
-      refundsSyp: 0,
+      collectedUsd: 0,
+      expensesUsd: 0,
+      netUsd: 0,
+      refundsUsd: 0,
     };
     points.push(point);
     index.set(key, point);
@@ -136,18 +138,18 @@ export function bucketDailySeries(
     const point = index.get(row.createdAt.toISOString().slice(0, 10));
     if (!point) continue;
     if (row.type === "PAYMENT") {
-      point.collectedSyp += Math.abs(row.amountSyp);
+      point.collectedUsd += Math.abs(row.amountUsd);
     } else if (row.type === "REFUND") {
-      point.refundsSyp += row.amountSyp;
+      point.refundsUsd += row.amountUsd;
     }
   }
   for (const row of expenseRows) {
     const point = index.get(row.spentAt.toISOString().slice(0, 10));
     if (!point) continue;
-    point.expensesSyp += row.amountSyp;
+    point.expensesUsd += row.amountUsd;
   }
   for (const point of points) {
-    point.netSyp = point.collectedSyp - point.refundsSyp - point.expensesSyp;
+    point.netUsd = point.collectedUsd - point.refundsUsd - point.expensesUsd;
   }
   return points;
 }
@@ -164,12 +166,17 @@ export async function getDailySeries(
   const [ledgerRows, expenseRows] = await Promise.all([
     db.ledgerEntry.findMany({
       where: { createdAt: { gte: from, lt: to } },
-      select: { type: true, amountSyp: true, createdAt: true },
+      select: { type: true, amountUsd: true, createdAt: true },
     }),
     db.expense.findMany({
       where: { spentAt: { gte: from, lt: to } },
-      select: { amountSyp: true, spentAt: true },
+      select: { amountUsd: true, spentAt: true },
     }),
   ]);
-  return bucketDailySeries(ledgerRows, expenseRows, days, endDate);
+  return bucketDailySeries(
+    ledgerRows.map((r) => ({ ...r, amountUsd: Number(r.amountUsd) })),
+    expenseRows.map((r) => ({ ...r, amountUsd: Number(r.amountUsd) })),
+    days,
+    endDate,
+  );
 }

@@ -34,14 +34,14 @@ export type LinkedLedgerEntry = LedgerEntryDto & {
 
 export type PatientLedgerSummary = {
   /** إجمالي قيود الرسوم (CHARGE) */
-  chargesSyp: number;
+  chargesUsd: number;
   /** المسدد من الرسوم = الرسوم − الرصيد الجاري الموجب — يشمل الدفعات والخصومات */
-  paidSyp: number;
-  balanceSyp: number;
+  paidUsd: number;
+  balanceUsd: number;
   /** مجموع دفعات الدفتر (PAYMENT) بقيمها المطلقة — بلا خصومات */
-  paymentsSyp: number;
+  paymentsUsd: number;
   /** مجموع الخصومات (تسويات ADJUSTMENT سالبة) بقيمها المطلقة — ليست دفعات */
-  discountSyp: number;
+  discountUsd: number;
 };
 
 /**
@@ -49,26 +49,26 @@ export type PatientLedgerSummary = {
  * والمسدد منها بعد رصيد جاري موجب، والرصيد كما ورد من الخدمة. بلا I/O.
  */
 export function summarizePatientLedger(
-  entries: ReadonlyArray<Pick<LedgerEntryDto, "type" | "amountSyp">>,
-  balanceSyp: number,
+  entries: ReadonlyArray<Pick<LedgerEntryDto, "type" | "amountUsd">>,
+  balanceUsd: number,
 ): PatientLedgerSummary {
-  let chargesSyp = 0;
-  let paymentsSyp = 0;
-  let discountSyp = 0;
+  let chargesUsd = 0;
+  let paymentsUsd = 0;
+  let discountUsd = 0;
   for (const entry of entries) {
-    if (entry.type === "CHARGE") chargesSyp += entry.amountSyp;
-    else if (entry.type === "PAYMENT") paymentsSyp += Math.abs(entry.amountSyp);
+    if (entry.type === "CHARGE") chargesUsd += entry.amountUsd;
+    else if (entry.type === "PAYMENT") paymentsUsd += Math.abs(entry.amountUsd);
     // التصنيف نفسه المعتمد في deriveInvoicesDetailed: التسوية السالبة خصم
-    else if (entry.type === "ADJUSTMENT" && entry.amountSyp < 0)
-      discountSyp += Math.abs(entry.amountSyp);
+    else if (entry.type === "ADJUSTMENT" && entry.amountUsd < 0)
+      discountUsd += Math.abs(entry.amountUsd);
   }
-  const remainingSyp = Math.max(balanceSyp, 0);
+  const remainingUsd = Math.max(balanceUsd, 0);
   return {
-    chargesSyp,
-    paidSyp: chargesSyp - remainingSyp,
-    balanceSyp,
-    paymentsSyp,
-    discountSyp,
+    chargesUsd,
+    paidUsd: chargesUsd - remainingUsd,
+    balanceUsd,
+    paymentsUsd,
+    discountUsd,
   };
 }
 

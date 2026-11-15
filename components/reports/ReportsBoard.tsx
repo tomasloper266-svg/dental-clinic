@@ -13,7 +13,6 @@ import {
   UserPlus,
   Wallet,
 } from "lucide-react";
-import { sypToUsd } from "@/lib/currency";
 import { useMoney } from "@/components/ui/CurrencyContext";
 import { downloadCsv } from "@/lib/csv";
 import {
@@ -158,14 +157,14 @@ export default function ReportsBoard({
 
   // المبالغ المعروضة تمر عبر سياق العملة — USD/SYP من الإعدادات يغيّرها كلها.
   const usd = useMoney();
-  const avgInvoiceSyp =
+  const avgInvoiceUsd =
     summary && summary.invoiceCount > 0
-      ? Math.round(summary.totalChargesSyp / summary.invoiceCount)
+      ? Math.round(summary.totalChargesUsd / summary.invoiceCount)
       : 0;
   // متوسط الدفعة لتعريف «محصّل الفترة» — التعريفان منفصلان لا يجتمعان في رقم
-  const avgPaymentSyp =
+  const avgPaymentUsd =
     summary && summary.paymentCount > 0
-      ? Math.round(summary.totalPaymentsSyp / summary.paymentCount)
+      ? Math.round(summary.totalPaymentsUsd / summary.paymentCount)
       : 0;
 
   return (
@@ -235,7 +234,7 @@ export default function ReportsBoard({
       ) : (
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <StatCard
-            value={usd(summary.totalChargesSyp)}
+            value={usd(summary.totalChargesUsd)}
             label="إجمالي الفواتير"
             icon={DollarSign}
             valueClassName="text-warning-600"
@@ -243,15 +242,15 @@ export default function ReportsBoard({
           <StatCard
             value={String(summary.invoiceCount)}
             label="فاتورة صادرة"
-            subLabel={`متوسط ${usd(avgInvoiceSyp)}`}
+            subLabel={`متوسط ${usd(avgInvoiceUsd)}`}
             icon={ReceiptText}
             iconClassName="bg-warning-500/10 text-warning-600"
             className="border-warning-500/50"
           />
           <StatCard
-            value={usd(summary.totalPaymentsSyp)}
+            value={usd(summary.totalPaymentsUsd)}
             label="محصّل الفترة"
-            subLabel={`متوسط ${usd(avgPaymentSyp)} · ${summary.paymentCount} دفعة`}
+            subLabel={`متوسط ${usd(avgPaymentUsd)} · ${summary.paymentCount} دفعة`}
             icon={Wallet}
           />
           <StatCard
@@ -261,7 +260,7 @@ export default function ReportsBoard({
             iconClassName="bg-ink-600/10 text-ink-700"
           />
           <StatCard
-            value={usd(summary.outstandingSyp)}
+            value={usd(summary.outstandingUsd)}
             label="مستحقات حالية"
             icon={TriangleAlert}
             tone="danger"
@@ -277,16 +276,16 @@ export default function ReportsBoard({
               <ChartTitle icon={BarChart3}>الإيرادات الشهرية خلال الفترة</ChartTitle>
             </CardHeader>
             <CardBody>
-              {summary.monthlyRevenue.some((month) => month.chargesSyp > 0) ? (
+              {summary.monthlyRevenue.some((month) => month.chargesUsd > 0) ? (
                 <VerticalBarsChart
                   ariaLabel="الإيرادات الشهرية خلال الفترة"
                   points={summary.monthlyRevenue.map((month) => ({
                     label: monthLabel(month.month),
-                    value: Math.round(sypToUsd(month.chargesSyp, usdRate)),
+                    value: Math.round(month.chargesUsd * 100) / 100,
                     valueText: usdFormatter.format(
-                      Math.round(sypToUsd(month.chargesSyp, usdRate)),
+                      Math.round(month.chargesUsd * 100) / 100,
                     ),
-                    title: `${monthLabel(month.month)}: ${usd(month.chargesSyp)}`,
+                    title: `${monthLabel(month.month)}: ${usd(month.chargesUsd)}`,
                   }))}
                 />
               ) : (
@@ -313,7 +312,7 @@ export default function ReportsBoard({
                 <HorizontalRevenueBars
                   rows={summary.revenueByDoctor.map((row) => ({
                     label: row.doctor,
-                    value: row.chargesSyp,
+                    value: row.chargesUsd,
                   }))}
                   amountText={usd}
                 />
@@ -332,7 +331,7 @@ export default function ReportsBoard({
                 <HorizontalRevenueBars
                   rows={summary.revenueByProcedure.map((row) => ({
                     label: row.procedure,
-                    value: row.chargesSyp,
+                    value: row.chargesUsd,
                   }))}
                   amountText={usd}
                 />
@@ -382,7 +381,7 @@ export default function ReportsBoard({
                     <TRow key={patient.patientId}>
                       <TD className="text-sm">{patient.patientName}</TD>
                       <TD className="numeric text-sm font-semibold text-warning-600">
-                        {usd(patient.chargesSyp)}
+                        {usd(patient.chargesUsd)}
                       </TD>
                     </TRow>
                   ))

@@ -20,45 +20,45 @@ describe("توزيع السلسلة اليومية", () => {
       "2026-01-04",
       "2026-01-05",
     ]);
-    expect(points[0].collectedSyp).toBe(0);
+    expect(points[0].collectedUsd).toBe(0);
   });
 
   it("يجمع الدفعات والمصاريف في يومها الصحيح وبنفس قواعد summarizePeriod", () => {
     const points = bucketDailySeries(
       [
-        { type: "PAYMENT", amountSyp: -200_000, createdAt: new Date("2026-01-04T10:00:00Z") },
-        { type: "PAYMENT", amountSyp: -100_000, createdAt: new Date("2026-01-05T09:00:00Z") },
-        { type: "REFUND", amountSyp: 50_000, createdAt: new Date("2026-01-05T11:00:00Z") },
-        { type: "CHARGE", amountSyp: 900_000, createdAt: new Date("2026-01-05T12:00:00Z") },
+        { type: "PAYMENT", amountUsd: -200_000, createdAt: new Date("2026-01-04T10:00:00Z") },
+        { type: "PAYMENT", amountUsd: -100_000, createdAt: new Date("2026-01-05T09:00:00Z") },
+        { type: "REFUND", amountUsd: 50_000, createdAt: new Date("2026-01-05T11:00:00Z") },
+        { type: "CHARGE", amountUsd: 900_000, createdAt: new Date("2026-01-05T12:00:00Z") },
       ],
-      [{ amountSyp: 75_000, spentAt: new Date("2026-01-04T08:00:00Z") }],
+      [{ amountUsd: 75_000, spentAt: new Date("2026-01-04T08:00:00Z") }],
       2,
       endDate,
     );
     expect(points[0]).toMatchObject({
       date: "2026-01-04",
-      collectedSyp: 200_000,
-      expensesSyp: 75_000,
-      netSyp: 125_000,
+      collectedUsd: 200_000,
+      expensesUsd: 75_000,
+      netUsd: 125_000,
     });
     expect(points[1]).toMatchObject({
       date: "2026-01-05",
-      collectedSyp: 100_000,
-      refundsSyp: 50_000,
-      expensesSyp: 0,
+      collectedUsd: 100_000,
+      refundsUsd: 50_000,
+      expensesUsd: 0,
       // الرسوم لا تُعد تحصيلاً — نفس قاعدة التقرير
-      netSyp: 100_000 - 50_000,
+      netUsd: 100_000 - 50_000,
     });
   });
 
   it("قيود خارج النطاق الزمني تُتجاهل بلا خطأ", () => {
     const points = bucketDailySeries(
-      [{ type: "PAYMENT", amountSyp: -1, createdAt: new Date("2025-01-01T00:00:00Z") }],
+      [{ type: "PAYMENT", amountUsd: -1, createdAt: new Date("2025-01-01T00:00:00Z") }],
       [],
       2,
       endDate,
     );
-    expect(points.every((p) => p.collectedSyp === 0)).toBe(true);
+    expect(points.every((p) => p.collectedUsd === 0)).toBe(true);
   });
 });
 
@@ -73,13 +73,13 @@ describe("تسميات الفئات", () => {
 describe("توزيع المصاريف حسب الفئة", () => {
   it("يجمع حسب الفئة ويرتب تنازلياً حسب المبلغ", () => {
     const totals = summarizeExpensesByCategory([
-      { category: "MATERIALS", amountSyp: 100_000 },
-      { category: "RENT", amountSyp: 500_000 },
-      { category: "MATERIALS", amountSyp: 50_000 },
+      { category: "MATERIALS", amountUsd: 100_000 },
+      { category: "RENT", amountUsd: 500_000 },
+      { category: "MATERIALS", amountUsd: 50_000 },
     ]);
     expect(totals).toEqual([
-      { category: "RENT", totalSyp: 500_000 },
-      { category: "MATERIALS", totalSyp: 150_000 },
+      { category: "RENT", totalUsd: 500_000 },
+      { category: "MATERIALS", totalUsd: 150_000 },
     ]);
   });
 
@@ -101,10 +101,10 @@ describe("مقياس الرسم", () => {
   it("يعيد أعلى قيمة بين التحصيل والمصاريف ولا يعيد صفراً أبداً", () => {
     expect(
       seriesMax([
-        { collectedSyp: 300_000, expensesSyp: 100_000 },
-        { collectedSyp: 150_000, expensesSyp: 400_000 },
+        { collectedUsd: 300_000, expensesUsd: 100_000 },
+        { collectedUsd: 150_000, expensesUsd: 400_000 },
       ]),
     ).toBe(400_000);
-    expect(seriesMax([{ collectedSyp: 0, expensesSyp: 0 }])).toBe(1);
+    expect(seriesMax([{ collectedUsd: 0, expensesUsd: 0 }])).toBe(1);
   });
 });

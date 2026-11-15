@@ -153,7 +153,7 @@ role: "DENTIST",
     const res = await ledgerPOST(
       authedRequest(`/api/patients/${patientAId}/ledger`, token, {
         method: "POST",
-        body: JSON.stringify({ type: "CHARGE", amountSyp: 100_000 }),
+        body: JSON.stringify({ type: "CHARGE", amountUsd: 100_000 }),
       }),
       { params: Promise.resolve({ patientId: patientAId }) },
     );
@@ -173,23 +173,23 @@ role: "DENTIST",
     await createLedgerEntry(ctxA, {
       patientId: patientAId,
       type: "CHARGE",
-      amountSyp: 500_000,
+      amountUsd: 500_000,
       note: "حشو 26",
     });
     await createLedgerEntry(ctxA, {
       patientId: patientAId,
       type: "PAYMENT",
-      amountSyp: -200_000,
+      amountUsd: -200_000,
     });
     await createLedgerEntry(ctxA, {
       patientId: patientAId,
       type: "ADJUSTMENT",
-      amountSyp: -50_000,
+      amountUsd: -50_000,
     });
     await createLedgerEntry(ctxA, {
       patientId: patientAId,
       type: "REFUND",
-      amountSyp: 25_000,
+      amountUsd: 25_000,
     });
 
     const ledger = await listLedgerEntries(ctxA, patientAId);
@@ -207,15 +207,15 @@ role: "DENTIST",
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       balance: number;
-      entries: Array<{ type: string; amountSyp: number }>;
+      entries: Array<{ type: string; amountUsd: number }>;
     };
     expect(body.entries.length).toBeGreaterThanOrEqual(5);
     // رصيد الـ endpoint يطابق المجموع الفعلي للقيود في القاعدة
     const rows = await prisma.ledgerEntry.findMany({
       where: { patientId: patientAId },
-      select: { amountSyp: true },
+      select: { amountUsd: true },
     });
-    expect(body.balance).toBe(rows.reduce((s, r) => s + r.amountSyp, 0));
+    expect(body.balance).toBe(rows.reduce((s, r) => s + Number(r.amountUsd), 0));
   });
 
   it("لا endpoint يعدل أو يحدّث قيداً — ولا حذف إلا للفاتورة غير المخصَّصة", async () => {
@@ -265,7 +265,7 @@ role: "DENTIST",
     const res = await ledgerPOST(
       authedRequest(`/api/patients/${patientBId}/ledger`, token, {
         method: "POST",
-        body: JSON.stringify({ type: "CHARGE", amountSyp: 999_999 }),
+        body: JSON.stringify({ type: "CHARGE", amountUsd: 999_999 }),
       }),
       { params: Promise.resolve({ patientId: patientBId }) },
     );
@@ -283,7 +283,7 @@ role: "DENTIST",
         patientId: patientAId,
         toothFdi: 26,
         procedure: "حشو عصب",
-        priceSyp: 750_000,
+        priceUsd: 750_000,
         status: "DONE",
       },
     });
@@ -292,17 +292,17 @@ role: "DENTIST",
       patientId: patientAId,
       treatmentItemId: item.id,
       procedure: "حشو عصب",
-      priceSyp: 750_000,
+      priceUsd: 750_000,
     });
     expect(first.alreadyCharged).toBe(false);
-    expect(first.entry?.amountSyp).toBe(750_000);
+    expect(first.entry?.amountUsd).toBe(750_000);
     expect(first.entry?.treatmentItemId).toBe(item.id);
 
     const second = await recordTreatmentCharge(ctxA, {
       patientId: patientAId,
       treatmentItemId: item.id,
       procedure: "حشو عصب",
-      priceSyp: 750_000,
+      priceUsd: 750_000,
     });
     expect(second.alreadyCharged).toBe(true);
     expect(second.entry?.id).toBe(first.entry?.id);
@@ -320,7 +320,7 @@ role: "DENTIST",
         method: "POST",
         body: JSON.stringify({
           category: "MATERIALS",
-          amountSyp: 120_000,
+          amountUsd: 120_000,
           note: "مادة حشو",
         }),
       }),
@@ -330,23 +330,23 @@ role: "DENTIST",
     const listRes = await expensesGET(authedRequest("/api/expenses", token));
     expect(listRes.status).toBe(200);
     const body = (await listRes.json()) as {
-      expenses: Array<{ category: string; amountSyp: number }>;
+      expenses: Array<{ category: string; amountUsd: number }>;
     };
     expect(
-      body.expenses.some((e) => e.category === "MATERIALS" && e.amountSyp === 120_000),
+      body.expenses.some((e) => e.category === "MATERIALS" && e.amountUsd === 120_000),
     ).toBe(true);
   });
 
   it("مصروف عيادة ب لا يظهر في قائمة عيادة أ", async () => {
-    await createExpense(ctxB, { category: "RENT", amountSyp: 900_000 });
+    await createExpense(ctxB, { category: "RENT", amountUsd: 900_000 });
 
     const token = await loginToken(PHONE_A, PASSWORD);
     const res = await expensesGET(authedRequest("/api/expenses", token));
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      expenses: Array<{ amountSyp: number }>;
+      expenses: Array<{ amountUsd: number }>;
     };
-    expect(body.expenses.some((e) => e.amountSyp === 900_000)).toBe(false);
+    expect(body.expenses.some((e) => e.amountUsd === 900_000)).toBe(false);
   });
 
   it("التقرير اليومي يجمع التحصيل والمصاريف والصافي لليوم فقط", async () => {
@@ -358,11 +358,11 @@ role: "DENTIST",
     await createLedgerEntry(ctxA, {
       patientId: patientAId,
       type: "PAYMENT",
-      amountSyp: -300_000,
+      amountUsd: -300_000,
     });
     await createExpense(ctxA, {
       category: "SALARIES",
-      amountSyp: 100_000,
+      amountUsd: 100_000,
       spentAt: today,
     });
     // مصروف الأمس لا يدخل تقرير اليوم
@@ -370,16 +370,16 @@ role: "DENTIST",
       data: {
         clinicId: clinicAId,
         category: "OTHER",
-        amountSyp: 777_777,
+        amountUsd: 777_777,
         spentAt: yesterday,
       },
     });
 
     const report = await getDailyReport(ctxA, today);
-    expect(report.collectedSyp).toBeGreaterThanOrEqual(300_000);
-    expect(report.expensesSyp).toBeGreaterThanOrEqual(100_000);
-    expect(report.expensesSyp).toBeLessThan(777_777);
-    expect(report.netSyp).toBe(report.collectedSyp - report.refundsSyp - report.expensesSyp);
+    expect(report.collectedUsd).toBeGreaterThanOrEqual(300_000);
+    expect(report.expensesUsd).toBeGreaterThanOrEqual(100_000);
+    expect(report.expensesUsd).toBeLessThan(777_777);
+    expect(report.netUsd).toBe(report.collectedUsd - report.refundsUsd - report.expensesUsd);
   });
 
   it("التقرير الشهري عبر الـ endpoint يجمع عيادة أ حصراً", async () => {
@@ -388,7 +388,7 @@ role: "DENTIST",
       data: {
         clinicId: clinicBId,
         category: "RENT",
-        amountSyp: 500_000,
+        amountUsd: 500_000,
         spentAt: new Date(),
       },
     });
@@ -402,19 +402,21 @@ role: "DENTIST",
       ),
     );
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { report: { expensesSyp: number } };
+    const body = (await res.json()) as { report: { expensesUsd: number } };
 
     // القيمة المتوقعة: مجموع مصاريف عيادة أ في الشهر — من قاعدة البيانات مباشرة
     const { monthRange } = await import("@/lib/services/reports");
     const { from, to } = monthRange(now.getUTCFullYear(), now.getUTCMonth() + 1);
-    const expected = await prisma.expense.aggregate({
-      where: { clinicId: clinicAId, spentAt: { gte: from, lt: to } },
-      _sum: { amountSyp: true },
-    });
-    expect(body.report.expensesSyp).toBe(expected._sum.amountSyp ?? 0);
-    expect(body.report.expensesSyp).not.toBe(
-      (expected._sum.amountSyp ?? 0) + 500_000,
+    const expected = Number(
+      (
+        await prisma.expense.aggregate({
+          where: { clinicId: clinicAId, spentAt: { gte: from, lt: to } },
+          _sum: { amountUsd: true },
+        })
+      )._sum.amountUsd ?? 0,
     );
+    expect(body.report.expensesUsd).toBe(expected);
+    expect(body.report.expensesUsd).not.toBe(expected + 500_000);
   });
 
   it("التقرير بدون جلسة يُرفض (401)", async () => {
@@ -441,7 +443,7 @@ role: "DENTIST",
     const entry = await createLedgerEntry(ctxA, {
       patientId: patientAId,
       type: "CHARGE",
-      amountSyp: 120_000,
+      amountUsd: 120_000,
     });
     expect(entry).not.toBeNull();
     expect(entry?.doctorId).toBe(staff.id);
@@ -454,7 +456,7 @@ role: "DENTIST",
     const entry = await createLedgerEntry(ctxA, {
       patientId: patientAId,
       type: "CHARGE",
-      amountSyp: 120_000,
+      amountUsd: 120_000,
       doctorId: staffB.id,
     });
     expect(entry).toBeNull();
@@ -468,7 +470,7 @@ role: "DENTIST",
         patientId: patientAId,
         toothFdi: 16,
         procedure: "خلع ضرس",
-        priceSyp: 250_000,
+        priceUsd: 250_000,
         status: "DONE",
       },
     });
@@ -476,7 +478,7 @@ role: "DENTIST",
       patientId: patientAId,
       treatmentItemId: item.id,
       procedure: "خلع ضرس",
-      priceSyp: 250_000,
+      priceUsd: 250_000,
     });
     expect(entry).not.toBeNull();
     const rows = await prisma.ledgerEntryItem.findMany({
@@ -484,7 +486,7 @@ role: "DENTIST",
     });
     expect(rows).toHaveLength(1);
     expect(rows[0].description).toBe("خلع ضرس");
-    expect(rows[0].amountSyp).toBe(250_000);
+    expect(Number(rows[0].amountUsd)).toBe(250_000);
   });
 
   it("بنود لا تجمع مبلغ القيد تُرفض ولا يُخزن شيء", async () => {
@@ -496,10 +498,10 @@ role: "DENTIST",
       createLedgerEntry(ctxA, {
         patientId: patientAId,
         type: "CHARGE",
-        amountSyp: 100_000,
+        amountUsd: 100_000,
         items: [
-          { description: "حشو", amountSyp: 60_000 },
-          { description: "تنظيف", amountSyp: 30_000 },
+          { description: "حشو", amountUsd: 60_000 },
+          { description: "تنظيف", amountUsd: 30_000 },
         ],
       }),
     ).rejects.toThrow();
@@ -515,7 +517,7 @@ role: "DENTIST",
     const charge = await createLedgerEntry(ctxA, {
       patientId: patientAId,
       type: "CHARGE",
-      amountSyp: 80_000,
+      amountUsd: 80_000,
     });
     expect(charge).not.toBeNull();
 
@@ -523,7 +525,7 @@ role: "DENTIST",
     const payment = await createLedgerEntry(ctxA, {
       patientId: patientAId,
       type: "PAYMENT",
-      amountSyp: -80_000,
+      amountUsd: -80_000,
       appliedChargeId: charge!.id,
     });
     expect(payment).not.toBeNull();
@@ -547,17 +549,17 @@ role: "DENTIST",
         clinicId: clinicAId,
         name: "مادة اختبار عشرية",
         unit: "علبة",
-        costSyp: 4.5,
+        costUsd: 4.5,
       },
     });
     const stored = await prisma.$queryRaw<[{ text: string }]>(
-      Prisma.sql`SELECT "costSyp"::text AS text FROM "Material" WHERE id = ${material.id}`,
+      Prisma.sql`SELECT "costUsd"::text AS text FROM "Material" WHERE id = ${material.id}`,
     );
     expect(stored[0].text).toBe("4.50");
     const read = await prisma.material.findUnique({
       where: { id: material.id },
-      select: { costSyp: true },
+      select: { costUsd: true },
     });
-    expect(read?.costSyp?.toNumber()).toBe(4.5);
+    expect(read?.costUsd?.toNumber()).toBe(4.5);
   });
 });

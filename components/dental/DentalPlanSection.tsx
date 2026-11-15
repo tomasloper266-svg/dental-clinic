@@ -55,8 +55,8 @@ function timeOf(entry: LedgerEntryDto): number {
 }
 
 /** مجموع بنود الخطة — الرقم الوحيد في ترويسة البطاقة وتذييلها */
-export function planTotalSyp(items: PlanItemDto[]): number {
-  return items.reduce((sum, item) => sum + item.priceSyp, 0);
+export function planTotalUsd(items: PlanItemDto[]): number {
+  return items.reduce((sum, item) => sum + item.priceUsd, 0);
 }
 
 export default function DentalPlanSection({
@@ -136,14 +136,14 @@ export default function DentalPlanSection({
     router.refresh();
   }
 
-  async function addRow(planId: string | null, procedure: string, toothFdi: number, priceSyp: number) {
+  async function addRow(planId: string | null, procedure: string, toothFdi: number, priceUsd: number) {
     setRowError(null);
     const res = await fetch(
       `/api/patients/${encodeURIComponent(patientId)}/treatment-plan`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ procedure, toothFdi, priceSyp, planId }),
+        body: JSON.stringify({ procedure, toothFdi, priceUsd, planId }),
       },
     );
     if (!res.ok) {
@@ -233,7 +233,7 @@ export default function DentalPlanSection({
                 pill={pill.label}
                 pillClass={pill.toneClass}
                 createdLabel={new Date(plan.planDate).toLocaleDateString("ar")}
-                metaLine={`${plan.items.length} بند · ${doneCount} مكتمل · إجمالي ${money(planTotalSyp(plan.items))}`}
+                metaLine={`${plan.items.length} بند · ${doneCount} مكتمل · إجمالي ${money(planTotalUsd(plan.items))}`}
                 items={plan.items}
                 issueDisabled={doneCount === 0}
                 onIssue={() => setIssuePlan(plan)}
@@ -243,8 +243,8 @@ export default function DentalPlanSection({
                 onToothChange={(itemId, toothFdi) => void patchItem(itemId, { toothFdi })}
                 onItemDelete={(itemId) => void deleteItem(itemId)}
                 onComplete={(itemId, resultStatus) => void completeItem(itemId, resultStatus)}
-                onAddRow={(procedure, toothFdi, priceSyp) =>
-                  void addRow(plan.id, procedure, toothFdi, priceSyp)
+                onAddRow={(procedure, toothFdi, priceUsd) =>
+                  void addRow(plan.id, procedure, toothFdi, priceUsd)
                 }
               />
             );
@@ -256,7 +256,7 @@ export default function DentalPlanSection({
               title="بدون خطة محفوظة حالياً"
               pill="بلا خطة"
               pillClass="bg-warm-100 text-steel-600"
-              metaLine={`${unassignedItems.length} بند · إجمالي ${money(planTotalSyp(unassignedItems))}`}
+              metaLine={`${unassignedItems.length} بند · إجمالي ${money(planTotalUsd(unassignedItems))}`}
               items={unassignedItems}
               issueDisabled={unassignedItems.every((item) => item.status !== "DONE")}
               onIssue={() =>
@@ -274,8 +274,8 @@ export default function DentalPlanSection({
               onToothChange={(itemId, toothFdi) => void patchItem(itemId, { toothFdi })}
               onItemDelete={(itemId) => void deleteItem(itemId)}
               onComplete={(itemId, resultStatus) => void completeItem(itemId, resultStatus)}
-              onAddRow={(procedure, toothFdi, priceSyp) =>
-                void addRow(null, procedure, toothFdi, priceSyp)
+              onAddRow={(procedure, toothFdi, priceUsd) =>
+                void addRow(null, procedure, toothFdi, priceUsd)
               }
             />
           )}
@@ -289,9 +289,9 @@ export default function DentalPlanSection({
       </div>
 
       <DentalFinancialCard
-        chargesTotalSyp={summary.chargesSyp}
-        paidSyp={summary.paidSyp}
-        remainingSyp={Math.max(summary.balanceSyp, 0)}
+        chargesTotalUsd={summary.chargesUsd}
+        paidUsd={summary.paidUsd}
+        remainingUsd={Math.max(summary.balanceUsd, 0)}
         invoices={invoices}
         onOpenInvoice={(index) => setInvoiceIndex(index)}
       />
@@ -360,7 +360,7 @@ type OperationsProps = {
   onToothChange: (itemId: string, toothFdi: number) => void;
   onItemDelete: (itemId: string) => void;
   onComplete: (itemId: string, resultStatus: ToothStatusKey) => void;
-  onAddRow: (procedure: string, toothFdi: number, priceSyp: number) => void;
+  onAddRow: (procedure: string, toothFdi: number, priceUsd: number) => void;
 };
 
 /** بطاقة عمليات خطة واحدة — الجدول وصفي الإضافة والتذييل */
@@ -382,11 +382,11 @@ function PlanOperationsCard({
   onAddRow,
 }: OperationsProps) {
   const money = useMoney();
-  const totalSyp = planTotalSyp(items);
-  const doneSyp = items
+  const totalUsd = planTotalUsd(items);
+  const doneUsd = items
     .filter((item) => item.status === "DONE")
-    .reduce((sum, item) => sum + item.priceSyp, 0);
-  const remainingSyp = totalSyp - doneSyp;
+    .reduce((sum, item) => sum + item.priceUsd, 0);
+  const remainingUsd = totalUsd - doneUsd;
 
   return (
     <div className="border-warm-200 mt-4 rounded-panel border p-3">
@@ -467,19 +467,19 @@ function PlanOperationsCard({
       <footer className="border-warm-200 mt-2 flex items-center justify-start gap-6 border-t pt-2 text-sm">
         <span className="text-steel-600">
           إجمالي الخطة{" "}
-          <span className="numeric text-ink-900 font-semibold">{money(totalSyp)}</span>
+          <span className="numeric text-ink-900 font-semibold">{money(totalUsd)}</span>
         </span>
         <span className="text-steel-600">
           المكتمل منها{" "}
           <span className="numeric font-semibold text-success-600">
-            {money(doneSyp)}
+            {money(doneUsd)}
           </span>
         </span>
-        {remainingSyp > 0 && (
+        {remainingUsd > 0 && (
           <span className="text-steel-600">
             المتبقي منها{" "}
             <span className="numeric font-semibold text-danger-600">
-              {money(remainingSyp)}
+              {money(remainingUsd)}
             </span>
           </span>
         )}
@@ -492,7 +492,7 @@ function PlanOperationsCard({
 function AddRow({
   onAdd,
 }: {
-  onAdd: (procedure: string, toothFdi: number, priceSyp: number) => void;
+  onAdd: (procedure: string, toothFdi: number, priceUsd: number) => void;
 }) {
   const [procedure, setProcedure] = useState("");
   const [toothFdi, setToothFdi] = useState(0);
@@ -573,7 +573,7 @@ function PlanRow({
           {toothOptions}
         </select>
       </td>
-      <td className="numeric px-2 py-2 font-semibold">{money(item.priceSyp)}</td>
+      <td className="numeric px-2 py-2 font-semibold">{money(item.priceUsd)}</td>
       <td className="px-2 py-2">
         <select
           value={item.status}

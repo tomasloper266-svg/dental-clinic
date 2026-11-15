@@ -6,7 +6,7 @@ import type { BadgeTone } from "@/components/ui/Badge";
 
 export type LedgerEntryLike = {
   type: LedgerEntryType;
-  amountSyp: number;
+  amountUsd: number;
   createdAt: string | Date;
 };
 
@@ -47,53 +47,53 @@ export function formatEntryDate(date: string | Date): string {
  * الرصيد يُحسب من القيود دائماً ولا يُخزَّن — نفس معادلة الرصيد في الخدمة.
  */
 export function runningBalances(
-  entries: ReadonlyArray<{ amountSyp: number }>,
+  entries: ReadonlyArray<{ amountUsd: number }>,
 ): number[] {
   const balances: number[] = [];
   let running = 0;
   for (const entry of entries) {
-    running += entry.amountSyp;
+    running += entry.amountUsd;
     balances.push(running);
   }
   return balances;
 }
 
 export type LedgerSummary = {
-  chargesSyp: number;
-  paymentsSyp: number;
-  refundsSyp: number;
-  adjustmentsNetSyp: number;
+  chargesUsd: number;
+  paymentsUsd: number;
+  refundsUsd: number;
+  adjustmentsNetUsd: number;
   /** الرصيد الكلي = Σ القيود الموقّعة — نفس معادلة الخدمة */
-  balanceSyp: number;
+  balanceUsd: number;
 };
 
 /** نقي — ملخص دفتر من القيود كما هي، بلا أي إعادة تفسير للحساب المالي */
 export function summarizeLedger(
   entries: ReadonlyArray<LedgerEntryLike>,
 ): LedgerSummary {
-  let chargesSyp = 0;
-  let paymentsSyp = 0;
-  let refundsSyp = 0;
-  let adjustmentsNetSyp = 0;
-  let balanceSyp = 0;
+  let chargesUsd = 0;
+  let paymentsUsd = 0;
+  let refundsUsd = 0;
+  let adjustmentsNetUsd = 0;
+  let balanceUsd = 0;
   for (const entry of entries) {
-    balanceSyp += entry.amountSyp;
+    balanceUsd += entry.amountUsd;
     if (entry.type === "CHARGE") {
-      chargesSyp += entry.amountSyp;
+      chargesUsd += entry.amountUsd;
     } else if (entry.type === "PAYMENT") {
-      paymentsSyp += Math.abs(entry.amountSyp);
+      paymentsUsd += Math.abs(entry.amountUsd);
     } else if (entry.type === "REFUND") {
-      refundsSyp += entry.amountSyp;
+      refundsUsd += entry.amountUsd;
     } else {
-      adjustmentsNetSyp += entry.amountSyp;
+      adjustmentsNetUsd += entry.amountUsd;
     }
   }
   return {
-    chargesSyp,
-    paymentsSyp,
-    refundsSyp,
-    adjustmentsNetSyp,
-    balanceSyp,
+    chargesUsd,
+    paymentsUsd,
+    refundsUsd,
+    adjustmentsNetUsd,
+    balanceUsd,
   };
 }
 
@@ -111,14 +111,14 @@ export function sortEntriesAsc<T extends { createdAt: string | Date }>(
  * فلا يُحاسَب زائد دفع مريض على عجز مريض آخر. أساس بطاقة التنبيه المثبتة
  * في الشريط الجانبي وبطاقة إحصاء المستحقات في لوحة القيادة.
  */
-export function outstandingDuesSyp(
-  entries: ReadonlyArray<{ patientId: string; amountSyp: number }>,
+export function outstandingDuesUsd(
+  entries: ReadonlyArray<{ patientId: string; amountUsd: number }>,
 ): number {
   const perPatient = new Map<string, number>();
   for (const entry of entries) {
     perPatient.set(
       entry.patientId,
-      (perPatient.get(entry.patientId) ?? 0) + entry.amountSyp,
+      (perPatient.get(entry.patientId) ?? 0) + entry.amountUsd,
     );
   }
   let dues = 0;
@@ -133,13 +133,13 @@ export function outstandingDuesSyp(
  * في التنقل حتى تبقى إشارة المستحقات ظاهرة حتى مع الشريط المطوي.
  */
 export function patientsWithDuesCount(
-  entries: ReadonlyArray<{ patientId: string; amountSyp: number }>,
+  entries: ReadonlyArray<{ patientId: string; amountUsd: number }>,
 ): number {
   const perPatient = new Map<string, number>();
   for (const entry of entries) {
     perPatient.set(
       entry.patientId,
-      (perPatient.get(entry.patientId) ?? 0) + entry.amountSyp,
+      (perPatient.get(entry.patientId) ?? 0) + entry.amountUsd,
     );
   }
   let count = 0;
@@ -172,10 +172,10 @@ export const LEDGER_SETTLEMENT_META: Record<
  */
 export function settlementOfCharge(
   balanceAfter: number,
-  amountSyp: number,
+  amountUsd: number,
 ): SettlementKey {
   if (balanceAfter <= 0) return "settled";
-  if (balanceAfter < amountSyp) return "partial";
+  if (balanceAfter < amountUsd) return "partial";
   return "unsettled";
 }
 
@@ -186,11 +186,11 @@ export function settlementOfCharge(
  */
 export function chargeSettlementSplit(
   balanceAfter: number,
-  amountSyp: number,
-): { paidSyp: number; remainingSyp: number } {
+  amountUsd: number,
+): { paidUsd: number; remainingUsd: number } {
   // المتبقي من هذا القيد تحديداً لا يتجاوز قيمته — الدفعات الأقدم غطت ما سبقه.
-  const remainingSyp = Math.min(Math.max(balanceAfter, 0), amountSyp);
-  return { paidSyp: amountSyp - remainingSyp, remainingSyp };
+  const remainingUsd = Math.min(Math.max(balanceAfter, 0), amountUsd);
+  return { paidUsd: amountUsd - remainingUsd, remainingUsd };
 }
 
 /**
@@ -201,19 +201,19 @@ export function runningBalancesByPatient(
   entries: ReadonlyArray<{
     id: string;
     patientId: string;
-    amountSyp: number;
+    amountUsd: number;
     createdAt: string | Date;
   }>,
 ): Map<string, number> {
   const byPatient = new Map<
     string,
-    Array<{ id: string; amountSyp: number; createdAt: string | Date }>
+    Array<{ id: string; amountUsd: number; createdAt: string | Date }>
   >();
   for (const entry of entries) {
     const list = byPatient.get(entry.patientId) ?? [];
     list.push({
       id: entry.id,
-      amountSyp: entry.amountSyp,
+      amountUsd: entry.amountUsd,
       createdAt: entry.createdAt,
     });
     byPatient.set(entry.patientId, list);
@@ -248,7 +248,7 @@ export function buildLedgerRows<
     id: string;
     patientId: string;
     type: LedgerEntryType;
-    amountSyp: number;
+    amountUsd: number;
     createdAt: string | Date;
   },
 >(entries: readonly T[]): Array<LedgerRowView<T>> {
@@ -262,7 +262,7 @@ export function buildLedgerRows<
         entry.type === "PAYMENT"
           ? "settled"
           : entry.type === "CHARGE"
-            ? settlementOfCharge(patientBalanceAfter, entry.amountSyp)
+            ? settlementOfCharge(patientBalanceAfter, entry.amountUsd)
             : null;
       return {
         entry,

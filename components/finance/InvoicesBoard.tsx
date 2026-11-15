@@ -72,7 +72,7 @@ function downloadCsv(filename: string, csv: string) {
 
 /** هل أُخصص للفاتورة دفعات أو خصم — يمنع حذفها من الواجهة مسبقاً */
 function invoiceHasAllocation(row: ClinicInvoiceRow): boolean {
-  return row.paidSyp + row.discountSyp > 0;
+  return row.paidUsd + row.discountUsd > 0;
 }
 
 export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
@@ -163,9 +163,9 @@ export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
         row.number,
         row.patientName,
         formatDateCell(row.date),
-        money(row.totalSyp),
-        money(row.paidSyp),
-        money(row.remainingSyp),
+        money(row.totalUsd),
+        money(row.paidUsd),
+        money(row.remainingUsd),
         INVOICE_FILTER_LABELS[row.status],
       ]),
     );
@@ -292,14 +292,14 @@ export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
             iconClassName="bg-warning-500/10 text-warning-600"
           />
           <StatCard
-            value={money(summary.totalSyp)}
+            value={money(summary.totalUsd)}
             label="إجمالي الإصدار"
             icon={CircleDollarSign}
             valueClassName="text-warning-600"
             iconClassName="bg-primary-500/10 text-primary-700"
           />
           <StatCard
-            value={money(summary.remainingSyp)}
+            value={money(summary.remainingUsd)}
             label="المتبقي عليها"
             icon={AlertTriangle}
             tone="danger"
@@ -380,18 +380,18 @@ export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
                     </TD>
                     <TD className="numeric">{formatDateCell(row.date)}</TD>
                     <TD className="numeric">
-                      {money(row.totalSyp)}
+                      {money(row.totalUsd)}
                     </TD>
                     <TD className="numeric text-success-600">
-                      {money(row.paidSyp)}
+                      {money(row.paidUsd)}
                     </TD>
                     <TD
                       className={cn(
                         "numeric font-semibold",
-                        row.remainingSyp > 0 ? "text-danger-600" : "text-ink-900",
+                        row.remainingUsd > 0 ? "text-danger-600" : "text-ink-900",
                       )}
                     >
-                      {money(row.remainingSyp)}
+                      {money(row.remainingUsd)}
                     </TD>
                     <TD>
                       <StatusPill tone={INVOICE_STATUS_TONE[row.status]}>
@@ -419,9 +419,9 @@ export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
                               chargeId: row.chargeId,
                             })
                           }
-                          disabled={row.remainingSyp <= 0}
+                          disabled={row.remainingUsd <= 0}
                           title={
-                            row.remainingSyp <= 0
+                            row.remainingUsd <= 0
                               ? "الفاتورة مسددة بالكامل"
                               : undefined
                           }
@@ -494,7 +494,6 @@ export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
             setNewOpen(false);
             void refresh();
           }}
-          usdRate={usdRate}
           patients={patients}
         />
       )}

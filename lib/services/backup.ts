@@ -1,6 +1,8 @@
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma/client";
 import {
+  LEGACY_SNAPSHOT_VERSION,
   SNAPSHOT_VERSION,
+  convertLegacySnapshotToUsd,
   reviveDates,
   validateSnapshot,
   type ClinicSnapshot,
@@ -229,7 +231,11 @@ export async function buildSnapshot(
   return {
     version: SNAPSHOT_VERSION,
     createdAt: new Date().toISOString(),
-    clinic,
+    // المبالغ باللقطة دولارية بمنزلتين — Decimal يقف إلى number عند الحدود.
+    clinic: {
+      ...clinic,
+      openingBalance: Number(clinic.openingBalance),
+    },
     ...tables,
   };
 }
@@ -295,7 +301,14 @@ export async function restoreSnapshot(
 ): Promise<RestoreResult> {
   const check = validateSnapshot(input);
   if (!check.ok) return { ok: false, error: check.error };
-  const snapshot = check.snapshot;
+  // لقطة قديمة (v1، ليرة) تُحوَّل إلى دولار بسعرها المحفوظ قبل اللمس —
+  // واللقطات الحالية (v2، دولار) تعبر كما هي بلا أي تحويل.
+  const legacy =
+    check.snapshot.version === LEGACY_SNAPSHOT_VERSION
+      ? convertLegacySnapshotToUsd(check.snapshot)
+      : { ok: true as const, snapshot: check.snapshot };
+  if (!legacy.ok) return { ok: false, error: legacy.error };
+  const snapshot = legacy.snapshot;
 
   const counts: Record<string, number> = {};
   await db.$transaction(async (tx) => {
@@ -310,7 +323,10 @@ export async function restoreSnapshot(
       await table.insert(tx, rows);
       counts[table.key] = rows.length;
     }
-    await tx.clinic.update({ where: { id: clinicId }, data: snapshot.clinic });
+    await tx.clinic.update({
+      where: { id: clinicId },
+      data: snapshot.clinic,
+    });
   });
   return { ok: true, counts };
 }

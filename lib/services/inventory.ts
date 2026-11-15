@@ -13,7 +13,7 @@ export type MaterialDto = {
   supplier: string | null;
   quantityOnHand: number;
   minQuantity: number;
-  costSyp: number | null;
+  costUsd: number | null;
   isLow: boolean;
 };
 
@@ -43,7 +43,7 @@ const MATERIAL_SELECT = {
   supplier: true,
   quantityOnHand: true,
   minQuantity: true,
-  costSyp: true,
+  costUsd: true,
 } as const;
 
 // حد التنبيه: الكمية وصلت الحد الأدنى أو نزلت تحته — نقية للاختبار المباشر.
@@ -63,7 +63,7 @@ function toMaterialDto(row: {
   quantityOnHand: unknown;
   minQuantity: unknown;
   // Decimal(12,2) من القاعدة — تُحوَّل إلى number عند حدود الخدمة
-  costSyp: unknown;
+  costUsd: unknown;
 }): MaterialDto {
   const quantityOnHand = Number(row.quantityOnHand);
   const minQuantity = Number(row.minQuantity);
@@ -75,7 +75,7 @@ function toMaterialDto(row: {
     supplier: row.supplier,
     quantityOnHand,
     minQuantity,
-    costSyp: row.costSyp === null ? null : Number(row.costSyp),
+    costUsd: row.costUsd === null ? null : Number(row.costUsd),
     isLow: isLowStock(quantityOnHand, minQuantity),
   };
 }
@@ -94,7 +94,7 @@ function parseQuantity(value: unknown, error: string): number | string {
 
 // سعر المادة بعشرية بحد منزلتين (Decimal(12,2)) — لا سالب، والصفر مقبول.
 // نقية للاختبار المباشر؛ نفس قاعدة التقريب بمنزلتين كالكميات.
-function parseCostSyp(value: unknown): number | string {
+function parseCostUsd(value: unknown): number | string {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
     return "سعر المادة يجب أن يكون رقماً غير سالب بحد منزلتين";
   }
@@ -122,7 +122,7 @@ export type CreateMaterialInput = {
   category?: string | null;
   supplier?: string | null;
   minQuantity: number;
-  costSyp?: number;
+  costUsd?: number;
   /** الرصيد الافتتاحي — يُسجَّل معه سطر حركة توريد أولى داخل المعاملة نفسها */
   quantity?: number;
 };
@@ -153,13 +153,13 @@ export function parseCreateMaterial(
     return { ok: false, error: "حد التنبيه يجب أن يكون رقماً غير سالب" };
   }
 
-  let costSyp: number | undefined;
-  if (b.costSyp !== undefined && b.costSyp !== null) {
-    const parsedCost = parseCostSyp(b.costSyp);
+  let costUsd: number | undefined;
+  if (b.costUsd !== undefined && b.costUsd !== null) {
+    const parsedCost = parseCostUsd(b.costUsd);
     if (typeof parsedCost === "string") {
       return { ok: false, error: parsedCost };
     }
-    costSyp = parsedCost;
+    costUsd = parsedCost;
   }
 
   // الرصيد الافتتاحي اختياري — رقم غير سالب بحد منزلتين، وصفر هو الافتراض
@@ -193,7 +193,7 @@ export function parseCreateMaterial(
       category: category.value,
       supplier: supplier.value,
       minQuantity,
-      costSyp,
+      costUsd,
       quantity,
     },
   };
@@ -207,7 +207,7 @@ export type UpdateMaterialInput = {
   // تعديل الرصيد مباشرة — يُسجَّل معه سطر حركة تسوية في الدفتر
   quantity?: number;
   minQuantity?: number;
-  costSyp?: number | null;
+  costUsd?: number | null;
 };
 
 export function parseUpdateMaterial(
@@ -276,15 +276,15 @@ export function parseUpdateMaterial(
     value.minQuantity = minQuantity;
   }
 
-  if (b.costSyp !== undefined) {
-    if (b.costSyp === null) {
-      value.costSyp = null;
+  if (b.costUsd !== undefined) {
+    if (b.costUsd === null) {
+      value.costUsd = null;
     } else {
-      const parsedCost = parseCostSyp(b.costSyp);
+      const parsedCost = parseCostUsd(b.costUsd);
       if (typeof parsedCost === "string") {
         return { ok: false, error: parsedCost };
       }
-      value.costSyp = parsedCost;
+      value.costUsd = parsedCost;
     }
   }
 
@@ -382,7 +382,7 @@ export async function createMaterial(
         category: input.category ?? null,
         supplier: input.supplier ?? null,
         minQuantity: input.minQuantity,
-        costSyp: input.costSyp,
+        costUsd: input.costUsd,
         quantityOnHand: openingQuantity,
       },
       select: MATERIAL_SELECT,
@@ -455,7 +455,7 @@ export async function updateMaterial(
         category: input.category,
         supplier: input.supplier,
         minQuantity: input.minQuantity,
-        costSyp: input.costSyp,
+        costUsd: input.costUsd,
       },
       select: MATERIAL_SELECT,
     });
@@ -670,7 +670,7 @@ export type PatientUsageRow = {
   materialName: string;
   quantityUsed: number;
   /** كلفة الاستهلاك = كلفة الوحدة × الكمية — null بلا كلفة مسجلة على المادة */
-  costSyp: number | null;
+  costUsd: number | null;
 };
 
 /** استهلاك المواد على مريض بعينه — لسجل الدفعات/المخزون في ملفه */
@@ -686,7 +686,7 @@ export async function listPatientMaterialUsages(
     select: {
       createdAt: true,
       quantityUsed: true,
-      material: { select: { name: true, costSyp: true } },
+      material: { select: { name: true, costUsd: true } },
     },
   });
   return rows.map((row) => {
@@ -695,10 +695,10 @@ export async function listPatientMaterialUsages(
       createdAt: row.createdAt,
       materialName: row.material.name,
       quantityUsed,
-      costSyp:
-        row.material.costSyp === null
+      costUsd:
+        row.material.costUsd === null
           ? null
-          : Number(row.material.costSyp) * quantityUsed,
+          : Number(row.material.costUsd) * quantityUsed,
     };
   });
 }

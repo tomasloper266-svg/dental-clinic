@@ -106,11 +106,11 @@ export async function buildDatasetCsv(
       return paymentsToCsv(
         entries
           .filter((entry) => entry.type === "PAYMENT")
-          .map(({ createdAt, patientName, patientPhone, amountSyp, note }) => ({
+          .map(({ createdAt, patientName, patientPhone, amountUsd, note }) => ({
             createdAt,
             patientName,
             patientPhone,
-            amountSyp,
+            amountUsd,
             note,
           })),
         usdRate,

@@ -80,16 +80,16 @@ describe("materialsToCsv — تصدير المواد", () => {
         supplier: "المستوصد الشامي",
         quantityOnHand: 2,
         minQuantity: 5,
-        costSyp: 12000,
+        costUsd: 12.5,
       },
     ]);
     expect(csv.startsWith("\uFEFF")).toBe(true);
     const lines = csv.slice(1).split("\r\n");
     expect(lines[0]).toBe(
-      '"الاسم","الفئة","الوحدة","الرصيد","حد التنبيه","المورد","سعر الوحدة (ل.س)"',
+      '"الاسم","الفئة","الوحدة","الرصيد","حد التنبيه","المورد","سعر الوحدة ($)"',
     );
     expect(lines[1]).toBe(
-      '"أقنعة N95","مواد وقاية","علبة","2","5","المستوصد الشامي","12000"',
+      '"أقنعة N95","مواد وقاية","علبة","2","5","المستوصد الشامي","12.5"',
     );
   });
   it("الاقتباس الداخلي مضاعف والسعر الفارغ خلية فارغة", () => {
@@ -101,7 +101,7 @@ describe("materialsToCsv — تصدير المواد", () => {
         supplier: null,
         quantityOnHand: 1,
         minQuantity: 2,
-        costSyp: null,
+        costUsd: null,
       },
     ]);
     expect(csv).toContain('"مادة ""خاصة"""');
@@ -117,7 +117,7 @@ describe("materialsToCsv — تصدير المواد", () => {
         supplier: null,
         quantityOnHand: 0,
         minQuantity: 3,
-        costSyp: null,
+        costUsd: null,
       },
     ]);
     const line = csv.slice(1).split("\r\n")[1];

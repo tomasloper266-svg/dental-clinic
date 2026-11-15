@@ -60,7 +60,7 @@ export function countGenders(
 export type PatientRowView = {
   patient: PatientDto;
   /** رصيد المريض الجاري من قيود الدفتر — موجب يعني مستحقاً عليه */
-  balanceSyp: number;
+  balanceUsd: number;
   /** آخر موعد فائت (بصيغة ISO) — null إن لا زيارات */
   lastVisit: string | null;
   /** أقرب موعد قادم (بصيغة ISO) — null إن لا مواعيد قادمة */
@@ -82,7 +82,7 @@ const NON_VISIT_STATUSES = new Set(["CANCELLED", "NO_SHOW"]);
  */
 export function buildPatientRows(
   patients: readonly PatientDto[],
-  entries: ReadonlyArray<{ patientId: string; amountSyp: number }>,
+  entries: ReadonlyArray<{ patientId: string; amountUsd: number }>,
   appointments: ReadonlyArray<PatientVisitRecord>,
   now: Date,
 ): PatientRowView[] {
@@ -90,7 +90,7 @@ export function buildPatientRows(
   for (const entry of entries) {
     balances.set(
       entry.patientId,
-      (balances.get(entry.patientId) ?? 0) + entry.amountSyp,
+      (balances.get(entry.patientId) ?? 0) + entry.amountUsd,
     );
   }
 
@@ -111,7 +111,7 @@ export function buildPatientRows(
 
   return patients.map((patient) => ({
     patient,
-    balanceSyp: balances.get(patient.id) ?? 0,
+    balanceUsd: balances.get(patient.id) ?? 0,
     lastVisit: lastVisitMs.has(patient.id)
       ? new Date(lastVisitMs.get(patient.id) as number).toISOString()
       : null,
@@ -158,6 +158,6 @@ export function sortPatientRows(
           new Date(a.patient.createdAt).getTime(),
       );
     case "balance":
-      return sorted.sort((a, b) => b.balanceSyp - a.balanceSyp);
+      return sorted.sort((a, b) => b.balanceUsd - a.balanceUsd);
   }
 }

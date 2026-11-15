@@ -12,7 +12,7 @@ function item(overrides: Partial<PlanItemDto>): PlanItemDto {
     id: "i1",
     toothFdi: 16,
     procedure: "حشو",
-    priceSyp: 50000,
+    priceUsd: 50000,
     status: "PROPOSED",
     priority: 0,
     ...overrides,
@@ -22,10 +22,10 @@ function item(overrides: Partial<PlanItemDto>): PlanItemDto {
 describe("planTotals", () => {
   it("يجمع العدادات والمجاميع لكل حالة", () => {
     const items = [
-      item({ id: "1", priceSyp: 100, status: "PROPOSED" }),
-      item({ id: "2", priceSyp: 200, status: "PROPOSED" }),
-      item({ id: "3", priceSyp: 300, status: "ACCEPTED" }),
-      item({ id: "4", priceSyp: 400, status: "DONE" }),
+      item({ id: "1", priceUsd: 100, status: "PROPOSED" }),
+      item({ id: "2", priceUsd: 200, status: "PROPOSED" }),
+      item({ id: "3", priceUsd: 300, status: "ACCEPTED" }),
+      item({ id: "4", priceUsd: 400, status: "DONE" }),
     ];
     const totals = planTotals(items);
     expect(totals.byStatus.PROPOSED).toEqual({

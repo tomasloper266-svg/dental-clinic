@@ -59,7 +59,7 @@ export default async function PatientProfilePage({
       materialRows={materialUsages.map((row) => ({
         createdAt: row.createdAt,
         materialName: row.materialName,
-        costSyp: row.costSyp ?? 0,
+        costUsd: row.costUsd ?? 0,
       }))}
       usdRate={usdRate}
     />

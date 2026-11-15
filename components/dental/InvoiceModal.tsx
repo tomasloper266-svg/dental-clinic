@@ -138,7 +138,7 @@ export default function InvoiceModal({
                     </td>
                     <td className="px-3 py-2.5 text-steel-600">{toothText(charge)}</td>
                     <td className="numeric px-3 py-2.5 font-semibold">
-                      {money(charge.amountSyp)}
+                      {money(charge.amountUsd)}
                     </td>
                   </tr>
                 );
@@ -149,26 +149,26 @@ export default function InvoiceModal({
           <div className="border-warm-200 divide-y divide-warm-100 border-t px-3">
             <SummaryRow
               label="المجموع"
-              value={money(invoice.totalSyp)}
+              value={money(invoice.totalUsd)}
             />
             <SummaryRow
               label="الخصم"
-              value={money(invoice.discountSyp)}
+              value={money(invoice.discountUsd)}
             />
             <SummaryRow
               label="الإجمالي"
-              value={money(invoice.totalSyp - invoice.discountSyp)}
+              value={money(invoice.totalUsd - invoice.discountUsd)}
               tone="gold"
               emphasis
             />
             <SummaryRow
               label="المسدد"
-              value={money(invoice.paidSyp)}
+              value={money(invoice.paidUsd)}
               tone="success"
             />
             <SummaryRow
               label="المتبقي"
-              value={money(invoice.remainingSyp)}
+              value={money(invoice.remainingUsd)}
               tone="danger"
               emphasis
             />
@@ -195,7 +195,7 @@ export default function InvoiceModal({
                 >
                   <span className="text-steel-600">{payment.note || "دفعة"}</span>
                   <span className="numeric font-medium">
-                    {money(payment.amountSyp)}
+                    {money(payment.amountUsd)}
                   </span>
                 </li>
               ))}
@@ -212,7 +212,7 @@ export default function InvoiceModal({
             <Button
               variant="primary"
               onClick={() => (onSettle ? onSettle() : setSettleOpen(true))}
-              disabled={invoice.remainingSyp <= 0}
+              disabled={invoice.remainingUsd <= 0}
             >
               <CircleDollarSign size={15} aria-hidden />
               تسديد دفعة
@@ -234,7 +234,7 @@ export default function InvoiceModal({
           }}
           patientId={patientId}
           patientName={patientName}
-          dueSyp={invoice.remainingSyp}
+          dueUsd={invoice.remainingUsd}
           usdRate={usdRate}
         />
       )}

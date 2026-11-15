@@ -13,7 +13,7 @@ import {
   appointmentsWithin,
   greetingForDate,
 } from "@/lib/dashboard-view";
-import { outstandingDuesSyp } from "@/lib/finance-view";
+import { outstandingDuesUsd } from "@/lib/finance-view";
 import {
   currentMonthRevenue,
   dailyRevenueDual,
@@ -21,7 +21,7 @@ import {
 } from "@/lib/revenue-views";
 import { localDayOf } from "@/lib/local-day";
 import { getClinicUsdRate } from "@/lib/services/account";
-import { formatDualFromSyp } from "@/lib/currency";
+import { formatDualFromUsd } from "@/lib/currency";
 import { formatDayLabel } from "@/lib/appointment-ui";
 import { CalendarDays, Coins, Users, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -71,7 +71,7 @@ export default async function DashboardPage() {
     fetchWindowStart,
     fetchWindowEnd,
   );
-  const duesSyp = outstandingDuesSyp(clinicEntries);
+  const duesUsd = outstandingDuesUsd(clinicEntries);
   const recentPayments = clinicEntries
     .filter((entry) => entry.type === "PAYMENT")
     .slice(0, 5);
@@ -104,18 +104,18 @@ export default async function DashboardPage() {
           icon={CalendarDays}
         />
         <StatCard
-          value={formatDualFromSyp(report.collectedSyp, usdRate)}
+          value={formatDualFromUsd(report.collectedUsd, usdRate)}
           label="دخل اليوم"
           icon={Coins}
         />
         <StatCard
-          value={formatDualFromSyp(monthRevenue.collectedSyp, usdRate)}
+          value={formatDualFromUsd(monthRevenue.collectedUsd, usdRate)}
           label="إيراد هذا الشهر (تحصيل)"
-          subLabel={`رسوم الشهر: ${formatDualFromSyp(monthRevenue.chargesSyp, usdRate)}`}
+          subLabel={`رسوم الشهر: ${formatDualFromUsd(monthRevenue.chargesUsd, usdRate)}`}
           icon={Coins}
         />
         <StatCard
-          value={formatDualFromSyp(duesSyp, usdRate)}
+          value={formatDualFromUsd(duesUsd, usdRate)}
           label="مستحقات غير مسددة"
           icon={Wallet}
           tone="danger"
