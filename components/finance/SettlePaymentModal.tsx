@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import { emitLedgerChanged } from "@/lib/ledger-events";
 
 // تسديد دفعة سريع — قيد دفعة (PAYMENT) جاهز عبر مسار الدفتر القائم
 // (POST /api/patients/:id/ledger) بمبلغ المستحق المتبقي معبّأ مسبقاً.
@@ -79,6 +80,7 @@ export default function SettlePaymentModal({
         return;
       }
       toast("سُجّلت الدفعة في الدفتر");
+      emitLedgerChanged();
       onClose();
       onSaved();
       router.refresh();

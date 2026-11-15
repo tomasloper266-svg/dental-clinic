@@ -70,6 +70,20 @@ export function toDateInputValue(date: Date): string {
 }
 
 
+/** قيمة حقل تاريخ YYYY-MM-DD → لحظة منتصف ليل اليوم بتوقيت UTC — بلا مكوّن
+ * وقت محلي، فتبقى لحظة «اليوم» ماضية أي كانت الساعة (شرط الخطأ 15: تثبيت
+ * الظهر المحلي كان يجعلها مستقبلية قبل الظهر ويرفضها خادم الدفتر). */
+export function parseDateInputValue(date: string): Date {
+  return new Date(`${date}T00:00:00.000Z`);
+}
+
+/** نقي — هل يوم حقل التاريخ لاحق ليوم اليوم؟ مقارنة يوم بيوم (سلسلة ISO)
+ * بلا أي مكوّن وقت: «اليوم» مقبول أي كانت الساعة و«غداً» مرفوض دائماً.
+ * التحقق الموحّد لنموذجي الدفع والفاتورة (RecordPaymentModal / NewInvoiceModal). */
+export function isDateInputFuture(date: string, now: Date): boolean {
+  return date.slice(0, 10) > toDateInputValue(now);
+}
+
 const DATE_CELL_FMT = new Intl.DateTimeFormat("ar-SY-u-nu-latn", {
   day: "2-digit",
   month: "2-digit",

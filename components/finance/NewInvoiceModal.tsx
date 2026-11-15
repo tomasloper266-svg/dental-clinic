@@ -9,12 +9,17 @@ import {
   invoiceItemDescription,
   type InvoiceItemPayload,
 } from "@/lib/invoices-view";
-import { toDateInputValue } from "@/lib/dates";
+import {
+  isDateInputFuture,
+  parseDateInputValue,
+  toDateInputValue,
+} from "@/lib/dates";
 import type { PatientDto } from "@/lib/services/patients";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import { emitLedgerChanged } from "@/lib/ledger-events";
 
 // «فاتورة جديدة» من صفحة الفواتير — تُصدر الفاتورة بقيد رسوم واحد (CHARGE)
 // ببنود مهيكلة (items) عبر مسار الدفتر، فتأخذ رقماً واحداً من تسلسل العيادة
@@ -49,9 +54,10 @@ export default function NewInvoiceModal({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const dateIso = date ? new Date(`${date}T12:00:00`) : null;
-  const futureDate =
-    dateIso !== null && dateIso.getTime() > Date.now() + 60_000;
+  // التاريخ يوم بيوم بلا مكوّن وقت (الخطأ 15): «اليوم» يُقبل أي كانت الساعة
+  // ولحظة التخزين منتصف ليل UTC فتبقى ماضية أي كانت ساعة الإدخال.
+  const dateIso = date ? parseDateInputValue(date) : null;
+  const futureDate = dateIso !== null && isDateInputFuture(date, new Date());
 
   const totalUsd = useMemo(() => {
     let total = 0;
@@ -153,6 +159,7 @@ export default function NewInvoiceModal({
         }
       }
       toast("صدرت الفاتورة في الدفتر");
+      emitLedgerChanged();
       onIssued();
       router.refresh();
     } catch {

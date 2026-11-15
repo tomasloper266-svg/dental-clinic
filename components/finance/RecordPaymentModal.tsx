@@ -4,7 +4,11 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { sypToUsd, usdToSyp } from "@/lib/currency";
 import { useDisplayCurrency, useMoney } from "@/components/ui/CurrencyContext";
-import { toDateInputValue } from "@/lib/dates";
+import {
+  isDateInputFuture,
+  parseDateInputValue,
+  toDateInputValue,
+} from "@/lib/dates";
 import {
   buildPaymentBody,
   composePaymentNote,
@@ -17,6 +21,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import { emitLedgerChanged } from "@/lib/ledger-events";
 
 // نموذج «تسديد دفعة» — يسجل قيد دفعة (PAYMENT) عبر مسار الدفتر القائم
 // (POST /api/patients/:id/ledger). «على الفاتورة» خياران: دفعة على حساب
@@ -105,9 +110,10 @@ export default function RecordPaymentModal({
   );
 
   const amount = Number(amountStr);
-  const dateIso = date ? new Date(`${date}T12:00:00`) : null;
-  const futureDate =
-    dateIso !== null && dateIso.getTime() > Date.now() + 60_000;
+  // التاريخ يوم بيوم بلا مكوّن وقت (الخطأ 15): «اليوم» يُقبل أي كانت الساعة
+  // ولحظة التخزين منتصف ليل UTC فتبقى ماضية أي كانت ساعة الإدخال.
+  const dateIso = date ? parseDateInputValue(date) : null;
+  const futureDate = dateIso !== null && isDateInputFuture(date, new Date());
 
   /**
    * نقي — بيان الدفعة: مع الفاتورة يُذكر رقمها، وبدونها فالدفعة على حساب
@@ -162,6 +168,7 @@ export default function RecordPaymentModal({
         return;
       }
       toast("سُجّلت الدفعة في الدفتر");
+      emitLedgerChanged();
       onSaved();
       router.refresh();
     } catch {

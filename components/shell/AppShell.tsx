@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ToastProvider } from "@/components/ui/Toast";
 import { DEFAULT_USD_RATE } from "@/lib/currency";
+import { onLedgerChanged } from "@/lib/ledger-events";
 import { cn } from "@/components/ui/cn";
 import { BottomNav } from "./BottomNav";
 import { Sidebar } from "./Sidebar";
@@ -42,6 +43,42 @@ export function AppShell({
   children,
 }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
+  // ملخص المستحقات الحي — يُهيّأ من التخطيط الخادم ويُجلب من جديد بعد كل
+  // كتابة في الدفتر (قيد/دفعة/تسوية) كي تعكس بطاقة السايدبار وشارة النقل
+  // آخر عملية فوراً بدل انتظار إعادة تحميل كاملة.
+  const [outstandingDues, setOutstandingDues] = useState(outstandingDuesSyp);
+  const [duesBadge, setDuesBadge] = useState(badges.dues);
+
+  useEffect(() => {
+    let cancelled = false;
+    const unsubscribe = onLedgerChanged(() => {
+      fetch("/api/dues/summary")
+        .then(async (res) => {
+          if (!res.ok) {
+            throw new Error(`حالة الجلب ${res.status}`);
+          }
+          const data = (await res.json()) as {
+            outstandingDuesSyp?: number;
+            patientsWithDues?: number;
+          };
+          if (cancelled) return;
+          if (typeof data.outstandingDuesSyp === "number") {
+            setOutstandingDues(data.outstandingDuesSyp);
+          }
+          if (typeof data.patientsWithDues === "number") {
+            setDuesBadge(data.patientsWithDues);
+          }
+        })
+        .catch((err) => {
+          // فشل التجديد لا يُخفى — تبقى آخر قيمة معروفة والخطأ في السجل
+          console.error("تعذر تحديث ملخص المستحقات", err);
+        });
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
 
   // استرجاع الحالة المحفوظة بعد التركيب فقط — تجنّباً لعدم تطابق الترطيب.
   useEffect(() => {
@@ -63,8 +100,8 @@ export function AppShell({
         userName={userName}
         clinicName={clinicName}
         logoLetter={logoLetter}
-        badges={badges}
-        outstandingDuesSyp={outstandingDuesSyp}
+        badges={{ ...badges, dues: duesBadge }}
+        outstandingDuesSyp={outstandingDues}
         usdRate={usdRate}
       />
       <div
