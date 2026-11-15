@@ -3,7 +3,7 @@
 import { PanelRightClose, PanelRightOpen, Wallet } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { formatDualFromSyp, DEFAULT_USD_RATE } from "@/lib/currency";
+import { formatDualFromUsd, DEFAULT_USD_RATE } from "@/lib/currency";
 import { clinicLogoLetter } from "@/lib/branding";
 import LogoutButton from "@/components/LogoutButton";
 import { cn } from "@/components/ui/cn";
@@ -19,7 +19,7 @@ type SidebarProps = {
   logoLetter?: string;
   badges: Record<BadgeKey, number>;
   /** المستحقات غير المسددة عبر المرضى — بطاقة التنبيه المثبتة أسفل الشريط */
-  outstandingDuesSyp?: number;
+  outstandingDuesUsd?: number;
   /** سعر صرف الدولار — لعرض العملة المزدوجة في بطاقة التنبيه */
   usdRate?: number;
 };
@@ -169,7 +169,7 @@ function DuesAlertCard({
       <Link
         href="/dues"
         aria-label="مستحقات غير مسددة"
-        title={`مستحقات غير مسددة: ${formatDualFromSyp(dues, usdRate)}`}
+        title={`مستحقات غير مسددة: ${formatDualFromUsd(dues, usdRate)}`}
         className="mx-auto grid size-8 place-items-center rounded-full border border-danger-300/40 bg-danger-500/15 transition-colors hover:bg-danger-500/25"
       >
         <span
@@ -192,7 +192,7 @@ function DuesAlertCard({
         مستحقات غير مسددة
       </p>
       <p className="numeric mt-1 text-sm font-bold text-white">
-        {formatDualFromSyp(dues, usdRate)}
+        {formatDualFromUsd(dues, usdRate)}
       </p>
     </Link>
   );
@@ -206,7 +206,7 @@ export function Sidebar({
   clinicName,
   logoLetter,
   badges,
-  outstandingDuesSyp = 0,
+  outstandingDuesUsd = 0,
   usdRate = DEFAULT_USD_RATE,
 }: SidebarProps) {
   const pathname = usePathname() ?? "/dashboard";
@@ -273,7 +273,7 @@ export function Sidebar({
         )}
       >
         <DuesAlertCard
-          dues={outstandingDuesSyp}
+          dues={outstandingDuesUsd}
           usdRate={usdRate}
           collapsed={collapsed}
         />

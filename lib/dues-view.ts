@@ -9,7 +9,7 @@ export type DuesEntryLike = {
   id: string;
   patientId: string;
   type: LedgerEntryType;
-  amountSyp: number;
+  amountUsd: number;
   createdAt: string | Date;
   patientName: string;
   patientPhone: string | null;
@@ -20,11 +20,11 @@ export type DuesRowView = {
   patientName: string;
   patientPhone: string | null;
   /** إجمالي قيود الرسوم (CHARGE) للمريض — عمود «إجمالي الفواتير» */
-  chargesSyp: number;
+  chargesUsd: number;
   /** المسدد من الرسوم = الرسوم − الرصيد المستحق */
-  paidSyp: number;
+  paidUsd: number;
   /** الرصيد الجاري الموجب — عمود «الرصيد المستحق» */
-  dueSyp: number;
+  dueUsd: number;
   /** آخر قيد رسوم بقي رصيد المريض بعده موجباً — أساس مدة التأخر */
   lastUnpaidChargeAt: string | null;
   /** أيام التأخر منذ آخر قيد غير مسدد — null إن لم يوجد قيد كهذا */
@@ -50,7 +50,7 @@ function latest(a: string | null, b: string | null): string | null {
 
 /**
  * نقي — صفوف المدينين: مريض لكل رصيد جاري موجب حصراً (نفس معادلة
- * outstandingDuesSyp)، مع تفكيك الرسوم/المسدد وآخر قيد رسوم غير مسدد
+ * outstandingDuesUsd)، مع تفكيك الرسوم/المسدد وآخر قيد رسوم غير مسدد
  * ومدة تأخره بالأيام حتى `now`.
  */
 export function buildDuesRows(
@@ -62,8 +62,8 @@ export function buildDuesRows(
   type PatientBuild = {
     name: string;
     phone: string | null;
-    balanceSyp: number;
-    chargesSyp: number;
+    balanceUsd: number;
+    chargesUsd: number;
     lastUnpaidChargeAt: string | null;
     lastChargeAt: string | null;
     lastPaymentAt: string | null;
@@ -74,15 +74,15 @@ export function buildDuesRows(
     const current = patients.get(entry.patientId) ?? {
       name: entry.patientName,
       phone: entry.patientPhone,
-      balanceSyp: 0,
-      chargesSyp: 0,
+      balanceUsd: 0,
+      chargesUsd: 0,
       lastUnpaidChargeAt: null,
       lastChargeAt: null,
       lastPaymentAt: null,
     };
-    current.balanceSyp += entry.amountSyp;
+    current.balanceUsd += entry.amountUsd;
     if (entry.type === "CHARGE") {
-      current.chargesSyp += entry.amountSyp;
+      current.chargesUsd += entry.amountUsd;
       current.lastChargeAt = latest(current.lastChargeAt, String(entry.createdAt));
       if ((balanceAfter.get(entry.id) ?? 0) > 0) {
         current.lastUnpaidChargeAt = latest(
@@ -98,14 +98,14 @@ export function buildDuesRows(
 
   const rows: DuesRowView[] = [];
   for (const [patientId, p] of patients) {
-    if (p.balanceSyp <= 0) continue;
+    if (p.balanceUsd <= 0) continue;
     rows.push({
       patientId,
       patientName: p.name,
       patientPhone: p.phone,
-      chargesSyp: p.chargesSyp,
-      paidSyp: p.chargesSyp - p.balanceSyp,
-      dueSyp: p.balanceSyp,
+      chargesUsd: p.chargesUsd,
+      paidUsd: p.chargesUsd - p.balanceUsd,
+      dueUsd: p.balanceUsd,
       lastUnpaidChargeAt: p.lastUnpaidChargeAt,
       lastChargeAt: p.lastChargeAt,
       lastPaymentAt: p.lastPaymentAt,
@@ -130,7 +130,7 @@ export function sortDuesRows(
 ): DuesRowView[] {
   const sorted = [...rows];
   if (key === "amount") {
-    sorted.sort((a, b) => b.dueSyp - a.dueSyp);
+    sorted.sort((a, b) => b.dueUsd - a.dueUsd);
   } else if (key === "overdue") {
     sorted.sort(
       (a, b) => (b.overdueDays ?? -1) - (a.overdueDays ?? -1),
@@ -156,31 +156,31 @@ export function searchDuesRows(
 }
 
 export type DuesSummary = {
-  totalDuesSyp: number;
+  totalDuesUsd: number;
   debtors: number;
   /** أعلى رصيد فردي — صفر إن لا مدينين */
-  maxDueSyp: number;
+  maxDueUsd: number;
   /** متوسط الرصيد مقيّداً لعدد المدينين — صفر إن لا مدينين */
-  avgDueSyp: number;
+  avgDueUsd: number;
 };
 
 /** نقي — بطاقات الإحصاء الأربع أعلى صفحة المستحقات */
 export function summarizeDues(
-  rows: ReadonlyArray<{ dueSyp: number }>,
+  rows: ReadonlyArray<{ dueUsd: number }>,
 ): DuesSummary {
   if (rows.length === 0) {
-    return { totalDuesSyp: 0, debtors: 0, maxDueSyp: 0, avgDueSyp: 0 };
+    return { totalDuesUsd: 0, debtors: 0, maxDueUsd: 0, avgDueUsd: 0 };
   }
-  let totalDuesSyp = 0;
-  let maxDueSyp = 0;
+  let totalDuesUsd = 0;
+  let maxDueUsd = 0;
   for (const row of rows) {
-    totalDuesSyp += row.dueSyp;
-    if (row.dueSyp > maxDueSyp) maxDueSyp = row.dueSyp;
+    totalDuesUsd += row.dueUsd;
+    if (row.dueUsd > maxDueUsd) maxDueUsd = row.dueUsd;
   }
   return {
-    totalDuesSyp,
+    totalDuesUsd,
     debtors: rows.length,
-    maxDueSyp,
-    avgDueSyp: Math.round(totalDuesSyp / rows.length),
+    maxDueUsd,
+    avgDueUsd: Math.round(totalDuesUsd / rows.length),
   };
 }

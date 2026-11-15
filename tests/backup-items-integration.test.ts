@@ -115,11 +115,11 @@ describeDb("النسخ الاحتياطي يحفظ بنود الفواتير —
     const charge = await createLedgerEntry(ctx, {
       patientId,
       type: "CHARGE",
-      amountSyp: 100_000,
+      amountUsd: 100_000,
       note: "فاتورة — 2 بنود",
       items: [
-        { description: "تبييض ليزر", category: "تبييض ليزر", amountSyp: 60_000 },
-        { description: "حشو عصبي", category: "حشو عصبي", amountSyp: 40_000 },
+        { description: "تبييض ليزر", category: "تبييض ليزر", amountUsd: 60_000 },
+        { description: "حشو عصبي", category: "حشو عصبي", amountUsd: 40_000 },
       ],
     });
     expect(charge).not.toBeNull();
@@ -140,7 +140,7 @@ describeDb("النسخ الاحتياطي يحفظ بنود الفواتير —
       where: { entryId: charge!.id },
       orderBy: { sort: "asc" },
     });
-    expect(rows.map((r) => [r.description, r.category, r.amountSyp, r.sort])).toEqual([
+    expect(rows.map((r) => [r.description, r.category, Number(r.amountUsd), r.sort])).toEqual([
       ["تبييض ليزر", "تبييض ليزر", 60_000, 0],
       ["حشو عصبي", "حشو عصبي", 40_000, 1],
     ]);
@@ -166,8 +166,8 @@ describeDb("النسخ الاحتياطي يحفظ بنود الفواتير —
     await createLedgerEntry(ctxB, {
       patientId: patientBId,
       type: "CHARGE",
-      amountSyp: 5_000,
-      items: [{ description: "بند عيادة ب", amountSyp: 5_000 }],
+      amountUsd: 5_000,
+      items: [{ description: "بند عيادة ب", amountUsd: 5_000 }],
     });
     const snapshot = await buildSnapshot(getBasePrisma(), clinicId);
     expect(
@@ -196,13 +196,13 @@ describeDb("النسخ الاحتياطي يحفظ بنود الفواتير —
     const charge = await createLedgerEntry(ctx, {
       patientId: patient.id,
       type: "CHARGE",
-      amountSyp: 100_000,
+      amountUsd: 100_000,
       note: "فاتورة اختبار التخصيص",
     });
     const payment = await createLedgerEntry(ctx, {
       patientId: patient.id,
       type: "PAYMENT",
-      amountSyp: -40_000,
+      amountUsd: -40_000,
       note: "دفعة نقدا — سداد الفاتورة",
       appliedChargeId: charge!.id,
     });

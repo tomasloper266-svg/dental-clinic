@@ -1,6 +1,6 @@
 import type { TenantContext } from "@/lib/tenant/context";
 import { clinicScope } from "@/lib/tenant/clinic-client";
-import { outstandingDuesSyp } from "@/lib/finance-view";
+import { outstandingDuesUsd } from "@/lib/finance-view";
 import { localDayOf, localDayStartUtc } from "@/lib/local-day";
 import {
   appointmentOutcomeCounts,
@@ -59,18 +59,18 @@ export async function getReportsPeriodSummary(
   );
 
   const [
-    ledgerRows,
+    ledgerRowsRaw,
     appointmentRows,
     staffRows,
     growthPatients,
-    allLedger,
+    allLedgerRaw,
   ] = await Promise.all([
     db.ledgerEntry.findMany({
       where: { createdAt: { gte: from, lt: to } },
       select: {
         id: true,
         type: true,
-        amountSyp: true,
+        amountUsd: true,
         patientId: true,
         doctorId: true,
         treatmentItemId: true,
@@ -89,9 +89,19 @@ export async function getReportsPeriodSummary(
     }),
     // المستحقات الحالية — رصيد الدفتر كاملاً بلا حدود فترة
     db.ledgerEntry.findMany({
-      select: { patientId: true, amountSyp: true },
+      select: { patientId: true, amountUsd: true },
     }),
   ]);
+
+  // Decimal → number عند حدود القراءة — وحدة الملخصات والتجميعات رقمية خالصة.
+  const ledgerRows = ledgerRowsRaw.map((row) => ({
+    ...row,
+    amountUsd: Number(row.amountUsd),
+  }));
+  const allLedger = allLedgerRaw.map((row) => ({
+    ...row,
+    amountUsd: Number(row.amountUsd),
+  }));
 
   // إجراءات بنود العلاج المشار إليها من قيود الفترة — تحتاج معرفات القيود
   // أولاً لذا تُجلب على دفعة منفصلة بعدها.
@@ -111,13 +121,13 @@ export async function getReportsPeriodSummary(
     chargeIds.length > 0
       ? await db.ledgerEntryItem.findMany({
           where: { entryId: { in: chargeIds } },
-          select: { entryId: true, category: true, amountSyp: true },
+          select: { entryId: true, category: true, amountUsd: true },
         })
       : [];
-  const itemsByEntryId = new Map<string, { category: string | null; amountSyp: number }[]>();
+  const itemsByEntryId = new Map<string, { category: string | null; amountUsd: number }[]>();
   for (const row of invoiceItemRows) {
     const list = itemsByEntryId.get(row.entryId) ?? [];
-    list.push({ category: row.category, amountSyp: row.amountSyp });
+    list.push({ category: row.category, amountUsd: Number(row.amountUsd) });
     itemsByEntryId.set(row.entryId, list);
   }
 
@@ -132,13 +142,13 @@ export async function getReportsPeriodSummary(
     from: effectiveRange.from,
     to: range.to,
     ...summarizePeriodLedger(ledgerRows),
-    outstandingSyp: outstandingDuesSyp(allLedger),
+    outstandingUsd: outstandingDuesUsd(allLedger),
     monthlyRevenue: monthlyRevenue(charges, effectiveRange),
     appointmentOutcomes: appointmentOutcomeCounts(appointmentRows),
     revenueByDoctor: revenueByDoctor(
       charges.map((row) => ({
         patientId: row.patientId,
-        amountSyp: row.amountSyp,
+        amountUsd: row.amountUsd,
         createdAt: row.createdAt,
         doctorId: row.doctorId,
       })),
@@ -152,7 +162,7 @@ export async function getReportsPeriodSummary(
     revenueByProcedure: revenueByProcedure(
       charges.map((row) => ({
         treatmentItemId: row.treatmentItemId,
-        amountSyp: row.amountSyp,
+        amountUsd: row.amountUsd,
         items: itemsByEntryId.get(row.id),
       })),
       procedureByItemId,
@@ -161,7 +171,7 @@ export async function getReportsPeriodSummary(
       charges.map((row) => ({
         patientId: row.patientId,
         patientName: row.patient.name,
-        amountSyp: row.amountSyp,
+        amountUsd: row.amountUsd,
       })),
     ),
     patientGrowth: patientGrowthMonthly(

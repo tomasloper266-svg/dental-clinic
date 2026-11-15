@@ -3,6 +3,8 @@ import type { TenantContext } from "@/lib/tenant/context";
 import { isValidToothFdi } from "@/lib/odontogram/fdi";
 import { TOOTH_STATUS_KEYS, type ToothStatusKey } from "@/lib/odontogram/statuses";
 import { recordTreatmentCharge, type ScopedClient } from "@/lib/services/ledger";
+import { isUsdAmount } from "@/lib/currency";
+import type { Prisma } from "@/lib/generated/prisma/client";
 
 // خدمة خطة العلاج المسعّرة — عبر clinicScope حصراً.
 // البنود المخططة/المقبولة قابلة للتعديل؛ المنفَّذ نهائي ولا يُعدَّل.
@@ -15,7 +17,7 @@ export type PlanItemDto = {
   planId?: string | null;
   toothFdi: number;
   procedure: string;
-  priceSyp: number;
+  priceUsd: number;
   status: PlanItemStatus;
   priority: number;
 };
@@ -34,7 +36,7 @@ export type PlanDto = {
 export type CreatePlanItemInput = {
   toothFdi: number;
   procedure: string;
-  priceSyp: number;
+  priceUsd: number;
   priority?: number;
   // ربط مباشر بخطة قائمة — البنود بلا خطة تظهر «بدون خطة محفوظة»
   planId?: string | null;
@@ -42,7 +44,7 @@ export type CreatePlanItemInput = {
 
 export type UpdatePlanItemInput = {
   procedure?: string;
-  priceSyp?: number;
+  priceUsd?: number;
   priority?: number;
   status?: "PROPOSED" | "ACCEPTED" | "DONE";
   toothFdi?: number;
@@ -61,7 +63,7 @@ export async function listPlan(
       planId: true,
       toothFdi: true,
       procedure: true,
-      priceSyp: true,
+      priceUsd: true,
       status: true,
       priority: true,
     },
@@ -81,7 +83,7 @@ export async function createPlanItem(
       patientId,
       toothFdi: input.toothFdi,
       procedure: input.procedure,
-      priceSyp: input.priceSyp,
+      priceUsd: input.priceUsd,
       priority: input.priority ?? 0,
       planId: input.planId ?? null,
       status: "PROPOSED",
@@ -91,7 +93,7 @@ export async function createPlanItem(
       planId: true,
       toothFdi: true,
       procedure: true,
-      priceSyp: true,
+      priceUsd: true,
       status: true,
       priority: true,
     },
@@ -147,7 +149,7 @@ export async function updatePlanItem(
       planId: true,
       toothFdi: true,
       procedure: true,
-      priceSyp: true,
+      priceUsd: true,
       status: true,
       priority: true,
     },
@@ -188,14 +190,14 @@ export async function startPlanItem(
       select: { id: true },
     });
 
-    if (update.item.priceSyp > 0) {
+    if (update.item.priceUsd > 0) {
       await recordTreatmentCharge(
         ctx,
         {
           patientId,
           treatmentItemId: update.item.id,
           procedure: update.procedure,
-          priceSyp: update.item.priceSyp,
+          priceUsd: update.item.priceUsd,
         },
         tx,
       );
@@ -238,7 +240,7 @@ async function updatePlanItemStatus(
       planId: true,
       toothFdi: true,
       procedure: true,
-      priceSyp: true,
+      priceUsd: true,
       status: true,
       priority: true,
     },
@@ -271,13 +273,13 @@ export function parseCreatePlanItem(
     return { ok: false, error: "وصف الإجراء يجب أن يكون بين 2 و200 حرف" };
   }
 
-  const priceSyp = b.priceSyp;
+  const priceUsd = b.priceUsd;
   if (
-    typeof priceSyp !== "number" ||
-    !Number.isInteger(priceSyp) ||
-    priceSyp < 0
+    typeof priceUsd !== "number" ||
+    !isUsdAmount(priceUsd) ||
+    priceUsd < 0
   ) {
-    return { ok: false, error: "السعر يجب أن يكون رقماً صحيحاً غير سالب" };
+    return { ok: false, error: "السعر يجب أن يكون رقماً غير سالب بمنزلتين عشريتين كحد أقصى" };
   }
 
   const priority =
@@ -290,7 +292,7 @@ export function parseCreatePlanItem(
 
   return {
     ok: true,
-    value: { toothFdi, procedure, priceSyp, priority, planId },
+    value: { toothFdi, procedure, priceUsd, priority, planId },
   };
 }
 
@@ -310,15 +312,15 @@ export function parseUpdatePlanItem(
     }
     value.procedure = procedure;
   }
-  if (b.priceSyp !== undefined) {
+  if (b.priceUsd !== undefined) {
     if (
-      typeof b.priceSyp !== "number" ||
-      !Number.isInteger(b.priceSyp) ||
-      b.priceSyp < 0
+      typeof b.priceUsd !== "number" ||
+      !isUsdAmount(b.priceUsd) ||
+      b.priceUsd < 0
     ) {
-      return { ok: false, error: "السعر يجب أن يكون رقماً صحيحاً غير سالب" };
+      return { ok: false, error: "السعر يجب أن يكون رقماً غير سالب بمنزلتين عشريتين كحد أقصى" };
     }
-    value.priceSyp = b.priceSyp;
+    value.priceUsd = b.priceUsd;
   }
   if (b.priority !== undefined) {
     if (typeof b.priority !== "number" || !Number.isInteger(b.priority)) {
@@ -376,7 +378,7 @@ function serialize(row: {
   planId: string | null;
   toothFdi: number;
   procedure: string;
-  priceSyp: number;
+  priceUsd: number | Prisma.Decimal;
   status: string;
   priority: number;
 }): PlanItemDto {
@@ -385,7 +387,7 @@ function serialize(row: {
     planId: row.planId,
     toothFdi: row.toothFdi,
     procedure: row.procedure,
-    priceSyp: row.priceSyp,
+    priceUsd: Number(row.priceUsd),
     status: row.status as PlanItemStatus,
     priority: row.priority,
   };
@@ -445,7 +447,7 @@ const PLAN_ITEM_SELECT = {
   planId: true,
   toothFdi: true,
   procedure: true,
-  priceSyp: true,
+  priceUsd: true,
   status: true,
   priority: true,
 } as const;

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import type { LedgerEntryType } from "@/lib/services/ledger";
 import type { PlanItemDto } from "@/lib/services/treatment-plan";
+import { isUsdAmount } from "@/lib/currency";
 import { LEDGER_ENTRY_TYPE_META } from "@/lib/ledger-view";
 import { toothNameAr } from "@/lib/odontogram/fdi";
 import { Button } from "@/components/ui/Button";
@@ -34,7 +35,7 @@ type Props = {
   /** نوع القيد المعبّأ عند الفتح — لتسديد دفعة جاهزة من رأس الملف */
   initialType?: LedgerEntryType;
   /** قيمة المبلغ المعبّأة عند الفتح — عادةً المستحق المتبقي */
-  initialAmountSyp?: number;
+  initialAmountUsd?: number;
 };
 
 export default function NewLedgerEntryModal({
@@ -43,7 +44,7 @@ export default function NewLedgerEntryModal({
   patientId,
   planItems,
   initialType = "CHARGE",
-  initialAmountSyp,
+  initialAmountUsd,
 }: Props) {
   const router = useRouter();
   const { toast } = useToast();
@@ -58,17 +59,17 @@ export default function NewLedgerEntryModal({
   useEffect(() => {
     if (open) {
       setType(initialType);
-      setAmount(initialAmountSyp !== undefined ? String(initialAmountSyp) : "");
+      setAmount(initialAmountUsd !== undefined ? String(initialAmountUsd) : "");
       setNote("");
       setTreatmentItemId("");
       setError(null);
     }
-  }, [open, initialType, initialAmountSyp]);
+  }, [open, initialType, initialAmountUsd]);
 
   async function submit() {
-    const amountSyp = Number(amount);
-    if (!Number.isInteger(amountSyp) || amountSyp === 0) {
-      setError("المبلغ يجب أن يكون رقماً صحيحاً غير صفري");
+    const amountUsd = Number(amount);
+    if (!isUsdAmount(amountUsd) || amountUsd === 0) {
+      setError("المبلغ يجب أن يكون رقماً غير صفري بمنزلتين عشريتين كحد أقصى");
       return;
     }
     setSaving(true);
@@ -81,7 +82,7 @@ export default function NewLedgerEntryModal({
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             type,
-            amountSyp,
+            amountUsd,
             note: note.trim() || undefined,
             treatmentItemId: treatmentItemId || undefined,
           }),
@@ -120,15 +121,15 @@ export default function NewLedgerEntryModal({
               ))}
             </Select>
           </Field>
-          <Field label="المبلغ (ل.س)" htmlFor="ledger-amount">
+          <Field label="المبلغ ($)" htmlFor="ledger-amount">
             <Input
               id="ledger-amount"
               type="number"
-              step={1}
-              inputMode="numeric"
+              step="0.01"
+              inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              placeholder={type === "PAYMENT" ? "-50000" : "50000"}
+              placeholder={type === "PAYMENT" ? "-50" : "50"}
               className="numeric"
             />
           </Field>

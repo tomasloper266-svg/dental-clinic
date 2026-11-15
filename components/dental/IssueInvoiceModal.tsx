@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { PlanItemDto } from "@/lib/services/treatment-plan";
+import { isUsdAmount } from "@/lib/currency";
 import { planStatusMeta } from "@/lib/treatment-plan-view";
 import {
   buildChargeWithItemsBody,
@@ -81,8 +82,8 @@ export default function IssueInvoiceModal({
       setError("اختر بنداً واحداً على الأقل لإصدار الفاتورة");
       return;
     }
-    if (!Number.isInteger(discount) || discount < 0) {
-      setError("الخصم يجب أن يكون رقماً صحيحاً غير سالب");
+    if (!isUsdAmount(discount) || discount < 0) {
+      setError("الخصم يجب أن يكون رقماً غير سالب بمنزلتين عشريتين كحد أقصى");
       return;
     }
     setError(null);
@@ -93,7 +94,7 @@ export default function IssueInvoiceModal({
       const payloadItems: InvoiceItemPayload[] = selectedItems.map((item) => ({
         description: item.procedure,
         category: item.procedure,
-        amountSyp: item.priceSyp,
+        amountUsd: item.priceUsd,
       }));
       const res = await fetch(`/api/patients/${encodeURIComponent(patientId)}/ledger`, {
         method: "POST",
@@ -128,7 +129,7 @@ export default function IssueInvoiceModal({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             type: "ADJUSTMENT",
-            amountSyp: -discount,
+            amountUsd: -discount,
             note: notes.trim() ? `خصم — ${notes.trim()}` : "خصم فاتورة",
           }),
         });
@@ -188,6 +189,8 @@ export default function IssueInvoiceModal({
             id="issue-discount"
             type="number"
             min={0}
+            step="0.01"
+            inputMode="decimal"
             value={discountStr}
             onChange={(event) => setDiscountStr(event.target.value)}
           />
@@ -225,7 +228,7 @@ export default function IssueInvoiceModal({
                 </span>
               </label>
               <span className="numeric text-sm font-semibold text-warning-500">
-                {money(item.priceSyp)}
+                {money(item.priceUsd)}
               </span>
             </li>
           );

@@ -97,7 +97,7 @@ type Props = {
   materialRows: ReadonlyArray<{
     createdAt: Date | string;
     materialName: string;
-    costSyp: number;
+    costUsd: number;
   }>;
   /** سعر صرف الدولار من إعدادات العيادة — لعرض العملة المزدوجة */
   usdRate: number;
@@ -121,7 +121,7 @@ export default function PatientRecord({
 
   const notes = parseMedicalNotes(patient.medicalNotes);
   const summary = summarizePatientLedger(ledgerEntries, ledgerBalance);
-  const dueSyp = Math.max(ledgerBalance, 0);
+  const dueUsd = Math.max(ledgerBalance, 0);
   const allergies = patient.allergies ?? notes.allergies;
   const chronic = patient.chronicDiseases ?? notes.conditions;
 
@@ -241,7 +241,7 @@ export default function PatientRecord({
             تنبيه مخزون، الحساسيات والأمراض) والملخص يساراً */}
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-warm-200 bg-surface-raised px-5 py-4">
           <div className="flex flex-wrap items-center gap-2">
-            {dueSyp > 0 && (
+            {dueUsd > 0 && (
               <WarningPill icon={TriangleAlert} tone="danger">
                 تنبيه مستحق
               </WarningPill>
@@ -261,7 +261,7 @@ export default function PatientRecord({
                 {chronic}
               </WarningPill>
             )}
-            {dueSyp === 0 && materialRows.length === 0 && !allergies && !chronic && (
+            {dueUsd === 0 && materialRows.length === 0 && !allergies && !chronic && (
               <span className="text-xs text-warm-400">لا تنبيهات</span>
             )}
           </div>
@@ -269,9 +269,9 @@ export default function PatientRecord({
             <div>
               <p className="text-warm-500 text-[11px] font-medium">مستحق</p>
               <DualAmount
-                syp={summary.balanceSyp}
+                usd={summary.balanceUsd}
                 usdRate={usdRate}
-                tone={dueSyp > 0 ? "danger" : "default"}
+                tone={dueUsd > 0 ? "danger" : "default"}
               />
             </div>
             <div>
@@ -280,18 +280,18 @@ export default function PatientRecord({
               </p>
               {/* دفعات الدفتر وحدها — الخصومات ليست دفعات ولذا تُعرض ببطاقة
                   منفصلة بدل خلطها هنا تحت عنوان المدفوع (سجل art_yHnC9AAM بند 14ب) */}
-              <DualAmount syp={summary.paymentsSyp} usdRate={usdRate} />
+              <DualAmount usd={summary.paymentsUsd} usdRate={usdRate} />
             </div>
-            {summary.discountSyp > 0 && (
+            {summary.discountUsd > 0 && (
               <div>
                 <p className="text-warm-500 text-[11px] font-medium">
                   الخصومات
                 </p>
-                <DualAmount syp={summary.discountSyp} usdRate={usdRate} />
+                <DualAmount usd={summary.discountUsd} usdRate={usdRate} />
               </div>
             )}
             <div className="flex items-center gap-1.5">
-              {dueSyp > 0 ? (
+              {dueUsd > 0 ? (
                 <>
                   <TriangleAlert
                     size={14}

@@ -112,22 +112,22 @@ export type InvoiceSummary = {
   /** عدد الفواتير بعد الفلاتر */
   count: number;
   /** مجموع الإجمالي المصدر — قبل الخصومات */
-  totalSyp: number;
+  totalUsd: number;
   /** مجموع المتبقي عليها */
-  remainingSyp: number;
+  remainingUsd: number;
 };
 
 /** نقي — مجاميع بطاقات الإحصاء الثلاث من الصفوف بعد الفلاتر */
 export function summarizeInvoices(
-  rows: ReadonlyArray<Pick<DetailedInvoiceView, "totalSyp" | "remainingSyp">>,
+  rows: ReadonlyArray<Pick<DetailedInvoiceView, "totalUsd" | "remainingUsd">>,
 ): InvoiceSummary {
-  let totalSyp = 0;
-  let remainingSyp = 0;
+  let totalUsd = 0;
+  let remainingUsd = 0;
   for (const row of rows) {
-    totalSyp += row.totalSyp;
-    remainingSyp += row.remainingSyp;
+    totalUsd += row.totalUsd;
+    remainingUsd += row.remainingUsd;
   }
-  return { count: rows.length, totalSyp, remainingSyp };
+  return { count: rows.length, totalUsd, remainingUsd };
 }
 
 /** مبلغ بالدولار بمسافة بعد الرمز — «$ 35» على شكل المرجع */
@@ -155,7 +155,7 @@ export function composePaymentNote(
 export type InvoiceItemPayload = {
   description: string;
   category?: string;
-  amountSyp: number;
+  amountUsd: number;
 };
 
 /**
@@ -173,7 +173,7 @@ export function buildChargeWithItemsBody({
   createdAt?: string;
 }): {
   type: "CHARGE";
-  amountSyp: number;
+  amountUsd: number;
   note?: string;
   createdAt?: string;
   items: InvoiceItemPayload[];
@@ -183,13 +183,13 @@ export function buildChargeWithItemsBody({
   }
   return {
     type: "CHARGE",
-    amountSyp: items.reduce((sum, item) => sum + item.amountSyp, 0),
+    amountUsd: items.reduce((sum, item) => sum + item.amountUsd, 0),
     ...(note !== undefined ? { note } : {}),
     ...(createdAt !== undefined ? { createdAt } : {}),
     items: items.map((item) => ({
       description: item.description,
       ...(item.category !== undefined ? { category: item.category } : {}),
-      amountSyp: item.amountSyp,
+      amountUsd: item.amountUsd,
     })),
   };
 }
@@ -211,25 +211,25 @@ export function invoiceItemDescription(
  * الرصيد إطلاقاً (التخصيص الزمني FIFO يبقى هو المعتمد محاسبياً).
  */
 export function buildPaymentBody({
-  amountSyp,
+  amountUsd,
   note,
   createdAt,
   appliedChargeId,
 }: {
-  amountSyp: number;
+  amountUsd: number;
   note: string;
   createdAt?: string;
   appliedChargeId?: string;
 }): {
   type: "PAYMENT";
-  amountSyp: number;
+  amountUsd: number;
   note: string;
   createdAt?: string;
   appliedChargeId?: string;
 } {
   return {
     type: "PAYMENT",
-    amountSyp,
+    amountUsd,
     note,
     ...(createdAt !== undefined ? { createdAt } : {}),
     ...(appliedChargeId ? { appliedChargeId } : {}),

@@ -1,13 +1,13 @@
 import {
-  displayPartsFromSyp,
-  displayCostPartsFromSyp,
+  displayPartsFromUsd,
+  displayCostPartsFromUsd,
 } from "@/lib/currency";
 import { cn } from "./cn";
 import { useDisplayCurrency } from "./CurrencyContext";
 
 type DualAmountProps = {
-  /** المبلغ بالليرة السورية كما هو مخزَّن في الدفتر */
-  syp: number;
+  /** المبلغ المخزن بالدولار — الأساس؛ الليرة تُشتق بسعر الصرف */
+  usd: number;
   /** سعر صرف الدولار من إعدادات العيادة */
   usdRate: number;
   /** العملة المعروضة — من سياق إعدادات العيادة إن غاب */
@@ -26,7 +26,7 @@ type DualAmountProps = {
  * صغير تحته. كل التنسيق عبر lib/currency.ts بسعر الصرف القادم من الإعدادات.
  */
 export function DualAmount({
-  syp,
+  usd,
   usdRate,
   currency,
   tone = "default",
@@ -36,8 +36,8 @@ export function DualAmount({
 }: DualAmountProps) {
   const contextCurrency = useDisplayCurrency();
   const parts = precise
-    ? displayCostPartsFromSyp(syp, usdRate, currency ?? contextCurrency)
-    : displayPartsFromSyp(syp, usdRate, currency ?? contextCurrency);
+    ? displayCostPartsFromUsd(usd, usdRate, currency ?? contextCurrency)
+    : displayPartsFromUsd(usd, usdRate, currency ?? contextCurrency);
   return (
     <span className={cn("inline-flex flex-col items-end leading-tight", className)}>
       <span

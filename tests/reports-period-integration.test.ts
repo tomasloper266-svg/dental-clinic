@@ -50,7 +50,7 @@ async function seedCharge(patientId: string, amount: number, at: Date, seq: numb
       clinicId,
       patientId,
       type: "CHARGE",
-      amountSyp: amount,
+      amountUsd: amount,
       createdById: userId,
       createdAt: at,
       invoiceSeq: seq,
@@ -107,7 +107,7 @@ describeDb("تقرير الفترة — حدود الأيام المحلية (in
       from: DAY,
       to: DAY,
     });
-    expect(summary.totalChargesSyp).toBe(5_000); // 2,000 + 3,000 حصراً
+    expect(summary.totalChargesUsd).toBe(5_000); // 2,000 + 3,000 حصراً
     expect(summary.invoiceCount).toBe(2);
     expect(morning.createdAt).toBeTruthy();
     expect(night.createdAt).toBeTruthy();
@@ -119,7 +119,7 @@ describeDb("تقرير الفترة — حدود الأيام المحلية (in
     const summary = await getReportsPeriodSummary(ctx, range);
     // قيود 14 و15 (00:30 و23:30) = 6,000 — وقيد 00:30 من يوم 16 خارج نافذة
     // منتهية بيوم 15 حتى في الخيار الجاهز
-    expect(summary.totalChargesSyp).toBe(6_000);
+    expect(summary.totalChargesUsd).toBe(6_000);
     expect(summary.invoiceCount).toBe(3);
   });
 
@@ -139,7 +139,7 @@ describeDb("تقرير الفترة — حدود الأيام المحلية (in
       from: DAY,
       to: DAY,
     });
-    expect(summary.totalChargesSyp).toBe(0);
+    expect(summary.totalChargesUsd).toBe(0);
     expect(summary.invoiceCount).toBe(0);
   });
 });

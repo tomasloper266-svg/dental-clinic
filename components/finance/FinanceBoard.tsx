@@ -6,7 +6,7 @@ import type { LedgerEntryType } from "@/lib/services/ledger";
 import { formatDateCell } from "@/lib/dates";
 import { formatDayLabel } from "@/lib/appointment-ui";
 import { useMoney } from "@/components/ui/CurrencyContext";
-import { formatDualFromSyp } from "@/lib/currency";
+import { formatDualFromUsd, isUsdAmount } from "@/lib/currency";
 import { usePatientSearch, type PatientOption } from "@/lib/use-patient-search";
 import { toCsv, withUtf8Bom } from "@/lib/csv";
 import { emitLedgerChanged } from "@/lib/ledger-events";
@@ -19,7 +19,7 @@ import {
   filterBySettlement,
   searchLedgerRows,
   summarizeLedger,
-  outstandingDuesSyp,
+  outstandingDuesUsd,
   type SettlementFilter,
 } from "@/lib/finance-view";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -55,7 +55,7 @@ type ClinicEntryJson = {
   id: string;
   patientId: string;
   type: LedgerEntryType;
-  amountSyp: number;
+  amountUsd: number;
   note: string | null;
   createdAt: string;
   patientName: string;
@@ -144,8 +144,8 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
   }, [refresh]);
 
   const summary = useMemo(() => summarizeLedger(entries ?? []), [entries]);
-  const duesSyp = useMemo(
-    () => outstandingDuesSyp(entries ?? []),
+  const duesUsd = useMemo(
+    () => outstandingDuesUsd(entries ?? []),
     [entries],
   );
 
@@ -233,8 +233,8 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
       return;
     }
     const magnitude = Number(amountStr);
-    if (!Number.isInteger(magnitude) || magnitude <= 0) {
-      setFormError("المبلغ يجب أن يكون رقماً صحيحاً موجباً");
+    if (!isUsdAmount(magnitude) || magnitude <= 0) {
+      setFormError("المبلغ يجب أن يكون رقماً موجباً بمنزلتين عشريتين كحد أقصى");
       return;
     }
     setBusy(true);
@@ -246,7 +246,7 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             type,
-            amountSyp: signedAmount(type, magnitude, adjustDir),
+            amountUsd: signedAmount(type, magnitude, adjustDir),
             note: note.trim() || undefined,
           }),
         },
@@ -283,7 +283,7 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
         entry.patientPhone ?? "",
         LEDGER_TYPE_META[entry.type].label,
         entry.note ?? "",
-        entry.amountSyp,
+        entry.amountUsd,
         balance,
         settlement === null ? "" : LEDGER_SETTLEMENT_META[settlement].label,
       ]),
@@ -369,17 +369,17 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
               icon={BookOpen}
             />
             <StatCard
-              value={formatDualFromSyp(summary.chargesSyp, usdRate)}
+              value={formatDualFromUsd(summary.chargesUsd, usdRate)}
               label="إجمالي الرسوم المُصدرة"
               icon={ReceiptText}
             />
             <StatCard
-              value={formatDualFromSyp(summary.paymentsSyp, usdRate)}
+              value={formatDualFromUsd(summary.paymentsUsd, usdRate)}
               label="إجمالي المدخول (الدفعات)"
               icon={Coins}
             />
             <StatCard
-              value={formatDualFromSyp(duesSyp, usdRate)}
+              value={formatDualFromUsd(duesUsd, usdRate)}
               label="المستحقات غير المسددة"
               icon={Wallet}
               tone="danger"
@@ -452,7 +452,7 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
                     {rows.map(({ entry, patientBalanceAfter, settlement }) => {
                       const split =
                         entry.type === "CHARGE"
-                          ? chargeSettlementSplit(patientBalanceAfter, entry.amountSyp)
+                          ? chargeSettlementSplit(patientBalanceAfter, entry.amountUsd)
                           : null;
                       return (
                         <TRow key={entry.id}>
@@ -475,14 +475,14 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
                           </TD>
                           <TD className="text-end">
                             <DualAmount
-                              syp={entry.amountSyp}
+                              usd={entry.amountUsd}
                               usdRate={usdRate}
                               valueClassName={LEDGER_AMOUNT_CLASSES[entry.type]}
                             />
                           </TD>
                           <TD className="text-end">
                             {split ? (
-                              <DualAmount syp={split.paidSyp} usdRate={usdRate} />
+                              <DualAmount usd={split.paidUsd} usdRate={usdRate} />
                             ) : (
                               <span className="text-xs text-warm-400">—</span>
                             )}
@@ -490,9 +490,9 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
                           <TD className="text-end">
                             {split ? (
                               <DualAmount
-                                syp={split.remainingSyp}
+                                usd={split.remainingUsd}
                                 usdRate={usdRate}
-                                tone={split.remainingSyp > 0 ? "danger" : "default"}
+                                tone={split.remainingUsd > 0 ? "danger" : "default"}
                               />
                             ) : (
                               <span className="text-xs text-warm-400">—</span>
@@ -555,7 +555,7 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
                               subtitle={entry.patientPhone ?? undefined}
                             />
                             <DualAmount
-                              syp={entry.amountSyp}
+                              usd={entry.amountUsd}
                               usdRate={usdRate}
                               valueClassName={cn(
                                 "text-sm",
@@ -714,11 +714,11 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
           )}
 
           <Field
-            label="المبلغ (ل.س)"
+            label="المبلغ ($)"
             htmlFor="entry-amount"
             hint={
               finalAmount !== null
-                ? `سيُسجَّل بالدفتر: ${formatDualFromSyp(finalAmount, usdRate)}`
+                ? `سيُسجَّل بالدفتر: ${formatDualFromUsd(finalAmount, usdRate)}`
                 : type === "PAYMENT"
                   ? "تُسجَّل الدفعة بقيمة سالبة تخفض رصيد المريض"
                   : undefined
@@ -727,11 +727,12 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
             <Input
               id="entry-amount"
               type="number"
-              inputMode="numeric"
-              min={1}
+              inputMode="decimal"
+              step="0.01"
+              min={0.01}
               value={amountStr}
               onChange={(e) => setAmountStr(e.target.value)}
-              placeholder="مثال: 250000"
+              placeholder="مثال: 250"
             />
           </Field>
 

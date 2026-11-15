@@ -49,7 +49,7 @@ export function pointValue(
   point: RevenueDualPoint,
   scale: ScaleChoice,
 ): number {
-  return scale === "charges" ? point.chargesSyp : point.collectedSyp;
+  return scale === "charges" ? point.chargesUsd : point.collectedUsd;
 }
 
 /** رسم إيراد لوحة القيادة — مبدّلا نافذة ومقياس فوق أعمدة القيمة المختارة */

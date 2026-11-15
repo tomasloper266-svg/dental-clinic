@@ -9,6 +9,7 @@ import type {
   PlanItemStatus,
 } from "@/lib/services/treatment-plan";
 import { toothStatusMeta } from "@/lib/odontogram/statuses";
+import { isUsdAmount } from "@/lib/currency";
 import { planTotals, planByTooth } from "@/lib/treatment-plan-view";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
@@ -97,7 +98,7 @@ export default function TreatmentPlanSection({
         body: JSON.stringify({
           toothFdi: Number(tooth),
           procedure,
-          priceSyp: Number(price),
+          priceUsd: Number(price),
         }),
       });
       const data = (await res.json()) as { item?: PlanItemDto; error?: string };
@@ -118,7 +119,7 @@ export default function TreatmentPlanSection({
   function beginEdit(item: PlanItemDto) {
     setEditingId(item.id);
     setEditProcedure(item.procedure);
-    setEditPrice(item.priceSyp.toString());
+    setEditPrice(item.priceUsd.toString());
   }
 
   async function saveEdit(id: string) {
@@ -130,7 +131,7 @@ export default function TreatmentPlanSection({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           procedure: editProcedure,
-          priceSyp: Number(editPrice),
+          priceUsd: Number(editPrice),
         }),
       });
       const data = (await res.json()) as { item?: PlanItemDto; error?: string };
@@ -203,7 +204,9 @@ export default function TreatmentPlanSection({
 
   const toothNum = Number(tooth);
   const canAdd =
-    Number.isInteger(toothNum) && procedure.trim().length >= 2 && price !== "";
+    Number.isInteger(toothNum) &&
+    procedure.trim().length >= 2 &&
+    isUsdAmount(Number(price));
 
   const groups: { status: PlanItemStatus; labelAr: string }[] = [
     { status: "PROPOSED", labelAr: "مخطط — بانتظار موافقة المريض" },
@@ -283,16 +286,17 @@ export default function TreatmentPlanSection({
           />
         </div>
         <label className="sr-only" htmlFor="plan-price">
-          السعر بالليرة السورية
+          السعر بالدولار
         </label>
         <Input
           id="plan-price"
           type="number"
-          inputMode="numeric"
+          inputMode="decimal"
+          step="0.01"
           min={0}
           value={price}
           onChange={(e) => setPrice(e.target.value)}
-          placeholder="السعر ل.س"
+          placeholder="السعر $"
           className={cn(inputClass, "numeric")}
         />
         <Button onClick={addItem} loading={busy} disabled={busy || !canAdd}>
@@ -357,9 +361,11 @@ export default function TreatmentPlanSection({
                         <Input
                           type="number"
                           min={0}
+                          step="0.01"
+                          inputMode="decimal"
                           value={editPrice}
                           onChange={(e) => setEditPrice(e.target.value)}
-                          aria-label="السعر"
+                          aria-label="السعر ($)"
                           className={cn(inputClass, "numeric")}
                         />
                         <Button
@@ -397,7 +403,7 @@ export default function TreatmentPlanSection({
                           {item.procedure}
                         </span>
                         <span className="text-warm-700 numeric text-xs font-semibold">
-                          {money(item.priceSyp)}
+                          {money(item.priceUsd)}
                         </span>
                         <span
                           className={cn(

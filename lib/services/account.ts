@@ -412,7 +412,7 @@ export async function getAccountOverview(ctx: TenantContext): Promise<{
     usdRate: user.clinic.usdRate,
     currency: user.clinic.currency as DisplayCurrency,
     logoLetter: user.clinic.logoLetter,
-    openingBalance: user.clinic.openingBalance,
+    openingBalance: Number(user.clinic.openingBalance),
     workStart: user.clinic.workStart,
     workEnd: user.clinic.workEnd,
     lockEnabled: user.lockEnabled,

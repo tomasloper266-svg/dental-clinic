@@ -20,7 +20,7 @@ function entry(overrides: Partial<DuesEntryLike>): DuesEntryLike {
     id: "e1",
     patientId: "p1",
     type: "CHARGE",
-    amountSyp: 100_000,
+    amountUsd: 100_000,
     createdAt: "2026-11-01T10:00:00Z",
     patientName: "باسل",
     patientPhone: null,
@@ -36,21 +36,21 @@ describe("buildDuesRows", () => {
   it("المريض المسدد كلياً (رصيد صفري أو سالب) لا يظهر", () => {
     const rows = buildDuesRows(
       [
-        entry({ id: "e1", amountSyp: 100_000 }),
-        entry({ id: "e2", type: "PAYMENT", amountSyp: -100_000 }),
+        entry({ id: "e1", amountUsd: 100_000 }),
+        entry({ id: "e2", type: "PAYMENT", amountUsd: -100_000 }),
         // مريض آخر دفع زيادة — رصيده سالب
         entry({
           id: "e3",
           patientId: "p2",
           patientName: "سامر",
-          amountSyp: 50_000,
+          amountUsd: 50_000,
         }),
         entry({
           id: "e4",
           patientId: "p2",
           patientName: "سامر",
           type: "PAYMENT",
-          amountSyp: -80_000,
+          amountUsd: -80_000,
         }),
       ],
       NOW,
@@ -61,17 +61,17 @@ describe("buildDuesRows", () => {
   it("المدين الوحيد يفكك الرسوم والمسدد والمستحق", () => {
     const rows = buildDuesRows(
       [
-        entry({ id: "e1", amountSyp: 955_000, createdAt: "2026-10-07T10:00:00Z" }),
-        entry({ id: "e2", type: "PAYMENT", amountSyp: -655_000, createdAt: "2026-11-13T10:00:00Z" }),
+        entry({ id: "e1", amountUsd: 955_000, createdAt: "2026-10-07T10:00:00Z" }),
+        entry({ id: "e2", type: "PAYMENT", amountUsd: -655_000, createdAt: "2026-11-13T10:00:00Z" }),
       ],
       NOW,
     );
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       patientId: "p1",
-      chargesSyp: 955_000,
-      paidSyp: 655_000,
-      dueSyp: 300_000,
+      chargesUsd: 955_000,
+      paidUsd: 655_000,
+      dueUsd: 300_000,
       lastPaymentAt: expect.stringContaining("2026-11-13"),
     });
     expect(rows[0].lastChargeAt).toContain("2026-10-07");
@@ -80,10 +80,10 @@ describe("buildDuesRows", () => {
   it("آخر فاتورة وآخر دفعة يلتقطان الأحدث زمنياً من عدة قيود", () => {
     const rows = buildDuesRows(
       [
-        entry({ id: "e1", amountSyp: 100_000, createdAt: "2026-09-01T10:00:00Z" }),
-        entry({ id: "e2", amountSyp: 60_000, createdAt: "2026-11-10T10:00:00Z" }),
-        entry({ id: "e3", type: "PAYMENT", amountSyp: -40_000, createdAt: "2026-11-12T10:00:00Z" }),
-        entry({ id: "e4", type: "PAYMENT", amountSyp: -10_000, createdAt: "2026-10-20T10:00:00Z" }),
+        entry({ id: "e1", amountUsd: 100_000, createdAt: "2026-09-01T10:00:00Z" }),
+        entry({ id: "e2", amountUsd: 60_000, createdAt: "2026-11-10T10:00:00Z" }),
+        entry({ id: "e3", type: "PAYMENT", amountUsd: -40_000, createdAt: "2026-11-12T10:00:00Z" }),
+        entry({ id: "e4", type: "PAYMENT", amountUsd: -10_000, createdAt: "2026-10-20T10:00:00Z" }),
       ],
       NOW,
     );
@@ -93,7 +93,7 @@ describe("buildDuesRows", () => {
 
   it("مريض بلا دفعات يكون آخر دفعة صفراً", () => {
     const rows = buildDuesRows(
-      [entry({ id: "e1", amountSyp: 100_000, createdAt: "2026-11-01T10:00:00Z" })],
+      [entry({ id: "e1", amountUsd: 100_000, createdAt: "2026-11-01T10:00:00Z" })],
       NOW,
     );
     expect(rows[0].lastPaymentAt).toBeNull();
@@ -103,10 +103,10 @@ describe("buildDuesRows", () => {
   it("آخر قيد غير مسدد هو آخر قيد رسوم بقي الرصيد بعده موجباً — وأيام التأخر تُحسب حتى الآن", () => {
     const rows = buildDuesRows(
       [
-        entry({ id: "e1", amountSyp: 100_000, createdAt: "2026-09-01T10:00:00Z" }),
-        entry({ id: "e2", amountSyp: 60_000, createdAt: "2026-11-10T10:00:00Z" }),
+        entry({ id: "e1", amountUsd: 100_000, createdAt: "2026-09-01T10:00:00Z" }),
+        entry({ id: "e2", amountUsd: 60_000, createdAt: "2026-11-10T10:00:00Z" }),
         // دفعة جزئية تبقي الرصيد موجباً
-        entry({ id: "e3", type: "PAYMENT", amountSyp: -40_000 }),
+        entry({ id: "e3", type: "PAYMENT", amountUsd: -40_000 }),
       ],
       NOW,
     );
@@ -117,9 +117,9 @@ describe("buildDuesRows", () => {
   it("قيد رسوم غُطي لاحقاً بدفعة كاملة لا يُعدّ آخر قيد غير مسدد", () => {
     const rows = buildDuesRows(
       [
-        entry({ id: "e1", amountSyp: 100_000, createdAt: "2026-09-01T10:00:00Z" }),
-        entry({ id: "e2", type: "PAYMENT", amountSyp: -100_000 }),
-        entry({ id: "e3", amountSyp: 50_000, createdAt: "2026-11-12T10:00:00Z" }),
+        entry({ id: "e1", amountUsd: 100_000, createdAt: "2026-09-01T10:00:00Z" }),
+        entry({ id: "e2", type: "PAYMENT", amountUsd: -100_000 }),
+        entry({ id: "e3", amountUsd: 50_000, createdAt: "2026-11-12T10:00:00Z" }),
       ],
       NOW,
     );
@@ -135,13 +135,13 @@ describe("بحث وترتيب المستحقات", () => {
         patientId: "p1",
         patientName: "باسل مرعي",
         patientPhone: "0934 343 536",
-        amountSyp: 300_000,
+        amountUsd: 300_000,
       }),
       entry({
         id: "e2",
         patientId: "p2",
         patientName: "أحمد",
-        amountSyp: 500_000,
+        amountUsd: 500_000,
       }),
     ],
     NOW,
@@ -169,44 +169,44 @@ describe("بحث وترتيب المستحقات", () => {
 describe("summarizeDues", () => {
   it("لا مدينين يعطي أصفاراً", () => {
     expect(summarizeDues([])).toEqual({
-      totalDuesSyp: 0,
+      totalDuesUsd: 0,
       debtors: 0,
-      maxDueSyp: 0,
-      avgDueSyp: 0,
+      maxDueUsd: 0,
+      avgDueUsd: 0,
     });
   });
 
   it("يجمع الإجمالي والعدد والأعلى فردياً والمتوسط", () => {
     const rows = [
-      { dueSyp: 300_000 },
-      { dueSyp: 120_000 },
+      { dueUsd: 300_000 },
+      { dueUsd: 120_000 },
     ];
     const summary = summarizeDues(rows);
-    expect(summary.totalDuesSyp).toBe(420_000);
+    expect(summary.totalDuesUsd).toBe(420_000);
     expect(summary.debtors).toBe(2);
-    expect(summary.maxDueSyp).toBe(300_000);
-    expect(summary.avgDueSyp).toBe(210_000);
+    expect(summary.maxDueUsd).toBe(300_000);
+    expect(summary.avgDueUsd).toBe(210_000);
   });
 });
 
 describe("chargeSettlementSplit", () => {
   it("غير مسددة كلياً — المتبقي كامل قيمة القيد", () => {
     expect(chargeSettlementSplit(500_000, 300_000)).toEqual({
-      paidSyp: 0,
-      remainingSyp: 300_000,
+      paidUsd: 0,
+      remainingUsd: 300_000,
     });
   });
 
   it("جزئية — المسدد فرق القيمة عن الرصيد المتبقي", () => {
     expect(chargeSettlementSplit(100_000, 300_000)).toEqual({
-      paidSyp: 200_000,
-      remainingSyp: 100_000,
+      paidUsd: 200_000,
+      remainingUsd: 100_000,
     });
   });
 
   it("مسددة كلياً أو برصيد دائن — المتبقي صفر", () => {
-    expect(chargeSettlementSplit(0, 300_000).remainingSyp).toBe(0);
-    expect(chargeSettlementSplit(-50_000, 300_000).remainingSyp).toBe(0);
+    expect(chargeSettlementSplit(0, 300_000).remainingUsd).toBe(0);
+    expect(chargeSettlementSplit(-50_000, 300_000).remainingUsd).toBe(0);
   });
 });
 
@@ -214,26 +214,26 @@ describe("summarizePatientLedger", () => {
   it("يفكك رسوم ملف المريض إلى إجمالي ومسدد ورصيد", () => {
     const summary = summarizePatientLedger(
       [
-        { type: "CHARGE", amountSyp: 955_000 },
-        { type: "PAYMENT", amountSyp: -655_000 },
+        { type: "CHARGE", amountUsd: 955_000 },
+        { type: "PAYMENT", amountUsd: -655_000 },
       ],
       300_000,
     );
     expect(summary).toEqual({
-      chargesSyp: 955_000,
-      paidSyp: 655_000,
-      balanceSyp: 300_000,
-      paymentsSyp: 655_000,
-      discountSyp: 0,
+      chargesUsd: 955_000,
+      paidUsd: 655_000,
+      balanceUsd: 300_000,
+      paymentsUsd: 655_000,
+      discountUsd: 0,
     });
   });
 
   it("رصيد دائن (سالب) يجعل المسدد كامل الرسوم", () => {
     const summary = summarizePatientLedger(
-      [{ type: "CHARGE", amountSyp: 100_000 }],
+      [{ type: "CHARGE", amountUsd: 100_000 }],
       -20_000,
     );
-    expect(summary.paidSyp).toBe(100_000);
+    expect(summary.paidUsd).toBe(100_000);
   });
 
   it("الدفعة والدفع المنفصل — إجمالي المدفوع دفعات فقط والخصم بطاقة منفصلة", () => {
@@ -241,29 +241,29 @@ describe("summarizePatientLedger", () => {
     // لكن دفعات الدفتر 40 حصراً والخصم 3 (ليس دفعة).
     const summary = summarizePatientLedger(
       [
-        { type: "CHARGE", amountSyp: 100 },
-        { type: "PAYMENT", amountSyp: -40 },
-        { type: "ADJUSTMENT", amountSyp: -3 },
+        { type: "CHARGE", amountUsd: 100 },
+        { type: "PAYMENT", amountUsd: -40 },
+        { type: "ADJUSTMENT", amountUsd: -3 },
       ],
       57,
     );
-    expect(summary.paymentsSyp).toBe(40);
-    expect(summary.discountSyp).toBe(3);
+    expect(summary.paymentsUsd).toBe(40);
+    expect(summary.discountUsd).toBe(3);
     // الدفعة + الخصم + المستحق = الرسوم — الترويسة تتوازن كصف الفاتورة
-    expect(summary.paymentsSyp + summary.discountSyp + summary.balanceSyp).toBe(
-      summary.chargesSyp,
+    expect(summary.paymentsUsd + summary.discountUsd + summary.balanceUsd).toBe(
+      summary.chargesUsd,
     );
   });
 
   it("التسوية الموجبة ليست خصماً ولا دفعة", () => {
     const summary = summarizePatientLedger(
       [
-        { type: "CHARGE", amountSyp: 100 },
-        { type: "ADJUSTMENT", amountSyp: 5 },
+        { type: "CHARGE", amountUsd: 100 },
+        { type: "ADJUSTMENT", amountUsd: 5 },
       ],
       105,
     );
-    expect(summary.paymentsSyp).toBe(0);
-    expect(summary.discountSyp).toBe(0);
+    expect(summary.paymentsUsd).toBe(0);
+    expect(summary.discountUsd).toBe(0);
   });
 });

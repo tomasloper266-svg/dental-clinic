@@ -12,33 +12,33 @@ describe("buildChargeWithItemsBody", () => {
   it("يبنى قيداً واحداً بمبلغ يساوي مجموع البنود", () => {
     const body = buildChargeWithItemsBody({
       items: [
-        { description: "تبييض ليزر", category: "تبييض ليزر", amountSyp: 60_000 },
-        { description: "حشو عصبي", category: "حشو عصبي", amountSyp: 40_000 },
+        { description: "تبييض ليزر", category: "تبييض ليزر", amountUsd: 60_000 },
+        { description: "حشو عصبي", category: "حشو عصبي", amountUsd: 40_000 },
       ],
     });
     expect(body.type).toBe("CHARGE");
-    expect(body.amountSyp).toBe(100_000);
+    expect(body.amountUsd).toBe(100_000);
     expect(body.items).toHaveLength(2);
   });
 
   it("يحفظ وصف البند وتصنيفه وترتيب الإدخال كما هو", () => {
     const body = buildChargeWithItemsBody({
       items: [
-        { description: "تنظيف عميق (السن 16)", category: "تنظيف عميق", amountSyp: 25_000 },
-        { description: "حشو", amountSyp: 15_000 },
+        { description: "تنظيف عميق (السن 16)", category: "تنظيف عميق", amountUsd: 25_000 },
+        { description: "حشو", amountUsd: 15_000 },
       ],
     });
     expect(body.items[0]).toEqual({
       description: "تنظيف عميق (السن 16)",
       category: "تنظيف عميق",
-      amountSyp: 25_000,
+      amountUsd: 25_000,
     });
-    expect(body.items[1]).toEqual({ description: "حشو", amountSyp: 15_000 });
+    expect(body.items[1]).toEqual({ description: "حشو", amountUsd: 15_000 });
   });
 
   it("يمرر الملاحظة وتاريخ القيد الاختياريين كما هما", () => {
     const body = buildChargeWithItemsBody({
-      items: [{ description: "إجراء", amountSyp: 10 }],
+      items: [{ description: "إجراء", amountUsd: 10 }],
       note: "فاتورة — 1 بنود",
       createdAt: "2026-11-14T12:00:00.000Z",
     });
@@ -69,7 +69,7 @@ describe("invoiceItemDescription", () => {
 describe("buildPaymentBody", () => {
   it("يرسل appliedChargeId المختار في الجسم فعلياً — لا ملاحظة حصراً", () => {
     const body = buildPaymentBody({
-      amountSyp: -40_000,
+      amountUsd: -40_000,
       note: "دفعة نقدا — سداد الفاتورة INV-2026-036",
       createdAt: "2026-11-14T12:00:00.000Z",
       appliedChargeId: "charge_1",
@@ -82,7 +82,7 @@ describe("buildPaymentBody", () => {
 
   it("يحذف appliedChargeId حين تكون الدفعة على الحساب (بدون فوترة)", () => {
     const body = buildPaymentBody({
-      amountSyp: -10_000,
+      amountUsd: -10_000,
       note: "دفعة نقدا — على الحساب (بدون فوترة)",
       appliedChargeId: undefined,
     });

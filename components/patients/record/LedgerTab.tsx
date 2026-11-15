@@ -10,7 +10,7 @@ import {
 } from "@/lib/patient-finance";
 import { formatDateCell } from "@/lib/dates";
 import { useMoney, useDisplayCurrency, useUsdRate } from "@/components/ui/CurrencyContext";
-import { formatPrimaryCostFromSyp } from "@/lib/currency";
+import { formatPrimaryCostFromUsd } from "@/lib/currency";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Table, THead, TRow, TH, TD } from "@/components/ui/Table";
@@ -29,7 +29,7 @@ type Props = {
   materialRows: ReadonlyArray<{
     createdAt: Date | string;
     materialName: string;
-    costSyp: number;
+    costUsd: number;
   }>;
   onNewEntry: () => void;
 };
@@ -46,11 +46,11 @@ export default function LedgerTab({
   const money = useMoney();
   const currency = useDisplayCurrency();
   const usdRate = useUsdRate();
-  // النسخة التفصيلية — بها discountSyp لعمود الخصم كي يتوازن الصف:
+  // النسخة التفصيلية — بها discountUsd لعمود الخصم كي يتوازن الصف:
   // الإجمالي = المدفوع + الخصم + المتبقي (سجل art_yHnC9AAM بند 14أ)
   const invoices = deriveInvoicesDetailed(entries);
   const paymentLog = buildPaymentLog(entries, materialRows);
-  const dueSyp = Math.max(balance, 0);
+  const dueUsd = Math.max(balance, 0);
 
   return (
     <div className="space-y-4">
@@ -64,10 +64,10 @@ export default function LedgerTab({
           <span
             className={cn(
               "numeric text-sm font-semibold",
-              dueSyp > 0 ? "text-danger-600" : "text-primary-700",
+              dueUsd > 0 ? "text-danger-600" : "text-primary-700",
             )}
           >
-            {money(dueSyp)}
+            {money(dueUsd)}
           </span>
         </div>
         <Button onClick={onNewEntry} className="h-8 px-3 text-xs">
@@ -115,28 +115,28 @@ export default function LedgerTab({
                       {formatDateCell(inv.date)}
                     </TD>
                     <TD className="numeric text-ink-900 text-sm">
-                      {money(inv.totalSyp)}
+                      {money(inv.totalUsd)}
                     </TD>
                     <TD className="numeric text-primary-700 text-sm">
-                      {money(inv.paidSyp)}
+                      {money(inv.paidUsd)}
                     </TD>
                     <TD
                       className={cn(
                         "numeric text-sm",
-                        inv.discountSyp > 0
+                        inv.discountUsd > 0
                           ? "text-warning-700"
                           : "text-warm-400",
                       )}
                     >
-                      {money(inv.discountSyp)}
+                      {money(inv.discountUsd)}
                     </TD>
                     <TD
                       className={cn(
                         "numeric text-sm",
-                        inv.remainingSyp > 0 ? "text-danger-600" : "text-warm-400",
+                        inv.remainingUsd > 0 ? "text-danger-600" : "text-warm-400",
                       )}
                     >
-                      {money(inv.remainingSyp)}
+                      {money(inv.remainingUsd)}
                     </TD>
                     <TD>
                       <span
@@ -196,9 +196,9 @@ export default function LedgerTab({
                     >
                       {row.kind === "PAYMENT" ? "−" : "+"}
                       {row.kind === "PAYMENT"
-                        ? money(Math.abs(row.amountSyp))
-                        : formatPrimaryCostFromSyp(
-                            Math.abs(row.amountSyp),
+                        ? money(Math.abs(row.amountUsd))
+                        : formatPrimaryCostFromUsd(
+                            Math.abs(row.amountUsd),
                             usdRate,
                             currency,
                           )}

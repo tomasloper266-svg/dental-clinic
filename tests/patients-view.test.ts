@@ -117,7 +117,7 @@ function row(
   const { id, name, ...rest } = overrides;
   return {
     patient: patient({ id, name }),
-    balanceSyp: 0,
+    balanceUsd: 0,
     lastVisit: null,
     nextVisit: null,
     ...rest,
@@ -134,14 +134,14 @@ describe("buildPatientRows", () => {
     const rows = buildPatientRows(
       patients,
       [
-        { patientId: "a", amountSyp: 300_000 },
-        { patientId: "a", amountSyp: -200_000 },
+        { patientId: "a", amountUsd: 300_000 },
+        { patientId: "a", amountUsd: -200_000 },
       ],
       [],
       NOW,
     );
-    expect(rows.find((r) => r.patient.id === "a")?.balanceSyp).toBe(100_000);
-    expect(rows.find((r) => r.patient.id === "b")?.balanceSyp).toBe(0);
+    expect(rows.find((r) => r.patient.id === "a")?.balanceUsd).toBe(100_000);
+    expect(rows.find((r) => r.patient.id === "b")?.balanceUsd).toBe(0);
   });
 
   it("يفصل آخر زيارة فعلية عن أقرب موعد قادم، ويتجاهل الملغى ولم يحضر", () => {
@@ -163,7 +163,7 @@ describe("buildPatientRows", () => {
   it("مريض بلا سجلات يعطي أصفاراً وقيم null", () => {
     const rows = buildPatientRows([patients[0]], [], [], NOW);
     expect(rows[0]).toMatchObject({
-      balanceSyp: 0,
+      balanceUsd: 0,
       lastVisit: null,
       nextVisit: null,
     });
@@ -172,14 +172,14 @@ describe("buildPatientRows", () => {
 
 describe("searchPatientRows و sortPatientRows", () => {
   const rows: PatientRowView[] = [
-    row({ id: "a", name: "أحمد", balanceSyp: 40 }),
+    row({ id: "a", name: "أحمد", balanceUsd: 40 }),
     row({
       id: "b",
       name: "سارة",
-      balanceSyp: 300,
+      balanceUsd: 300,
       patient: patient({ id: "b", name: "سارة", fileNo: 7 }),
     }),
-    row({ id: "c", name: "خالد", balanceSyp: 0 }),
+    row({ id: "c", name: "خالد", balanceUsd: 0 }),
   ];
 
   it("البحث يطابق الاسم أو الهاتف أو رقم الأيوبي", () => {

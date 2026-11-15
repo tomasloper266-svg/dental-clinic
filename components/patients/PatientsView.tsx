@@ -88,14 +88,14 @@ function VisitCell({ value }: { value: string | null }) {
   );
 }
 
-function BalanceCell({ balanceSyp }: { balanceSyp: number }) {
+function BalanceCell({ balanceUsd }: { balanceUsd: number }) {
   const money = useMoney();
-  if (balanceSyp <= 0) {
+  if (balanceUsd <= 0) {
     return <Badge tone="success">مسدد ✓</Badge>;
   }
   return (
     <span className="numeric font-semibold text-danger-600" title="رصيد مستحق">
-      {money(balanceSyp)}
+      {money(balanceUsd)}
     </span>
   );
 }
@@ -317,7 +317,7 @@ export default function PatientsView({ rows }: Props) {
               </TRow>
             </THead>
             <tbody>
-              {visible.map(({ patient, balanceSyp, lastVisit, nextVisit }) => (
+              {visible.map(({ patient, balanceUsd, lastVisit, nextVisit }) => (
                 <TRow key={patient.id}>
                   <TD>
                     <PatientCell patient={patient} />
@@ -332,7 +332,7 @@ export default function PatientsView({ rows }: Props) {
                     <VisitCell value={nextVisit} />
                   </TD>
                   <TD>
-                    <BalanceCell balanceSyp={balanceSyp} />
+                    <BalanceCell balanceUsd={balanceUsd} />
                   </TD>
                   <TD>
                     <div className="flex items-center justify-end gap-1.5">

@@ -113,12 +113,12 @@ describe("parseCreateMaterial", () => {
       name: "كمبوزيت",
       unit: "أنبوب",
       minQuantity: 3,
-      costSyp: 25000,
+      costUsd: 25000,
     });
     expect(parsed.ok).toBe(true);
     if (parsed.ok) {
       expect(parsed.value.name).toBe("كمبوزيت");
-      expect(parsed.value.costSyp).toBe(25000);
+      expect(parsed.value.costUsd).toBe(25000);
     }
   });
 
@@ -141,7 +141,7 @@ describe("parseCreateMaterial", () => {
         name: "كمبوزيت",
         unit: "علبة",
         minQuantity: 1,
-        costSyp: -5,
+        costUsd: -5,
       }).ok,
     ).toBe(false);
   });
@@ -152,11 +152,11 @@ describe("parseCreateMaterial", () => {
       name: "كمبوزيت",
       unit: "علبة",
       minQuantity: 1,
-      costSyp: 4.5,
+      costUsd: 4.5,
     });
     expect(parsed.ok).toBe(true);
     if (parsed.ok) {
-      expect(parsed.value.costSyp).toBe(4.5);
+      expect(parsed.value.costUsd).toBe(4.5);
     }
   });
 });
@@ -306,7 +306,7 @@ role: "DENTIST",
       name: "كمبوزيت ضوئي",
       unit: "أنبوب",
       minQuantity: 2,
-      costSyp: 40000,
+      costUsd: 40000,
     });
     expect(status).toBe(201);
     expect(body.material?.id).toBeTruthy();

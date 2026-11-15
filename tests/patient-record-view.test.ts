@@ -14,7 +14,7 @@ function entry(overrides: Partial<LedgerEntryDto> = {}): LedgerEntryDto {
     id: "e1",
     patientId: "p1",
     type: "CHARGE",
-    amountSyp: 100_000,
+    amountUsd: 100_000,
     note: null,
     treatmentItemId: null,
     invoiceSeq: null,
@@ -30,7 +30,7 @@ function planItem(overrides: Partial<PlanItemDto> = {}): PlanItemDto {
     id: "t1",
     toothFdi: 24,
     procedure: "حشو",
-    priceSyp: 150_000,
+    priceUsd: 150_000,
     status: "DONE",
     priority: 1,
     ...overrides,
@@ -80,11 +80,11 @@ describe("ledgerEntriesWithPlan", () => {
     // قيد الاسترداد موجب ويرفع ما على المريض — كان يُسقط من المعادلة سابقاً
     // فتباين رصيد صفحة المريض مع لوحة الفواتير بعد أي استرداد.
     const summary = summarizeLedger([
-      entry({ type: "CHARGE", amountSyp: 400_000 }),
-      entry({ type: "PAYMENT", amountSyp: -150_000 }),
-      entry({ type: "REFUND", amountSyp: 30_000 }),
+      entry({ type: "CHARGE", amountUsd: 400_000 }),
+      entry({ type: "PAYMENT", amountUsd: -150_000 }),
+      entry({ type: "REFUND", amountUsd: 30_000 }),
     ]);
-    expect(summary.balanceSyp).toBe(400_000 - 150_000 + 30_000);
+    expect(summary.balanceUsd).toBe(400_000 - 150_000 + 30_000);
   });
 
   it("يرتب الأحدث أولًا بغضّ ترتيب الإدخال", () => {

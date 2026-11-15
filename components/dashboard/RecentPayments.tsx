@@ -35,7 +35,7 @@ export function RecentPayments({
             subtitle={formatEntryDate(entry.createdAt)}
           />
           <span className="numeric shrink-0 text-sm font-bold text-primary-700">
-            +{money(Math.abs(entry.amountSyp))}
+            +{money(Math.abs(entry.amountUsd))}
           </span>
         </li>
       ))}

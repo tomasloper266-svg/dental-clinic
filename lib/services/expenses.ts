@@ -1,5 +1,6 @@
 import { clinicScope } from "@/lib/tenant/clinic-client";
 import type { TenantContext } from "@/lib/tenant/context";
+import { isUsdAmount } from "@/lib/currency";
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from "@/lib/reports-view";
 
 // خدمة مصاريف العيادة — سجل مستقل بفئات ثابتة، يعرض لاحقاً مقابل التحصيل
@@ -20,14 +21,14 @@ export type ExpenseDto = {
   id: string;
   // القاعدة تخزن سلسلة نصية — صلاحية الفئة مضمونة عند الإدخال حصراً
   category: string;
-  amountSyp: number;
+  amountUsd: number;
   note: string | null;
   spentAt: Date;
 };
 
 export type ExpenseInput = {
   category: ExpenseCategory;
-  amountSyp: number;
+  amountUsd: number;
   note?: string;
   spentAt?: Date;
 };
@@ -46,9 +47,9 @@ export function parseCreateExpense(
     return { ok: false, error: "فئة المصروف غير صالحة" };
   }
 
-  const amountSyp = typeof b.amountSyp === "number" ? b.amountSyp : NaN;
-  if (!Number.isInteger(amountSyp) || amountSyp <= 0) {
-    return { ok: false, error: "المصروف يجب أن يكون رقماً صحيحاً موجباً" };
+  const amountUsd = typeof b.amountUsd === "number" ? b.amountUsd : NaN;
+  if (!isUsdAmount(amountUsd) || amountUsd <= 0) {
+    return { ok: false, error: "المصروف يجب أن يكون رقماً موجباً بمنزلتين عشريتين كحد أقصى" };
   }
 
   const note = typeof b.note === "string" ? b.note.trim() : undefined;
@@ -61,7 +62,7 @@ export function parseCreateExpense(
     spentAt = parsed;
   }
 
-  return { ok: true, value: { category, amountSyp, note, spentAt } };
+  return { ok: true, value: { category, amountUsd, note, spentAt } };
 }
 
 export type ExpensePeriod = { from: Date; to: Date };
@@ -80,12 +81,12 @@ export async function listExpenses(
     select: {
       id: true,
       category: true,
-      amountSyp: true,
+      amountUsd: true,
       note: true,
       spentAt: true,
     },
   });
-  return rows;
+  return rows.map((row) => ({ ...row, amountUsd: Number(row.amountUsd) }));
 }
 
 export async function createExpense(
@@ -97,17 +98,17 @@ export async function createExpense(
     data: {
       clinicId: ctx.clinicId,
       category: input.category,
-      amountSyp: input.amountSyp,
+      amountUsd: input.amountUsd,
       note: input.note,
       spentAt: input.spentAt,
     },
     select: {
       id: true,
       category: true,
-      amountSyp: true,
+      amountUsd: true,
       note: true,
       spentAt: true,
     },
   });
-  return expense;
+  return { ...expense, amountUsd: Number(expense.amountUsd) };
 }

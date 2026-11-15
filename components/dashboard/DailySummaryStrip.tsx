@@ -10,9 +10,9 @@ import { useMoney } from "@/components/ui/CurrencyContext";
 // لذا الأرقام المالية بلا روابط الآن والأرقام التشغيلية مربوطة بصفحاتها.
 
 type DailySummaryStripProps = {
-  netSyp: number;
-  collectedSyp: number;
-  expensesSyp: number;
+  netUsd: number;
+  collectedUsd: number;
+  expensesUsd: number;
   patientsToday: number;
   waitlistCount: number;
 };
@@ -21,14 +21,14 @@ const secondaryCell =
   "flex flex-col gap-1 rounded-panel border border-warm-200 bg-surface-raised px-4 py-3";
 
 export function DailySummaryStrip({
-  netSyp,
-  collectedSyp,
-  expensesSyp,
+  netUsd,
+  collectedUsd,
+  expensesUsd,
   patientsToday,
   waitlistCount,
 }: DailySummaryStripProps) {
   const money = useMoney();
-  const netNegative = netSyp < 0;
+  const netNegative = netUsd < 0;
 
   return (
     <section
@@ -53,7 +53,7 @@ export function DailySummaryStrip({
             netNegative ? "text-danger-700" : "text-primary-800",
           )}
         >
-          {money(netSyp)}
+          {money(netUsd)}
         </span>
         <span className="text-warm-500 text-xs">
           التحصيل − المصاريف − الاستردادات
@@ -63,14 +63,14 @@ export function DailySummaryStrip({
       <div className={secondaryCell}>
         <span className="text-warm-500 text-xs">التحصيل</span>
         <span className="numeric text-ink-900 text-lg font-semibold">
-          {money(collectedSyp)}
+          {money(collectedUsd)}
         </span>
       </div>
 
       <div className={secondaryCell}>
         <span className="text-warm-500 text-xs">المصاريف</span>
         <span className="numeric text-ink-900 text-lg font-semibold">
-          {money(expensesSyp)}
+          {money(expensesUsd)}
         </span>
       </div>
 

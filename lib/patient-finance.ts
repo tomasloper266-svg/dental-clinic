@@ -25,9 +25,9 @@ export type InvoiceView = {
   /** رقم الفاتورة — INV-<سنة>-<تسلسل العيادة> بثلاث خانات */
   number: string;
   date: string;
-  totalSyp: number;
-  paidSyp: number;
-  remainingSyp: number;
+  totalUsd: number;
+  paidUsd: number;
+  remainingUsd: number;
   status: InvoiceStatus;
 };
 
@@ -60,9 +60,9 @@ export function deriveInvoices(
   return deriveInvoicesDetailed(entries).map((invoice) => ({
     number: invoice.number,
     date: invoice.date,
-    totalSyp: invoice.totalSyp,
-    paidSyp: invoice.paidSyp,
-    remainingSyp: invoice.remainingSyp,
+    totalUsd: invoice.totalUsd,
+    paidUsd: invoice.paidUsd,
+    remainingUsd: invoice.remainingUsd,
     status: invoice.status,
   }));
 }
@@ -71,9 +71,9 @@ export type PaymentLogKind = "PAYMENT" | "MATERIAL";
 
 export type DetailedInvoiceView = InvoiceView & {
   /** إجمالي الخصومات المخصصة لهذه الفاتورة — تسويات سالبة بقيد الدفتر */
-  discountSyp: number;
+  discountUsd: number;
   /** الدفعات المسجلة المخصصة لهذه الفاتورة بالتسلسل */
-  payments: Array<{ date: string; note: string; amountSyp: number }>;
+  payments: Array<{ date: string; note: string; amountUsd: number }>;
 };
 
 /**
@@ -102,16 +102,16 @@ export function deriveInvoicesDetailed(
     ...entries
       .filter((e) => e.type === "PAYMENT")
       .map((e) => ({
-        amount: Math.abs(e.amountSyp),
+        amount: Math.abs(e.amountUsd),
         isDiscount: false,
         time: timeOf(e.createdAt),
         date: dateOf(e.createdAt),
         note: e.note ?? "",
       })),
     ...entries
-      .filter((e) => e.type === "ADJUSTMENT" && e.amountSyp < 0)
+      .filter((e) => e.type === "ADJUSTMENT" && e.amountUsd < 0)
       .map((e) => ({
-        amount: Math.abs(e.amountSyp),
+        amount: Math.abs(e.amountUsd),
         isDiscount: true,
         time: timeOf(e.createdAt),
         date: dateOf(e.createdAt),
@@ -121,19 +121,19 @@ export function deriveInvoicesDetailed(
 
   let cursor = 0;
   return charges.map((charge, index) => {
-    let paidSyp = 0;
-    let discountSyp = 0;
-    let remaining = charge.amountSyp;
+    let paidUsd = 0;
+    let discountUsd = 0;
+    let remaining = charge.amountUsd;
     const payments: DetailedInvoiceView["payments"] = [];
     while (cursor < credits.length && remaining > 0) {
       const take = Math.min(credits[cursor].amount, remaining);
-      if (credits[cursor].isDiscount) discountSyp += take;
+      if (credits[cursor].isDiscount) discountUsd += take;
       else {
-        paidSyp += take;
+        paidUsd += take;
         payments.push({
           date: credits[cursor].date,
           note: credits[cursor].note,
-          amountSyp: take,
+          amountUsd: take,
         });
       }
       credits[cursor].amount -= take;
@@ -141,17 +141,17 @@ export function deriveInvoicesDetailed(
       if (credits[cursor].amount === 0) cursor += 1;
     }
     const status: InvoiceStatus =
-      remaining === 0 ? "PAID" : paidSyp + discountSyp > 0 ? "PARTIAL" : "UNPAID";
+      remaining === 0 ? "PAID" : paidUsd + discountUsd > 0 ? "PARTIAL" : "UNPAID";
     return {
       number: invoiceNumber(charge, index),
       date:
         charge.createdAt instanceof Date
           ? charge.createdAt.toISOString()
           : String(charge.createdAt),
-      totalSyp: charge.amountSyp,
-      paidSyp,
-      discountSyp,
-      remainingSyp: remaining,
+      totalUsd: charge.amountUsd,
+      paidUsd,
+      discountUsd,
+      remainingUsd: remaining,
       status,
       payments,
     };
@@ -163,17 +163,17 @@ export type PaymentLogRow = {
   /** الوصف — ملاحظة الدفعة أو اسم المادة المستهلكة */
   description: string;
   /** المبلغ بالدولار المعروض — الدفعة سالبة والاستهلاك موجب بتكلفته */
-  amountSyp: number;
+  amountUsd: number;
   kind: PaymentLogKind;
 };
 
 export type LedgerSummary = {
   /** مجموع قيود الرسوم — الإجمالي في بطاقة الملخص المالي */
-  chargesSyp: number;
+  chargesUsd: number;
   /** مجموع الدفعات بقيمها المطلقة */
-  paidSyp: number;
+  paidUsd: number;
   /** الرصيد — رسوم ناقص دفعات وتسويات (خصم) */
-  balanceSyp: number;
+  balanceUsd: number;
 };
 
 /** نقي — ملخص الدفتر المالي: رسوم ودفعات ورصيد بلا فواتير.
@@ -185,9 +185,9 @@ export function summarizeLedger(
 ): LedgerSummary {
   const canonical = summarizeLedgerCanonical(entries);
   return {
-    chargesSyp: canonical.chargesSyp,
-    paidSyp: canonical.paymentsSyp,
-    balanceSyp: canonical.balanceSyp,
+    chargesUsd: canonical.chargesUsd,
+    paidUsd: canonical.paymentsUsd,
+    balanceUsd: canonical.balanceUsd,
   };
 }
 
@@ -197,7 +197,7 @@ export function buildPaymentLog(
   materialRows: ReadonlyArray<{
     createdAt: Date | string;
     materialName: string;
-    costSyp: number;
+    costUsd: number;
   }>,
 ): PaymentLogRow[] {
   const rows: PaymentLogRow[] = [
@@ -209,7 +209,7 @@ export function buildPaymentLog(
             ? e.createdAt.toISOString()
             : String(e.createdAt),
         description: e.note ?? "دفعة مسددة",
-        amountSyp: e.amountSyp,
+        amountUsd: e.amountUsd,
         kind: "PAYMENT" as const,
       })),
     ...materialRows.map((row) => ({
@@ -218,7 +218,7 @@ export function buildPaymentLog(
           ? row.createdAt.toISOString()
           : String(row.createdAt),
       description: `مخزون: ${row.materialName}`,
-      amountSyp: row.costSyp,
+      amountUsd: row.costUsd,
       kind: "MATERIAL" as const,
     })),
   ];

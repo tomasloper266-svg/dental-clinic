@@ -18,7 +18,7 @@ type AppShellProps = {
   logoLetter?: string;
   badges: Record<BadgeKey, number>;
   /** المستحقات غير المسددة — بطاقة التنبيه المثبتة في السايدبار */
-  outstandingDuesSyp?: number;
+  outstandingDuesUsd?: number;
   /** سعر صرف الدولار — لعرض العملة المزدوجة في بطاقة المستحقات */
   usdRate?: number;
   /** قفل حساب الجلسة مفعّل — يظهر زر القفل اليدوي في الشريط العلوي */
@@ -37,7 +37,7 @@ export function AppShell({
   clinicName,
   logoLetter,
   badges,
-  outstandingDuesSyp = 0,
+  outstandingDuesUsd = 0,
   usdRate = DEFAULT_USD_RATE,
   lockEnabled = false,
   children,
@@ -46,7 +46,7 @@ export function AppShell({
   // ملخص المستحقات الحي — يُهيّأ من التخطيط الخادم ويُجلب من جديد بعد كل
   // كتابة في الدفتر (قيد/دفعة/تسوية) كي تعكس بطاقة السايدبار وشارة النقل
   // آخر عملية فوراً بدل انتظار إعادة تحميل كاملة.
-  const [outstandingDues, setOutstandingDues] = useState(outstandingDuesSyp);
+  const [outstandingDues, setOutstandingDues] = useState(outstandingDuesUsd);
   const [duesBadge, setDuesBadge] = useState(badges.dues);
 
   useEffect(() => {
@@ -58,12 +58,12 @@ export function AppShell({
             throw new Error(`حالة الجلب ${res.status}`);
           }
           const data = (await res.json()) as {
-            outstandingDuesSyp?: number;
+            outstandingDuesUsd?: number;
             patientsWithDues?: number;
           };
           if (cancelled) return;
-          if (typeof data.outstandingDuesSyp === "number") {
-            setOutstandingDues(data.outstandingDuesSyp);
+          if (typeof data.outstandingDuesUsd === "number") {
+            setOutstandingDues(data.outstandingDuesUsd);
           }
           if (typeof data.patientsWithDues === "number") {
             setDuesBadge(data.patientsWithDues);
@@ -101,7 +101,7 @@ export function AppShell({
         clinicName={clinicName}
         logoLetter={logoLetter}
         badges={{ ...badges, dues: duesBadge }}
-        outstandingDuesSyp={outstandingDues}
+        outstandingDuesUsd={outstandingDues}
         usdRate={usdRate}
       />
       <div

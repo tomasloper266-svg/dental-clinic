@@ -11,36 +11,36 @@ describe("تجميع الفترة", () => {
   it("التحصيل مجموع الدفعات بقيمة مطلقة والصافي مطروحاً منه المصاريف", () => {
     const summary = summarizePeriod(
       [
-        { type: "CHARGE", amountSyp: 500_000 },
-        { type: "PAYMENT", amountSyp: -200_000 },
-        { type: "PAYMENT", amountSyp: -175_000 },
-        { type: "ADJUSTMENT", amountSyp: -50_000 },
+        { type: "CHARGE", amountUsd: 500_000 },
+        { type: "PAYMENT", amountUsd: -200_000 },
+        { type: "PAYMENT", amountUsd: -175_000 },
+        { type: "ADJUSTMENT", amountUsd: -50_000 },
       ],
-      [{ amountSyp: 100_000 }, { amountSyp: 25_000 }],
+      [{ amountUsd: 100_000 }, { amountUsd: 25_000 }],
     );
-    expect(summary.collectedSyp).toBe(375_000);
-    expect(summary.expensesSyp).toBe(125_000);
-    expect(summary.netSyp).toBe(250_000);
+    expect(summary.collectedUsd).toBe(375_000);
+    expect(summary.expensesUsd).toBe(125_000);
+    expect(summary.netUsd).toBe(250_000);
   });
 
   it("الاسترداد يطرح من المقبوضات ولا يُعد تحصيلاً", () => {
     const summary = summarizePeriod(
       [
-        { type: "PAYMENT", amountSyp: -300_000 },
-        { type: "REFUND", amountSyp: 100_000 },
+        { type: "PAYMENT", amountUsd: -300_000 },
+        { type: "REFUND", amountUsd: 100_000 },
       ],
       [],
     );
-    expect(summary.collectedSyp).toBe(300_000);
-    expect(summary.refundsSyp).toBe(100_000);
-    expect(summary.netSyp).toBe(200_000);
+    expect(summary.collectedUsd).toBe(300_000);
+    expect(summary.refundsUsd).toBe(100_000);
+    expect(summary.netUsd).toBe(200_000);
   });
 
   it("فترة بلا حركة تعطي أصفاراً", () => {
     const summary = summarizePeriod([], []);
-    expect(summary.collectedSyp).toBe(0);
-    expect(summary.expensesSyp).toBe(0);
-    expect(summary.netSyp).toBe(0);
+    expect(summary.collectedUsd).toBe(0);
+    expect(summary.expensesUsd).toBe(0);
+    expect(summary.netUsd).toBe(0);
   });
 });
 

@@ -25,12 +25,12 @@ describe("الرصيد الجاري التراكمي", () => {
 
   it("الرصيد بعد كل قيد يجمع القيود الموقّعة تراكمياً", () => {
     expect(
-      runningBalances([{ amountSyp: 500_000 }, { amountSyp: -200_000 }, { amountSyp: 100_000 }]),
+      runningBalances([{ amountUsd: 500_000 }, { amountUsd: -200_000 }, { amountUsd: 100_000 }]),
     ).toEqual([500_000, 300_000, 400_000]);
   });
 
   it("الرصيد الأخير يساوي معادلة الرصيد (Σ القيود)", () => {
-    const entries = [{ amountSyp: 300_000 }, { amountSyp: -300_000 }, { amountSyp: 75_000 }];
+    const entries = [{ amountUsd: 300_000 }, { amountUsd: -300_000 }, { amountUsd: 75_000 }];
     const balances = runningBalances(entries);
     expect(balances[balances.length - 1]).toBe(75_000);
   });
@@ -39,20 +39,20 @@ describe("الرصيد الجاري التراكمي", () => {
 describe("ملخص الدفتر", () => {
   it("يفصل الرسوم والدفعات بقيمها المطلقة والرصيد من القيود كما هي", () => {
     const summary = summarizeLedger([
-      { type: "CHARGE", amountSyp: 500_000, createdAt: "2026-01-01" },
-      { type: "PAYMENT", amountSyp: -200_000, createdAt: "2026-01-02" },
-      { type: "ADJUSTMENT", amountSyp: -50_000, createdAt: "2026-01-03" },
-      { type: "REFUND", amountSyp: 25_000, createdAt: "2026-01-04" },
+      { type: "CHARGE", amountUsd: 500_000, createdAt: "2026-01-01" },
+      { type: "PAYMENT", amountUsd: -200_000, createdAt: "2026-01-02" },
+      { type: "ADJUSTMENT", amountUsd: -50_000, createdAt: "2026-01-03" },
+      { type: "REFUND", amountUsd: 25_000, createdAt: "2026-01-04" },
     ]);
-    expect(summary.chargesSyp).toBe(500_000);
-    expect(summary.paymentsSyp).toBe(200_000);
-    expect(summary.adjustmentsNetSyp).toBe(-50_000);
-    expect(summary.refundsSyp).toBe(25_000);
-    expect(summary.balanceSyp).toBe(500_000 - 200_000 - 50_000 + 25_000);
+    expect(summary.chargesUsd).toBe(500_000);
+    expect(summary.paymentsUsd).toBe(200_000);
+    expect(summary.adjustmentsNetUsd).toBe(-50_000);
+    expect(summary.refundsUsd).toBe(25_000);
+    expect(summary.balanceUsd).toBe(500_000 - 200_000 - 50_000 + 25_000);
   });
 
   it("دفتر فارغ يعطي أصفاراً", () => {
-    expect(summarizeLedger([]).balanceSyp).toBe(0);
+    expect(summarizeLedger([]).balanceUsd).toBe(0);
   });
 });
 
@@ -116,9 +116,9 @@ describe("settlementOfCharge", () => {
 describe("runningBalancesByPatient", () => {
   it("يحسب الرصيد لكل مريض على حدة بترتيبه الزمني", () => {
     const after = runningBalancesByPatient([
-      { id: "e1", patientId: "p1", amountSyp: 300_000, createdAt: "2026-01-01" },
-      { id: "e2", patientId: "p2", amountSyp: 100_000, createdAt: "2026-01-02" },
-      { id: "e3", patientId: "p1", amountSyp: -200_000, createdAt: "2026-01-03" },
+      { id: "e1", patientId: "p1", amountUsd: 300_000, createdAt: "2026-01-01" },
+      { id: "e2", patientId: "p2", amountUsd: 100_000, createdAt: "2026-01-02" },
+      { id: "e3", patientId: "p1", amountUsd: -200_000, createdAt: "2026-01-03" },
     ]);
     expect(after.get("e1")).toBe(300_000);
     expect(after.get("e2")).toBe(100_000);
@@ -128,8 +128,8 @@ describe("runningBalancesByPatient", () => {
 
 describe("buildLedgerRows و filterBySettlement", () => {
   const entries = [
-    { id: "e1", patientId: "p1", patientName: "أحمد", patientPhone: null, type: "CHARGE" as const, amountSyp: 300_000, note: null, createdAt: "2026-01-01" },
-    { id: "e2", patientId: "p1", patientName: "أحمد", patientPhone: null, type: "PAYMENT" as const, amountSyp: -200_000, note: null, createdAt: "2026-01-02" },
+    { id: "e1", patientId: "p1", patientName: "أحمد", patientPhone: null, type: "CHARGE" as const, amountUsd: 300_000, note: null, createdAt: "2026-01-01" },
+    { id: "e2", patientId: "p1", patientName: "أحمد", patientPhone: null, type: "PAYMENT" as const, amountUsd: -200_000, note: null, createdAt: "2026-01-02" },
   ];
 
   it("الرسوم المُصدرة تُصنَّف من رصيد المريض بعدها، والدفعات مسددة بحكمها", () => {

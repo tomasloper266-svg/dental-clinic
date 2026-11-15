@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
-import { usdToSyp } from "@/lib/currency";
+import { roundUsd2 } from "@/lib/currency";
 import {
   buildChargeWithItemsBody,
   invoiceItemDescription,
@@ -33,14 +33,12 @@ const EMPTY_ITEM: InvoiceItemDraft = { procedure: "", tooth: "", priceUsd: "" };
 type Props = {
   onClose: () => void;
   onIssued: () => void;
-  usdRate: number;
   patients: PatientDto[];
 };
 
 export default function NewInvoiceModal({
   onClose,
   onIssued,
-  usdRate,
   patients,
 }: Props) {
   const router = useRouter();
@@ -104,8 +102,9 @@ export default function NewInvoiceModal({
       const validItems = items.filter(
         (item) => item.procedure.trim() && Number(item.priceUsd) > 0,
       );
-      // كل بند يُحوَّل إلى الليرة مستقلاً (تقريب وحدة التخزين)، ومبلغ القيد
-      // يُبنى كمجموع البنود المحوَّلة — فيمر تحقق «مجموع البنود = المبلغ» دائماً.
+      // الأسعار تُدخل بالدولار — وهي الآن وحدة التخزين نفسها، فتُخزَّن كما
+      // دخلت بمنزلتين عشريتين بلا أي تحويل، ويُبنى مبلغ القيد كمجموع البنود
+      // — فيمر تحقق «مجموع البنود = المبلغ» دائماً.
       const payloadItems: InvoiceItemPayload[] = validItems.map((item) => {
         const procedure = item.procedure.trim();
         const tooth = item.tooth.trim();
@@ -114,7 +113,7 @@ export default function NewInvoiceModal({
           // التصنيف نص حر أساس تجميع الإيراد حسب نوع العلاج — للفاتورة
           // اليدوية بلا حقل تصنيف، فالإجراء نفسه هو التصنيف.
           category: procedure,
-          amountSyp: usdToSyp(Number(item.priceUsd), usdRate),
+          amountUsd: roundUsd2(Number(item.priceUsd)),
         };
       });
       const res = await fetch(
@@ -145,7 +144,7 @@ export default function NewInvoiceModal({
             headers: { "content-type": "application/json" },
             body: JSON.stringify({
               type: "ADJUSTMENT",
-              amountSyp: -usdToSyp(discount, usdRate),
+              amountUsd: -roundUsd2(discount),
               note: notes.trim()
                 ? `خصم على فاتورة — ${notes.trim()}`
                 : "خصم على فاتورة",

@@ -36,7 +36,7 @@ import RecordPaymentModal from "@/components/finance/RecordPaymentModal";
 
 type ClinicEntryJson = ClinicLedgerEntryDto & { createdAt: string };
 
-type PayState = { patientId: string; dueSyp: number } | null;
+type PayState = { patientId: string; dueUsd: number } | null;
 
 /** تنزيل نص CSV من المتصفح — إلحاق BOM ليُقرأ العربية في Excel */
 function downloadCsv(filename: string, csv: string) {
@@ -116,17 +116,17 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
 
   const summary = useMemo(() => {
     if (rows === null) return null;
-    let totalDuesSyp = 0;
-    let maxDueSyp = 0;
+    let totalDuesUsd = 0;
+    let maxDueUsd = 0;
     for (const row of rows) {
-      totalDuesSyp += row.dueSyp;
-      if (row.dueSyp > maxDueSyp) maxDueSyp = row.dueSyp;
+      totalDuesUsd += row.dueUsd;
+      if (row.dueUsd > maxDueUsd) maxDueUsd = row.dueUsd;
     }
     return {
-      totalDuesSyp,
+      totalDuesUsd,
       debtors: rows.length,
-      maxDueSyp,
-      avgDueSyp: rows.length === 0 ? 0 : Math.round(totalDuesSyp / rows.length),
+      maxDueUsd,
+      avgDueUsd: rows.length === 0 ? 0 : Math.round(totalDuesUsd / rows.length),
     };
   }, [rows]);
 
@@ -143,9 +143,9 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
       rows.map((row) => [
         row.patientName,
         row.patientPhone ?? "",
-        money(row.chargesSyp),
-        money(row.paidSyp),
-        money(row.dueSyp),
+        money(row.chargesUsd),
+        money(row.paidUsd),
+        money(row.dueUsd),
         row.lastPaymentAt === null ? "" : formatDateCell(row.lastPaymentAt),
       ]),
     );
@@ -171,7 +171,7 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
           value={
             summary === null
               ? "—"
-              : money(summary.totalDuesSyp)
+              : money(summary.totalDuesUsd)
           }
           label="إجمالي المستحقات غير المسددة"
           icon={CircleDollarSign}
@@ -187,7 +187,7 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
           value={
             summary === null
               ? "—"
-              : money(summary.maxDueSyp)
+              : money(summary.maxDueUsd)
           }
           label="أعلى رصيد فردي"
           icon={DollarSign}
@@ -197,7 +197,7 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
           value={
             summary === null
               ? "—"
-              : money(summary.avgDueSyp)
+              : money(summary.avgDueUsd)
           }
           label="متوسط الرصيد"
           icon={BarChart3}
@@ -285,13 +285,13 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
                           {row.patientPhone ?? "—"}
                         </TD>
                         <TD className="numeric whitespace-nowrap text-end">
-                          {money(row.chargesSyp)}
+                          {money(row.chargesUsd)}
                         </TD>
                         <TD className="numeric whitespace-nowrap text-end">
-                          {money(row.paidSyp)}
+                          {money(row.paidUsd)}
                         </TD>
                         <TD className="numeric whitespace-nowrap text-end font-semibold text-danger-600">
-                          {money(row.dueSyp)}
+                          {money(row.dueUsd)}
                         </TD>
                         <TD className="numeric hidden whitespace-nowrap text-xs text-warning-600 lg:table-cell">
                           {row.lastPaymentAt === null
@@ -306,7 +306,7 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
                               onClick={() =>
                                 setPayState({
                                   patientId: row.patientId,
-                                  dueSyp: row.dueSyp,
+                                  dueUsd: row.dueUsd,
                                 })
                               }
                             >
@@ -335,7 +335,7 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
                           <div className="flex items-center justify-between gap-2 text-xs">
                             <span className="text-warm-500">الفرقة المتبقية</span>
                             <span className="numeric font-semibold text-danger-600">
-                              {money(row.dueSyp)}
+                              {money(row.dueUsd)}
                             </span>
                           </div>
                           {row.lastPaymentAt !== null && (
@@ -350,7 +350,7 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
                               onClick={() =>
                                 setPayState({
                                   patientId: row.patientId,
-                                  dueSyp: row.dueSyp,
+                                  dueUsd: row.dueUsd,
                                 })
                               }
                             >
@@ -385,7 +385,7 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
           patients={patients}
           invoices={invoices}
           initialPatientId={payState.patientId}
-          initialDueSyp={payState.dueSyp}
+          initialDueUsd={payState.dueUsd}
         />
       )}
     </div>

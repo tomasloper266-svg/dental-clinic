@@ -13,8 +13,8 @@ vi.mock("next/navigation", () => ({
 // يتحدث عند أول قيد في الجلسة فقط. الآن يُجلب الملخص من جديد بعد كل كتابة
 // في الدفتر (حدث ledger:changed) فتعكس البطاقة آخر عملية فوراً.
 
-function summaryResponse(outstandingDuesSyp: number, patientsWithDues: number) {
-  return { ok: true, json: async () => ({ outstandingDuesSyp, patientsWithDues }) };
+function summaryResponse(outstandingDuesUsd: number, patientsWithDues: number) {
+  return { ok: true, json: async () => ({ outstandingDuesUsd, patientsWithDues }) };
 }
 
 describe("شارة المستحقات تتجدد بعد كل كتابة في الدفتر", () => {
@@ -33,7 +33,7 @@ describe("شارة المستحقات تتجدد بعد كل كتابة في ا�
         userName="د. سامر"
         clinicName="عيادة النور"
         badges={{ waitlist: 0, lowStock: 0, dues: 4 }}
-        outstandingDuesSyp={697}
+        outstandingDuesUsd={697}
         usdRate={1}
       >
         <div>محتوى الصفحة</div>

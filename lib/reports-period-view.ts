@@ -97,27 +97,27 @@ export function monthLabel(month: string): string {
  * مجموع قيمة الدفعات — الدمج بينهما هو مصدر سوء الفهم الوحيد مع المرجع. */
 export function summarizePeriodLedger(entries: ReadonlyArray<{
   type: string;
-  amountSyp: number;
+  amountUsd: number;
 }>): {
-  totalChargesSyp: number;
-  totalPaymentsSyp: number;
+  totalChargesUsd: number;
+  totalPaymentsUsd: number;
   invoiceCount: number;
   paymentCount: number;
 } {
-  let totalChargesSyp = 0;
-  let totalPaymentsSyp = 0;
+  let totalChargesUsd = 0;
+  let totalPaymentsUsd = 0;
   let invoiceCount = 0;
   let paymentCount = 0;
   for (const entry of entries) {
     if (entry.type === "CHARGE") {
-      totalChargesSyp += entry.amountSyp;
+      totalChargesUsd += entry.amountUsd;
       invoiceCount += 1;
     } else if (entry.type === "PAYMENT") {
-      totalPaymentsSyp += Math.abs(entry.amountSyp);
+      totalPaymentsUsd += Math.abs(entry.amountUsd);
       paymentCount += 1;
     }
   }
-  return { totalChargesSyp, totalPaymentsSyp, invoiceCount, paymentCount };
+  return { totalChargesUsd, totalPaymentsUsd, invoiceCount, paymentCount };
 }
 
 /** حالات المواعيد الست — الترتيب الثابت للعرض في الدونات والأسطورة */
@@ -168,7 +168,7 @@ const NO_DOCTOR_LABEL = "بدون طبيب محدد";
 export function revenueByDoctor(
   charges: ReadonlyArray<{
     patientId: string;
-    amountSyp: number;
+    amountUsd: number;
     createdAt: string | Date;
     doctorId?: string | null;
   }>,
@@ -178,7 +178,7 @@ export function revenueByDoctor(
     startsAt: string | Date;
   }>,
   staffName: (staffId: string) => string | undefined,
-): { doctor: string; chargesSyp: number }[] {
+): { doctor: string; chargesUsd: number }[] {
   const byPatient = new Map<string, { staffId: string; startsAt: number }[]>();
   for (const appointment of appointments) {
     if (!appointment.staffId) continue;
@@ -207,18 +207,18 @@ export function revenueByDoctor(
         }
       }
     }
-    totals.set(key ?? NO_DOCTOR_LABEL, (totals.get(key ?? NO_DOCTOR_LABEL) ?? 0) + charge.amountSyp);
+    totals.set(key ?? NO_DOCTOR_LABEL, (totals.get(key ?? NO_DOCTOR_LABEL) ?? 0) + charge.amountUsd);
   }
 
   return [...totals.entries()]
-    .map(([doctor, chargesSyp]) => ({ doctor, chargesSyp }))
-    .sort((a, b) => b.chargesSyp - a.chargesSyp);
+    .map(([doctor, chargesUsd]) => ({ doctor, chargesUsd }))
+    .sort((a, b) => b.chargesUsd - a.chargesUsd);
 }
 
 const NO_PROCEDURE_LABEL = "بدون تصنيف";
 
 /** بند فاتورة كما يجمعه التقرير — تصنيف نصي حر ومبلغه */
-type ChargeItemInput = { category: string | null; amountSyp: number };
+type ChargeItemInput = { category: string | null; amountUsd: number };
 
 /**
  * نقي — إيراد الرسوم حسب نوع العلاج، تنازلياً. مصدر التجميع بنود الفاتورة
@@ -229,30 +229,30 @@ type ChargeItemInput = { category: string | null; amountSyp: number };
 export function revenueByProcedure(
   charges: ReadonlyArray<{
     treatmentItemId: string | null;
-    amountSyp: number;
+    amountUsd: number;
     items?: ReadonlyArray<ChargeItemInput>;
   }>,
   procedureByItemId: ReadonlyMap<string, string>,
-): { procedure: string; chargesSyp: number }[] {
+): { procedure: string; chargesUsd: number }[] {
   const totals = new Map<string, number>();
-  const add = (procedure: string, amountSyp: number) => {
-    totals.set(procedure, (totals.get(procedure) ?? 0) + amountSyp);
+  const add = (procedure: string, amountUsd: number) => {
+    totals.set(procedure, (totals.get(procedure) ?? 0) + amountUsd);
   };
   for (const charge of charges) {
     if (charge.items && charge.items.length > 0) {
       for (const item of charge.items) {
-        add(item.category?.trim() || NO_PROCEDURE_LABEL, item.amountSyp);
+        add(item.category?.trim() || NO_PROCEDURE_LABEL, item.amountUsd);
       }
       continue;
     }
     const procedure =
       (charge.treatmentItemId && procedureByItemId.get(charge.treatmentItemId)) ??
       NO_PROCEDURE_LABEL;
-    add(procedure, charge.amountSyp);
+    add(procedure, charge.amountUsd);
   }
   return [...totals.entries()]
-    .map(([procedure, chargesSyp]) => ({ procedure, chargesSyp }))
-    .sort((a, b) => b.chargesSyp - a.chargesSyp);
+    .map(([procedure, chargesUsd]) => ({ procedure, chargesUsd }))
+    .sort((a, b) => b.chargesUsd - a.chargesUsd);
 }
 
 /** نقي — أعلى المرضى بمجموع قيود رسومهم في الفترة، تنازلياً */
@@ -260,27 +260,27 @@ export function topPatientsByCharges(
   charges: ReadonlyArray<{
     patientId: string;
     patientName: string;
-    amountSyp: number;
+    amountUsd: number;
   }>,
   // سقف عرض كبير بلا اقتصاص عملي — حدّ 7 كان يقصّ مرضي فترة حقيقية
   limit = 25,
-): { patientId: string; patientName: string; chargesSyp: number }[] {
+): { patientId: string; patientName: string; chargesUsd: number }[] {
   const totals = new Map<string, { name: string; total: number }>();
   for (const charge of charges) {
     const current = totals.get(charge.patientId) ?? {
       name: charge.patientName,
       total: 0,
     };
-    current.total += charge.amountSyp;
+    current.total += charge.amountUsd;
     totals.set(charge.patientId, current);
   }
   return [...totals.entries()]
     .map(([patientId, p]) => ({
       patientId,
       patientName: p.name,
-      chargesSyp: p.total,
+      chargesUsd: p.total,
     }))
-    .sort((a, b) => b.chargesSyp - a.chargesSyp)
+    .sort((a, b) => b.chargesUsd - a.chargesUsd)
     .slice(0, limit);
 }
 
@@ -310,23 +310,29 @@ export function patientGrowthMonthly(
 
 /** نقي — توزيع رسوم الفترة على أشهرها؛ كل شهر يظهر حتى بلا حركة */
 export function monthlyRevenue(
-  charges: ReadonlyArray<{ amountSyp: number; createdAt: string | Date }>,
+  charges: ReadonlyArray<{ amountUsd: number; createdAt: string | Date }>,
   range: DayRange,
-): { month: string; chargesSyp: number }[] {
-  const buckets = monthsCovered(range).map((month) => ({ month, chargesSyp: 0 }));
+): { month: string; chargesUsd: number }[] {
+  const buckets = monthsCovered(range).map((month) => ({ month, chargesUsd: 0 }));
   const index = new Map(buckets.map((b, i) => [b.month, i] as const));
   for (const charge of charges) {
     // شهر القيد بتوقيت العيادة لا UTC — حركة منتصف الليل المحلي تبقى في شهرها
     const position = index.get(localMonthKeyOf(charge.createdAt));
-    if (position !== undefined) buckets[position].chargesSyp += charge.amountSyp;
+    if (position !== undefined) buckets[position].chargesUsd += charge.amountUsd;
   }
   return buckets;
 }
 
 // ─── تصدير CSV ───────────────────────────────────────────────────────────────
 
-function usdCell(syp: number, rate: number): number {
-  return Math.round((syp / rate) * 100) / 100;
+// عمود الدولار — المبلغ المخزن كما هو (بمنزلتين). عمود الليرة مشتق بالضرب
+// في السعر الحالي لحظة التصدير.
+function usdCell(usd: number): number {
+  return Math.round(usd * 100) / 100;
+}
+
+function sypCell(usd: number, rate: number): number {
+  return Math.round(usd * rate);
 }
 
 /**
@@ -345,37 +351,39 @@ export function buildPeriodCsv(
       [
         [
           "إجمالي الفواتير",
-          usdCell(summary.totalChargesSyp, usdRate),
-          summary.totalChargesSyp,
+          usdCell(summary.totalChargesUsd),
+          sypCell(summary.totalChargesUsd, usdRate),
         ],
         ["عدد الفواتير الصادرة", summary.invoiceCount, ""],
         [
           "متوسط الفاتورة",
           usdCell(
             summary.invoiceCount > 0
-              ? summary.totalChargesSyp / summary.invoiceCount
+              ? summary.totalChargesUsd / summary.invoiceCount
               : 0,
-            usdRate,
           ),
           "",
         ],
         ["عدد الدفعات المستلمة", summary.paymentCount, ""],
         [
           "محصّل الفترة",
-          usdCell(summary.totalPaymentsSyp, usdRate),
-          summary.totalPaymentsSyp,
+          usdCell(summary.totalPaymentsUsd),
+          sypCell(summary.totalPaymentsUsd, usdRate),
         ],
         [
           "متوسط الدفعة",
           usdCell(
             summary.paymentCount > 0
-              ? summary.totalPaymentsSyp / summary.paymentCount
+              ? summary.totalPaymentsUsd / summary.paymentCount
               : 0,
-            usdRate,
           ),
           "",
         ],
-        ["مستحقات حالية", usdCell(summary.outstandingSyp, usdRate), summary.outstandingSyp],
+        [
+          "مستحقات حالية",
+          usdCell(summary.outstandingUsd),
+          sypCell(summary.outstandingUsd, usdRate),
+        ],
       ],
     ),
   );
@@ -385,8 +393,8 @@ export function buildPeriodCsv(
       ["الإيرادات الشهرية — الشهر", "الإيراد ($)", "الإيراد (ل.س)"],
       summary.monthlyRevenue.map((m) => [
         m.month,
-        usdCell(m.chargesSyp, usdRate),
-        m.chargesSyp,
+        usdCell(m.chargesUsd),
+        sypCell(m.chargesUsd, usdRate),
       ]),
     ),
   );
@@ -403,8 +411,8 @@ export function buildPeriodCsv(
       ["الإيراد حسب الطبيب", "الإيراد ($)", "الإيراد (ل.س)"],
       summary.revenueByDoctor.map((d) => [
         d.doctor,
-        usdCell(d.chargesSyp, usdRate),
-        d.chargesSyp,
+        usdCell(d.chargesUsd),
+        sypCell(d.chargesUsd, usdRate),
       ]),
     ),
   );
@@ -414,8 +422,8 @@ export function buildPeriodCsv(
       ["الإيراد حسب نوع العلاج", "الإيراد ($)", "الإيراد (ل.س)"],
       summary.revenueByProcedure.map((p) => [
         p.procedure,
-        usdCell(p.chargesSyp, usdRate),
-        p.chargesSyp,
+        usdCell(p.chargesUsd),
+        sypCell(p.chargesUsd, usdRate),
       ]),
     ),
   );
@@ -425,8 +433,8 @@ export function buildPeriodCsv(
       ["أعلى المرضى (فواتير الفترة)", "الإجمالي ($)", "الإجمالي (ل.س)"],
       summary.topPatients.map((p) => [
         p.patientName,
-        usdCell(p.chargesSyp, usdRate),
-        p.chargesSyp,
+        usdCell(p.chargesUsd),
+        sypCell(p.chargesUsd, usdRate),
       ]),
     ),
   );
@@ -447,17 +455,17 @@ export function buildPeriodCsv(
 export type ReportsPeriodSummaryJson = {
   from: string;
   to: string;
-  totalChargesSyp: number;
+  totalChargesUsd: number;
   /** مجموع قيمة دفعات الفترة — تعريف «محصّل الفترة» المستقل عن الرسوم */
-  totalPaymentsSyp: number;
+  totalPaymentsUsd: number;
   invoiceCount: number;
   paymentCount: number;
-  outstandingSyp: number;
-  monthlyRevenue: { month: string; chargesSyp: number }[];
+  outstandingUsd: number;
+  monthlyRevenue: { month: string; chargesUsd: number }[];
   appointmentOutcomes: { status: OutcomeStatus; count: number }[];
-  revenueByDoctor: { doctor: string; chargesSyp: number }[];
-  revenueByProcedure: { procedure: string; chargesSyp: number }[];
-  topPatients: { patientId: string; patientName: string; chargesSyp: number }[];
+  revenueByDoctor: { doctor: string; chargesUsd: number }[];
+  revenueByProcedure: { procedure: string; chargesUsd: number }[];
+  topPatients: { patientId: string; patientName: string; chargesUsd: number }[];
   patientGrowth: { month: string; count: number }[];
   /** أقدم يوم حركة بالعيادة — أساس خيار «الكل» */
   rangeStart: string;

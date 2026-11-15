@@ -7,7 +7,7 @@ import { listWaitlist } from "@/lib/services/waitlist";
 import { lowStockMaterials } from "@/lib/services/inventory";
 import { listClinicLedgerEntries } from "@/lib/services/ledger";
 import {
-  outstandingDuesSyp,
+  outstandingDuesUsd,
   patientsWithDuesCount,
 } from "@/lib/finance-view";
 import {
@@ -68,7 +68,7 @@ export default async function AppLayout({
           lowStock: lowStock.length,
           dues: patientsWithDuesCount(ledgerEntries),
         }}
-        outstandingDuesSyp={outstandingDuesSyp(ledgerEntries)}
+        outstandingDuesUsd={outstandingDuesUsd(ledgerEntries)}
         usdRate={usdRate}
         lockEnabled={session.lockEnabled}
       >

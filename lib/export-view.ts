@@ -1,6 +1,6 @@
 import { STATUS_LABEL } from "@/lib/appointment-ui";
 import {
-  formatPrimaryFromSyp,
+  formatPrimaryFromUsd,
   type DisplayCurrency,
 } from "@/lib/currency";
 import { toCsv } from "@/lib/csv";
@@ -98,9 +98,9 @@ export function invoicesToCsv(
       row.number,
       row.patientName,
       formatDateCell(row.date),
-      formatPrimaryFromSyp(row.totalSyp, usdRate, currency),
-      formatPrimaryFromSyp(row.paidSyp, usdRate, currency),
-      formatPrimaryFromSyp(row.remainingSyp, usdRate, currency),
+      formatPrimaryFromUsd(row.totalUsd, usdRate, currency),
+      formatPrimaryFromUsd(row.paidUsd, usdRate, currency),
+      formatPrimaryFromUsd(row.remainingUsd, usdRate, currency),
       INVOICE_STATUS_LABELS[row.status],
     ]),
   );
@@ -108,7 +108,7 @@ export function invoicesToCsv(
 
 export type PaymentRow = Pick<
   ClinicLedgerEntryDto,
-  "createdAt" | "patientName" | "patientPhone" | "amountSyp" | "note"
+  "createdAt" | "patientName" | "patientPhone" | "amountUsd" | "note"
 >;
 
 /** نقّي — قيود الدفع فقط بأعمدة الدفتر المالي وبالعملة المعروضة */
@@ -123,7 +123,7 @@ export function paymentsToCsv(
       formatDateCell(row.createdAt),
       row.patientName,
       row.patientPhone ?? "",
-      formatPrimaryFromSyp(row.amountSyp, usdRate, currency),
+      formatPrimaryFromUsd(row.amountUsd, usdRate, currency),
       row.note ?? "",
     ]),
   );
