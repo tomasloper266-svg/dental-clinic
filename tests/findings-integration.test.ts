@@ -57,6 +57,7 @@ function routeParams<T extends Record<string, string>>(params: T) {
 describeDb("مشاهدات الأسنان وخطة العلاج — integration", () => {
   beforeAll(async () => {
     await prisma.session.deleteMany();
+    await prisma.periodontalReading.deleteMany();
     await prisma.toothFinding.deleteMany();
     await prisma.treatmentPlanItem.deleteMany();
     await prisma.appointment.deleteMany();

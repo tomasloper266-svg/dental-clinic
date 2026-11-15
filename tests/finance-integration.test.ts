@@ -71,6 +71,7 @@ async function loginToken(phone: string, password: string): Promise<string> {
 
 async function cleanDb(): Promise<void> {
   await prisma.session.deleteMany();
+  await prisma.periodontalReading.deleteMany();
   await prisma.materialUsage.deleteMany();
   await prisma.toothFinding.deleteMany();
   await prisma.ledgerEntry.deleteMany();
