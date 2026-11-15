@@ -4,6 +4,7 @@ import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
 import { tenantContextFromSession } from "@/lib/tenant/context";
 import { getPatient } from "@/lib/services/patients";
 import { listFindings } from "@/lib/services/findings";
+import { listReadings } from "@/lib/services/periodontal";
 import { listPlan } from "@/lib/services/treatment-plan";
 import { listPatientAppointments } from "@/lib/services/appointments";
 import { listLedgerEntries } from "@/lib/services/ledger";
@@ -34,6 +35,7 @@ export default async function PatientProfilePage({
 
   const [
     findings,
+    readings,
     planItems,
     appointments,
     ledger,
@@ -41,6 +43,7 @@ export default async function PatientProfilePage({
     usdRate,
   ] = await Promise.all([
     listFindings(ctx, patientId),
+    listReadings(ctx, patientId),
     listPlan(ctx, patientId),
     listPatientAppointments(ctx, patientId),
     listLedgerEntries(ctx, patientId),
@@ -52,6 +55,7 @@ export default async function PatientProfilePage({
     <PatientRecord
       patient={patient}
       findings={findings}
+      readings={readings}
       planItems={planItems}
       appointments={appointments}
       ledgerEntries={ledger.entries}

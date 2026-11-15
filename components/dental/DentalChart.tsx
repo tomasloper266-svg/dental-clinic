@@ -2,16 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { toothAnatomy, type ToothAnatomy } from "@/lib/odontogram/anatomy";
-import {
-  TOOTH_CHART_LEGEND,
-  toothStatusMeta,
-} from "@/lib/odontogram/statuses";
+import { TOOTH_CHART_LEGEND, toothStatusMeta } from "@/lib/odontogram/statuses";
 import {
   latestFindingByTooth,
   findingsForTooth,
 } from "@/lib/odontogram/findings-view";
 import { surfaceCodesOf } from "@/lib/odontogram/surfaces";
 import type { FindingDto } from "@/lib/services/findings";
+import type { PeriodontalReadingDto } from "@/lib/services/periodontal";
 import ChartTooth from "./ChartTooth";
 import ToothRecordPanel, { toothPanelTitle } from "./ToothRecordPanel";
 import { ToothIcon } from "@/components/shell/icons/ToothIcon";
@@ -24,6 +22,8 @@ import { Drawer } from "@/components/ui/Drawer";
 type Props = {
   patientId: string;
   initialFindings: FindingDto[];
+  /** قراءات الدواعم الأولية — تفتح تبويب الدواعم في لوحة السن المشتركة */
+  initialReadings?: PeriodontalReadingDto[];
   onFindingsChanged?: () => void;
 };
 
@@ -54,9 +54,12 @@ function MidDivider() {
 export default function DentalChart({
   patientId,
   initialFindings,
+  initialReadings = [],
   onFindingsChanged,
 }: Props) {
   const [findings, setFindings] = useState<FindingDto[]>(initialFindings);
+  const [readings, setReadings] =
+    useState<PeriodontalReadingDto[]>(initialReadings);
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
 
   const latest = useMemo(() => latestFindingByTooth(findings), [findings]);
@@ -186,6 +189,10 @@ export default function DentalChart({
             fdi={selectedTooth}
             history={selectedHistory}
             onSaved={handleSaved}
+            readings={readings.filter((r) => r.toothFdi === selectedTooth)}
+            onReadingSaved={(reading) =>
+              setReadings((prev) => [...prev, reading])
+            }
           />
         )}
       </Drawer>

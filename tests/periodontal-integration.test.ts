@@ -9,6 +9,7 @@ import {
   GET as readingsGET,
   POST as readingsPOST,
 } from "@/app/api/patients/[patientId]/periodontal/route";
+import { POST as sessionPOST } from "@/app/api/patients/[patientId]/periodontal/session/route";
 import type { PeriodontalReadingDto } from "@/lib/services/periodontal";
 
 // اختبارات تكامل الدواعم — نمط findings-integration.test.ts حرفاً: تنفيذ
@@ -243,5 +244,105 @@ describeDb("قراءات الدواعم — integration", () => {
       where: { clinicId: clinicBId },
     });
     expect(clinicBReadings).toHaveLength(0);
+  });
+
+  it("جلسة جماعية: كل القياسات بتوقيت واحد وقيمها كما أُرسلت", async () => {
+    const res = await sessionPOST(
+      authed(`/api/patients/${patientAId}/periodontal/session`, tokenA, {
+        method: "POST",
+        body: JSON.stringify({
+          readings: [
+            { toothFdi: 16, pocketDepthMm: 6, bleedingOnProbing: true },
+            {
+              toothFdi: 26,
+              pocketDepthMm: 4,
+              recessionMm: -1,
+              mobilityGrade: 2,
+            },
+            { toothFdi: 36, pocketDepthMm: 3 },
+          ],
+        }),
+      }),
+      routeParams({ patientId: patientAId }),
+    );
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { readings: PeriodontalReadingDto[] };
+    expect(body.readings).toHaveLength(3);
+
+    // التوقيت الواحد — جوهر الجلسة: كل قراءات الجلسة بنفس الطابع الزمني.
+    const timestamps = new Set(body.readings.map((r) => r.measuredAt));
+    expect(timestamps.size).toBe(1);
+
+    const byTooth = new Map(body.readings.map((r) => [r.toothFdi, r]));
+    expect(byTooth.get(16)?.pocketDepthMm).toBe(6);
+    expect(byTooth.get(16)?.bleedingOnProbing).toBe(true);
+    expect(byTooth.get(26)?.recessionMm).toBe(-1);
+    expect(byTooth.get(26)?.mobilityGrade).toBe(2);
+    expect(byTooth.get(36)?.pocketDepthMm).toBe(3);
+
+    // القياسات إلحاقية في قاعدة البيانات فعلاً — لا استبدال لقراءات سابقة.
+    const dbRows = await prisma.periodontalReading.findMany({
+      where: { patientId: patientAId, toothFdi: 36 },
+    });
+    // قياس واحد من هذا الاختبار + قياس الحدود الأقدم على 36.
+    expect(dbRows.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("جلسة بقياس غير صالح واحد تُرفض كاملة (400) ولا يُكتب شيء", async () => {
+    const rowsBefore = await prisma.periodontalReading.count({
+      where: { patientId: patientAId },
+    });
+
+    const res = await sessionPOST(
+      authed(`/api/patients/${patientAId}/periodontal/session`, tokenA, {
+        method: "POST",
+        body: JSON.stringify({
+          readings: [
+            { toothFdi: 45, pocketDepthMm: 3 },
+            { toothFdi: 46, pocketDepthMm: 16 }, // خارج الحدود — يرفض الجلسة كلها
+          ],
+        }),
+      }),
+      routeParams({ patientId: patientAId }),
+    );
+    expect(res.status).toBe(400);
+    const error = ((await res.json()) as { error: string }).error;
+    expect(error).toContain("2"); // موضع القياس الفاسد في الجلسة
+
+    const rowsAfter = await prisma.periodontalReading.count({
+      where: { patientId: patientAId },
+    });
+    expect(rowsAfter).toBe(rowsBefore); // لا جلسة جزئية صامتة
+  });
+
+  it("جلسة فارغة أو بلا مصفوفة تُرفض (400)، وعيادة ب ممنوعة (404)", async () => {
+    const empty = await sessionPOST(
+      authed(`/api/patients/${patientAId}/periodontal/session`, tokenA, {
+        method: "POST",
+        body: JSON.stringify({ readings: [] }),
+      }),
+      routeParams({ patientId: patientAId }),
+    );
+    expect(empty.status).toBe(400);
+
+    const missing = await sessionPOST(
+      authed(`/api/patients/${patientAId}/periodontal/session`, tokenA, {
+        method: "POST",
+        body: JSON.stringify({}),
+      }),
+      routeParams({ patientId: patientAId }),
+    );
+    expect(missing.status).toBe(400);
+
+    const forbidden = await sessionPOST(
+      authed(`/api/patients/${patientAId}/periodontal/session`, tokenB, {
+        method: "POST",
+        body: JSON.stringify({
+          readings: [{ toothFdi: 36, pocketDepthMm: 3 }],
+        }),
+      }),
+      routeParams({ patientId: patientAId }),
+    );
+    expect(forbidden.status).toBe(404);
   });
 });

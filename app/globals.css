@@ -102,6 +102,12 @@
   --color-danger-700: #7f3731;
   --color-danger-900: #4f221e;
 
+  /* مقياس عمق الجيب للدواعم — أخضر سليم / أصفر إنذار / أحمر جيب عميق.
+     ألوان مقياس سريري مستقلة عن درجات warning/danger الحالة. */
+  --color-periodontal-ok: #3d8b66;
+  --color-periodontal-warn: #d09a2b;
+  --color-periodontal-alert: #b3564d;
+
   /* نصف قطر موحّد: ألواح 12px وحقول 8px */
   --radius-panel: 12px;
   --radius-field: 8px;

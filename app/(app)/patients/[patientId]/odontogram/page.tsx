@@ -6,6 +6,7 @@ import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
 import { tenantContextFromSession } from "@/lib/tenant/context";
 import { getPatient } from "@/lib/services/patients";
 import { listFindings } from "@/lib/services/findings";
+import { listReadings } from "@/lib/services/periodontal";
 import { listPlan } from "@/lib/services/treatment-plan";
 import OdontogramWorkbench from "@/components/odontogram/OdontogramWorkbench";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -27,9 +28,10 @@ export default async function OdontogramPage({
   const patient = await getPatient(ctx, patientId);
   if (!patient) notFound();
 
-  const [findings, planItems] = await Promise.all([
+  const [findings, planItems, readings] = await Promise.all([
     listFindings(ctx, patientId),
     listPlan(ctx, patientId),
+    listReadings(ctx, patientId),
   ]);
 
   return (
@@ -40,7 +42,7 @@ export default async function OdontogramPage({
         actions={
           <Link
             href={`/patients/${patientId}`}
-            className="border-warm-300 bg-surface-raised text-ink-900 hover:bg-surface-hover active:bg-surface-sunken inline-flex h-10 items-center rounded-field border px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+            className="border-warm-300 bg-surface-raised text-ink-900 hover:bg-surface-hover active:bg-surface-sunken rounded-field focus-visible:outline-primary-500 inline-flex h-10 items-center border px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             ملف المريض
           </Link>
@@ -50,6 +52,7 @@ export default async function OdontogramPage({
         <OdontogramWorkbench
           patientId={patientId}
           initialFindings={findings}
+          initialReadings={readings}
           initialPlan={planItems}
         />
       </div>

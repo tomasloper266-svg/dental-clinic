@@ -5,6 +5,7 @@ import { tenantContextFromSession } from "@/lib/tenant/context";
 import { pageWrapClass } from "@/lib/page-width";
 import { getPatient } from "@/lib/services/patients";
 import { listFindings } from "@/lib/services/findings";
+import { listReadings } from "@/lib/services/periodontal";
 import { listPlan, listPlans } from "@/lib/services/treatment-plan";
 import { listLedgerEntries } from "@/lib/services/ledger";
 import { listStaff } from "@/lib/services/staff";
@@ -33,16 +34,17 @@ export default async function DentalPage({
   const { patient: patientId } = await searchParams;
   const patient = patientId ? await getPatient(ctx, patientId) : null;
 
-  const [findings, plans, planItems, ledger, staff, usdRate] = patient
+  const [findings, readings, plans, planItems, ledger, staff, usdRate] = patient
     ? await Promise.all([
         listFindings(ctx, patient.id),
+        listReadings(ctx, patient.id),
         listPlans(ctx, patient.id),
         listPlan(ctx, patient.id),
         listLedgerEntries(ctx, patient.id),
         listStaff(ctx),
         getClinicUsdRate(ctx),
       ])
-    : [[], [], [], null, [], 0];
+    : [[], [], [], [], null, [], 0];
 
   const unassignedItems = planItems.filter((item) => !item.planId);
 
@@ -52,7 +54,11 @@ export default async function DentalPage({
 
       {patient && ledger ? (
         <>
-          <DentalChart patientId={patient.id} initialFindings={findings} />
+          <DentalChart
+            patientId={patient.id}
+            initialFindings={findings}
+            initialReadings={readings}
+          />
 
           <div className="mt-6">
             <DentalPlanSection
@@ -67,7 +73,7 @@ export default async function DentalPage({
           </div>
         </>
       ) : (
-        <div className="border-warm-300 bg-surface-raised/60 grid min-h-80 place-items-center rounded-panel border border-dashed">
+        <div className="border-warm-300 bg-surface-raised/60 rounded-panel grid min-h-80 place-items-center border border-dashed">
           <EmptyState
             title="اختر مريضاً للبدء"
             description="اختر مريضاً من القائمة أعلاه لعرض مخطط أسنانه وخطط العلاج والملخص المالي — البيانات حقيقية من سجلات العيادة."
