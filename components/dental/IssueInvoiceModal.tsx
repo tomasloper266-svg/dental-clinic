@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import { emitLedgerChanged } from "@/lib/ledger-events";
 
 // إصدار فاتورة من بنود الخطة — قيد رسوم واحد (CHARGE) ببنود مهيكلة للبنود
 // المختارة كلها، فتأخذ الفاتورة رقماً واحداً من تسلسل العيادة وتُصنَّف بنودها
@@ -138,6 +139,7 @@ export default function IssueInvoiceModal({
         }
       }
       toast("صدرت الفاتورة وسُجلت بقيود الدفتر");
+      emitLedgerChanged();
       onIssued(chargeIds);
     } catch {
       setError("تعذر الاتصال بالخادم");

@@ -9,6 +9,7 @@ import { useMoney } from "@/components/ui/CurrencyContext";
 import { formatDualFromSyp } from "@/lib/currency";
 import { usePatientSearch, type PatientOption } from "@/lib/use-patient-search";
 import { toCsv, withUtf8Bom } from "@/lib/csv";
+import { emitLedgerChanged } from "@/lib/ledger-events";
 import {
   LEDGER_AMOUNT_CLASSES,
   LEDGER_SETTLEMENT_META,
@@ -256,6 +257,7 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
         return;
       }
       toast("سُجّل القيد في الدفتر");
+      emitLedgerChanged();
       setAddOpen(false);
       setEntryPatient(null);
       setPatientQuery("");

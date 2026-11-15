@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import { emitLedgerChanged } from "@/lib/ledger-events";
 
 // تسجيل قيد مالي جديد من ملف المريض — عبر مسار الدفتر القائم (POST فقط:
 // القيد غير قابل للتعديل أو الحذف، والتصحيح بقيد عكسي). إشارة المبلغ حسب
@@ -92,6 +93,7 @@ export default function NewLedgerEntryModal({
         return;
       }
       toast("تم تسجيل القيد بنجاح");
+      emitLedgerChanged();
       router.refresh();
       onClose();
     } catch {
