@@ -157,6 +157,7 @@ model Clinic {
   waitlistEntries      WaitlistEntry[]
   appointmentStatusChanges AppointmentStatusChange[]
   toothFindings        ToothFinding[]
+  periodontalReadings  PeriodontalReading[]
   treatmentPlanItems   TreatmentPlanItem[]
   treatmentPlans       TreatmentPlan[]
   ledgerEntries        LedgerEntry[]
@@ -215,6 +216,7 @@ model User {
   sessions              Session[]
   otpTokens             VerificationToken[]
   recordedFindings      ToothFinding[]  @relation("FindingRecorder")
+  periodontalReadings   PeriodontalReading[] @relation("PeriodontalRecorder")
   createdLedgerEntries  LedgerEntry[]   @relation("LedgerEntryCreator")
   recordedMaterialUsage MaterialUsage[] @relation("MaterialUsageRecorder")
   appointmentStatusChanges AppointmentStatusChange[] @relation("AppointmentStatusChanger")
@@ -322,6 +324,7 @@ model Patient {
   appointments       Appointment[]
   waitlistEntries    WaitlistEntry[]
   toothFindings      ToothFinding[]
+  periodontalReadings PeriodontalReading[]
   treatmentPlanItems TreatmentPlanItem[]
   treatmentPlans     TreatmentPlan[]
   ledgerEntries      LedgerEntry[]
@@ -461,6 +464,32 @@ model ToothFinding {
   @@index([clinicId, patientId, toothFdi])
 }
 
+// ─── مخطط الدواعم — قياسات إلحاقية بالكامل: التصحيح بقياس جديد بتاريخه ────────
+
+model PeriodontalReading {
+  id                String   @id @default(cuid())
+  clinicId          String
+  patientId         String
+  toothFdi          Int
+  // عمق الجيب بالمليمتر — 0–15، اختياري للاستكشاف الجزئي.
+  pocketDepthMm     Int?
+  // الانكماش اللثوي بالمليمتر — سالب فوق الخط، −5..10، اختياري.
+  recessionMm       Int?
+  // نزيف عند الجس — قيمة قياس صريحة لا استنتاج.
+  bleedingOnProbing Boolean  @default(false)
+  // درجة الحركية — 0–3، اختياري.
+  mobilityGrade     Int?
+  note              String?
+  recordedById      String
+  measuredAt        DateTime @default(now())
+
+  clinic     Clinic  @relation(fields: [clinicId], references: [id])
+  patient    Patient @relation(fields: [patientId], references: [id])
+  recordedBy User    @relation("PeriodontalRecorder", fields: [recordedById], references: [id])
+
+  @@index([clinicId, patientId, toothFdi])
+}
+
 // ─── خطط العلاج — كيان خطة يحتوي بنوداً، وبدونه البنود عناصر غير مخططة ───────
 
 model TreatmentPlan {
@@ -489,6 +518,8 @@ model TreatmentPlanItem {
   // ربط اختياري بخطة — البنود بلا خطة تظهر «بدون خطة محفوظة»
   planId    String?
   toothFdi  Int
+  // السطح المرجعي بأكواد مجمّعة بعلامة «+» (مثال O+M) — اختياري وبلا سن (0) يبقى فارغاً.
+  surface   String?
   procedure String
   // سعر العلاج بالدولار بمنزلتين عشريتين — نفس وحدة قيد الرسوم الذي يُشتق منه،
   // كي لا تخلط وحدتان في سلسلة التسعير (بند الخطة ← قيد الرسوم).
@@ -555,6 +586,10 @@ model LedgerEntryItem {
   description String
   // تصنيف نصي حُرّ — أساس تجميع الإيراد حسب نوع العلاج للفواتير المباشرة.
   category    String?
+  // إشارة السن والسطح المرجعي — اختيارية للفواتير اليدوية وموروثة من بند
+  // الخطة للقيد المشتق. عرضية حصراً ولا تدخل في التجميع المالي (category نظيف).
+  toothFdi    Int?
+  surface     String?
   // المبلغ بالدولار بمنزلتين عشريتين — نفس وحدة قيد الرسوم الأب.
   amountUsd   Decimal @db.Decimal(12, 2)
   sort        Int    @default(0)

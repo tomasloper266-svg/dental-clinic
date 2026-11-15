@@ -1,6 +1,7 @@
 import { clinicScope } from "@/lib/tenant/clinic-client";
 import type { TenantContext } from "@/lib/tenant/context";
 import { isValidToothFdi } from "@/lib/odontogram/fdi";
+import { parseSurfaceInput } from "@/lib/odontogram/surfaces";
 import { TOOTH_STATUS_KEYS, type ToothStatusKey } from "@/lib/odontogram/statuses";
 import { recordTreatmentCharge, type ScopedClient } from "@/lib/services/ledger";
 import { isUsdAmount } from "@/lib/currency";
@@ -16,6 +17,8 @@ export type PlanItemDto = {
   /** بلا خطة = بند غير مُخطط ضمن خطة — undefined يحتفظ بنفس المعنى */
   planId?: string | null;
   toothFdi: number;
+  /** السطح المرجعي بأكواد مجمّعة (مثال O+M) — بلا سن (0) يبقى فارغاً */
+  surface: string | null;
   procedure: string;
   priceUsd: number;
   status: PlanItemStatus;
@@ -40,6 +43,8 @@ export type CreatePlanItemInput = {
   priority?: number;
   // ربط مباشر بخطة قائمة — البنود بلا خطة تظهر «بدون خطة محفوظة»
   planId?: string | null;
+  // السطح بأكواد مجمّعة (مثال O+M) — اختياري، ويُرفض على بند بلا سن
+  surface?: string;
 };
 
 export type UpdatePlanItemInput = {
@@ -62,6 +67,7 @@ export async function listPlan(
       id: true,
       planId: true,
       toothFdi: true,
+      surface: true,
       procedure: true,
       priceUsd: true,
       status: true,
@@ -82,6 +88,7 @@ export async function createPlanItem(
       clinicId: ctx.clinicId,
       patientId,
       toothFdi: input.toothFdi,
+      surface: input.surface ?? null,
       procedure: input.procedure,
       priceUsd: input.priceUsd,
       priority: input.priority ?? 0,
@@ -92,6 +99,7 @@ export async function createPlanItem(
       id: true,
       planId: true,
       toothFdi: true,
+      surface: true,
       procedure: true,
       priceUsd: true,
       status: true,
@@ -148,6 +156,7 @@ export async function updatePlanItem(
       id: true,
       planId: true,
       toothFdi: true,
+      surface: true,
       procedure: true,
       priceUsd: true,
       status: true,
@@ -184,6 +193,9 @@ export async function startPlanItem(
         toothFdi: update.toothFdi,
         kind: "TREATMENT_DONE",
         status: resultStatus,
+        // سلسلة الإشارة: سطح البند ينتقل إلى المشاهدة الناتجة كي يظهر
+        // على المخطط «علاج منجز» على السطح المحدد نفسه.
+        surface: update.item.surface,
         note: `تنفيذ بند الخطة: ${update.procedure}`,
         recordedById: ctx.userId,
       },
@@ -198,6 +210,8 @@ export async function startPlanItem(
           treatmentItemId: update.item.id,
           procedure: update.procedure,
           priceUsd: update.item.priceUsd,
+          toothFdi: update.toothFdi,
+          surface: update.item.surface ?? undefined,
         },
         tx,
       );
@@ -239,6 +253,7 @@ async function updatePlanItemStatus(
       id: true,
       planId: true,
       toothFdi: true,
+      surface: true,
       procedure: true,
       priceUsd: true,
       status: true,
@@ -290,9 +305,21 @@ export function parseCreatePlanItem(
   const planId =
     typeof b.planId === "string" && b.planId.length > 0 ? b.planId : null;
 
+  // السطح اختياري — لكن بند «بلا سن» (0) لا يحمل سطحاً إطلاقاً، والقيمة
+  // تُقبل بأكواد مرجعية أو أسماء عربية تُطبَّع، بتحقق تشريحي ضد نوع السن.
+  let surface: string | undefined;
+  if (typeof b.surface === "string" && b.surface.trim()) {
+    if (toothFdi === 0) {
+      return { ok: false, error: "بند بلا سن لا يحمل سطحاً" };
+    }
+    const parsed = parseSurfaceInput(b.surface, toothFdi);
+    if (!parsed.ok) return { ok: false, error: parsed.error };
+    surface = parsed.value;
+  }
+
   return {
     ok: true,
-    value: { toothFdi, procedure, priceUsd, priority, planId },
+    value: { toothFdi, procedure, priceUsd, priority, planId, surface },
   };
 }
 
@@ -377,6 +404,7 @@ function serialize(row: {
   id: string;
   planId: string | null;
   toothFdi: number;
+  surface: string | null;
   procedure: string;
   priceUsd: number | Prisma.Decimal;
   status: string;
@@ -386,6 +414,7 @@ function serialize(row: {
     id: row.id,
     planId: row.planId,
     toothFdi: row.toothFdi,
+    surface: row.surface,
     procedure: row.procedure,
     priceUsd: Number(row.priceUsd),
     status: row.status as PlanItemStatus,
@@ -446,6 +475,7 @@ const PLAN_ITEM_SELECT = {
   id: true,
   planId: true,
   toothFdi: true,
+  surface: true,
   procedure: true,
   priceUsd: true,
   status: true,

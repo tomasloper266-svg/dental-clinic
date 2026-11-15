@@ -1,6 +1,8 @@
 // تحقق نقّي من ملف النسخة الاحتياطية — بلا I/O ولا قاعدة بيانات.
 // الاستعادة ترفض أي ملف لا يطابق هذا العقد قبل لمس البيانات.
 
+import { normalizeLegacySurfaces } from "@/lib/odontogram/surfaces";
+
 /** نسخة العقد الحالية — v2: كل المبالغ بالدولار بمنزلتين (وحدة التخزين) */
 export const SNAPSHOT_VERSION = 2;
 
@@ -18,6 +20,9 @@ export const SNAPSHOT_TABLES = [
   "waitlistEntries",
   "appointmentStatusChanges",
   "toothFindings",
+  // قراءات الدواعم — أُضيفت للعقد لاحقاً؛ اللقطات الأقدم بلا المفتاح تُعامَل
+  // بقائمة فارغة في validateSnapshot (لا قراءات سابقة فلا شيء يُعاد).
+  "periodontalReadings",
   "treatmentPlans",
   "treatmentPlanItems",
   "ledgerEntries",
@@ -57,6 +62,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/** جداول أُضيفت للعقد لاحقاً — غيابها في لقطة قديمة يعني قائمة فارغة */
+const OPTIONAL_SNAPSHOT_TABLES: ReadonlySet<SnapshotTable> = new Set([
+  "ledgerEntryItems",
+  "periodontalReadings",
+] as SnapshotTable[]);
+
 /**
  * أعمدة المبالغ بحسب الجدول في لقطات v1 (ليرة) — الاسم يُستبدل لاحقة Syp
  * بـ Usd عند التحويل. Materials.costSyp وحده nullable؛ البقية إلزامية.
@@ -68,6 +79,7 @@ const LEGACY_MONEY_FIELDS: Record<SnapshotTable, readonly string[]> = {
   waitlistEntries: [],
   appointmentStatusChanges: [],
   toothFindings: [],
+  periodontalReadings: [],
   treatmentPlans: [],
   treatmentPlanItems: ["priceSyp"],
   ledgerEntries: ["amountSyp"],
@@ -150,6 +162,41 @@ export function convertLegacySnapshotToUsd(
   };
 }
 
+/**
+ * نقّي — هجرة ترميز الأسطح في اللقطة (نفس هجرة قاعدة البيانات): قيم
+ * toothFindings.surface العربية القديمة (المجمّعة بعلامة «+») تتحول إلى الأكواد
+ * المرجعية، وأي نص لا يطابق الكتالوج يصبح OTHER ويُحفظ أصله في الملاحظة —
+ * لا فقدان بيانات إطلاقاً. تُطبَّق على لقطات v1 وv2 معاً (لقطة v2 سابقة على
+ * هذا النشر قد تحمل قيماً عربية أيضاً).
+ */
+export function convertLegacySnapshotSurfaces(
+  snapshot: ClinicSnapshot,
+): { ok: true; snapshot: ClinicSnapshot } | { ok: false; error: string } {
+  const rows: Record<string, unknown>[] = [];
+  for (const row of snapshot.toothFindings) {
+    const surface = row.surface;
+    if (typeof surface !== "string" || !surface.trim()) {
+      rows.push(row);
+      continue;
+    }
+    const normalized = normalizeLegacySurfaces(surface);
+    if (normalized.legacyText === null) {
+      rows.push({ ...row, surface: normalized.codes.join("+") });
+      continue;
+    }
+    const legacyNote = `السطح القديم: ${normalized.legacyText}`;
+    rows.push({
+      ...row,
+      surface: normalized.codes.join("+"),
+      note:
+        typeof row.note === "string" && row.note.trim()
+          ? `${row.note} | ${legacyNote}`
+          : legacyNote,
+    });
+  }
+  return { ok: true, snapshot: { ...snapshot, toothFindings: rows } };
+}
+
 /** نقّي — فحص شكل ملف النسخة: العقد والجداول وكل صف يحمل معرّفاً */
 export function validateSnapshot(input: unknown): SnapshotCheck {
   if (!isRecord(input)) {
@@ -163,10 +210,9 @@ export function validateSnapshot(input: unknown): SnapshotCheck {
   }
   const tables = {} as Record<SnapshotTable, Record<string, unknown>[]>;
   for (const table of SNAPSHOT_TABLES) {
-    // بنود الفاتورة أُضيفت للعقد لاحقاً — النسخ الأقدم (v1 قبلها) بلا هذا
-    // المفتاح، وتُعامَل كقائمة فارغة كي تبقى قابلة للاستعادة (كانت بنودها
-    // مفقودة أصلاً فلا شيء يُعاد).
-    const fallback = table === "ledgerEntryItems" ? [] : undefined;
+    // جداول أُضيفت للعقد لاحقاً — النسخ الأقدم بلا هذا المفتاح تُعامَل بقائمة
+    // فارغة كي تبقى قابلة للاستعادة (بنود الفاتورة قبلها، وقراءات الدواعم الآن).
+    const fallback = OPTIONAL_SNAPSHOT_TABLES.has(table) ? [] : undefined;
     const rows = input[table] ?? fallback;
     if (!Array.isArray(rows)) {
       return { ok: false, error: `جدول «${table}» ناقص أو تالف في الملف` };
