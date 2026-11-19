@@ -264,6 +264,27 @@ body {
   text-underline-offset: 4px;
 }
 
+/*
+ * خط المسح في المخطط البانورامي — اجتياز أفقي خافت عبر اللوحة،
+ * ويُلغى مع تفضيل تقليل الحركة (prefers-reduced-motion).
+ */
+@keyframes panoramic-sweep {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(580px);
+  }
+}
+.panoramic-sweep {
+  animation: panoramic-sweep 7s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .panoramic-sweep {
+    animation: none;
+  }
+}
+
 /* توهج سماوي مدروس — للشعار والأزرار الأولية في الوضع الداكن حصراً */
 html.dark .glow-accent {
   box-shadow:

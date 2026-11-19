@@ -58,6 +58,7 @@ export default async function DentalPage({
             patientId={patient.id}
             initialFindings={findings}
             initialReadings={readings}
+            planItems={planItems}
           />
 
           <div className="mt-6">
