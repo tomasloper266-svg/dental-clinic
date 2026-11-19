@@ -106,6 +106,23 @@ export const mobileBarNav: NavItem[] = [
 export const navItemByHref = (href: string): NavItem | undefined =>
   allNavItems.find((item) => item.href === href);
 
+/** مجموع شارات التنبيه القائمة — تغذية عداد جرس الشريط العلوي (دالة نقية) */
+export function badgeTotal(badges: Partial<Record<BadgeKey, number>>): number {
+  return Object.values(badges).reduce((total, count) => total + (count ?? 0), 0);
+}
+
+/** مداخل التنبيه ذات شارة موجبة فقط — قائمة جرس الشريط العلوي (دالة نقية) */
+export function activeBadgeEntries(
+  badges: Partial<Record<BadgeKey, number>>,
+): Array<NavItem & { count: number }> {
+  return allNavItems
+    .filter(
+      (item): item is NavItem & { badge: BadgeKey } =>
+        item.badge !== undefined && (badges[item.badge] ?? 0) > 0,
+    )
+    .map((item) => ({ ...item, count: badges[item.badge] as number }));
+}
+
 const segmentLabels: Record<string, string> = {
   dashboard: "الرئيسية",
   patients: "المرضى",
