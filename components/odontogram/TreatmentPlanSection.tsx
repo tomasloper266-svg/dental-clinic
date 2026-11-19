@@ -35,7 +35,8 @@ type Props = {
   onFocusTooth?: (fdi: number) => void;
 };
 
-const STATUS_META: Record<
+// مُصدَّر لإعادة الاستخدام (خلاصة الخطة في لوح البانورامي الجانبي)
+export const STATUS_META: Record<
   PlanItemStatus,
   { labelAr: string; chipClass: string }
 > = {
