@@ -122,6 +122,7 @@ export function AppShell({
           lockEnabled={lockEnabled}
           logoLetter={logoLetter}
           clinicName={clinicName}
+          badges={{ ...badges, dues: duesBadge }}
         />
         {subscriptionBanner && (
           <Link

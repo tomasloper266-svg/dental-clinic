@@ -4,7 +4,7 @@ import { PanelRightClose, PanelRightOpen, Wallet } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { formatDualFromUsd, DEFAULT_USD_RATE } from "@/lib/currency";
-import { clinicLogoLetter } from "@/lib/branding";
+import { BrandMark } from "@/components/auth/BrandMark";
 import LogoutButton from "@/components/LogoutButton";
 import { cn } from "@/components/ui/cn";
 import { navGroups, homeNav, type BadgeKey, type NavGroup } from "./nav-items";
@@ -13,9 +13,9 @@ type SidebarProps = {
   collapsed: boolean;
   onToggle: () => void;
   userName: string;
-  /** اسم العيادة المسجل — يُعرض بصيغة «{الاسم} لطب الأسنان» مع بقاء الافتراضي عند غيابه */
+  /** اسم العيادة المسجل — يُعرض في الترويسة تحت «DENTIQ عيادتي» */
   clinicName?: string;
-  /** حرف الشعار المخزّن — يُفسَّر من اسم العيادة عند غيابه بدل الثابت القديم */
+  /** حرف الشعار المخزّن — بلا أثر بعد تبنّي بلاطة BrandMark المتدرجة، ويُرجَع للتوافق مع المُستهلكين */
   logoLetter?: string;
   badges: Record<BadgeKey, number>;
   /** المستحقات غير المسددة عبر المرضى — بطاقة التنبيه المثبتة أسفل الشريط */
@@ -25,7 +25,23 @@ type SidebarProps = {
 };
 
 const SYSTEM_NAME = "عيادات الأسنان";
-const SYSTEM_SUBTITLE = "DENTIQ";
+
+/*
+ * هوية السايدبار — ثوابت لوح الجرافيت من المرجع البصري (إطار «٢ الرئيسية»)
+ * لا رموز منقلبة (نمط AuthShell): السايدبار سطح هوية ثابت يبقى تباينه
+ * مقروءاً في الوضعين الداكن والفاتح.
+ */
+const SIDEBAR_BG = "#0F1720";
+const SIDEBAR_LINE = "#1D2C3C";
+/* == --color-surface-raised في الوضع الداكن (لوح #121D29 من المواصفة) */
+const ACTIVE_BG = "#121D29";
+const ACTIVE_TEXT = "#E8F2F8";
+const MUTED_TEXT = "#7E95A8";
+const FAINT_TEXT = "#4A6072";
+const ACCENT = "#22D3EE";
+/* توهج الأيقونة النشطة — نظير --glowS في المرجع */
+const ICON_GLOW = "drop-shadow(0 0 10px rgba(34, 211, 238, 0.4))";
+const BADGE_BG = "#FB7185";
 
 /**
  * نقي — اسم ترويسة السايدبار: «{اسم العيادة} لطب الأسنان» لما وُجد اسم
@@ -44,7 +60,7 @@ function isItemActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-/** رابط تنقل — العنصر النشط حبة ممتلئة بعرض كامل بلون الهوية */
+/** رابط تنقل — العنصر النشط لوح مرتفع بحد شعري وأيقونة سماوية متوهجة على شكل المرجع */
 function NavEntry({
   href,
   label,
@@ -65,32 +81,33 @@ function NavEntry({
       href={href}
       aria-current={active ? "page" : undefined}
       title={collapsed ? label : undefined}
+      style={active ? { background: ACTIVE_BG, color: ACTIVE_TEXT } : { color: MUTED_TEXT }}
       className={cn(
-        "relative flex items-center gap-3 px-3.5 py-2.5 text-sm transition-colors",
-        active
-          ? "rounded-xl bg-primary-600 font-semibold text-white shadow-xs"
-          : "rounded-xl text-primary-50/80 hover:bg-white/10 hover:text-white",
+        "relative flex items-center gap-3 rounded-[11px] px-2.5 py-2 text-[13px] font-semibold transition-colors hover:bg-white/5 hover:text-[#E8F2F8]",
+        active && "shadow-[inset_0_0_0_1px_#1D2C3C]",
         collapsed && "justify-center px-0",
       )}
     >
-      {/* شريط جانبي نشئ على شكل المرجع — يبرز من الحبة النشطة فقط */}
-      {active && (
-        <span
-          aria-hidden
-          className="absolute -start-3 top-1/2 h-[22px] w-[3px] -translate-y-1/2 rounded-full bg-gradient-to-b from-primary-300 to-primary-500"
-        />
-      )}
-      <Icon size={20} className="shrink-0" aria-hidden />
+      <Icon
+        size={20}
+        aria-hidden
+        className="shrink-0"
+        style={active ? { color: ACCENT, filter: ICON_GLOW } : undefined}
+      />
       {!collapsed && <span className="flex-1 truncate">{label}</span>}
       {!collapsed && count !== undefined && count > 0 && (
-        <span className="numeric grid min-w-5 place-items-center rounded-full bg-danger-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+        <span
+          className="numeric grid min-w-5 place-items-center rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white"
+          style={{ background: BADGE_BG }}
+        >
           {count}
         </span>
       )}
       {collapsed && count !== undefined && count > 0 && (
         <span
           aria-hidden
-          className="absolute start-1 top-1.5 size-2 rounded-full bg-danger-500"
+          className="absolute start-1 top-1.5 size-2 rounded-full"
+          style={{ background: BADGE_BG }}
         />
       )}
     </Link>
@@ -114,19 +131,24 @@ function NavSection({
   return (
     <li className="mt-1">
       {!collapsed ? (
-        <>
-          <p className="flex items-center gap-2.5 px-3 pb-1 text-[10px] font-bold tracking-wide text-primary-100/60">
-            <span>{group.label}</span>
-            <span
-              aria-hidden
-              className="h-px flex-1 bg-gradient-to-l from-primary-300/50 to-transparent"
-            />
-          </p>
-        </>
+        <p
+          className="flex items-center gap-2.5 px-3 pb-1 text-[10px] font-bold tracking-wide"
+          style={{ color: FAINT_TEXT }}
+        >
+          <span>{group.label}</span>
+          <span
+            aria-hidden
+            className="h-px flex-1"
+            style={{
+              background: `linear-gradient(to left, ${SIDEBAR_LINE}, transparent)`,
+            }}
+          />
+        </p>
       ) : (
         <div
           role="presentation"
-          className="mx-auto my-2 h-px w-8 bg-white/10"
+          className="mx-auto my-2 h-px w-8"
+          style={{ background: SIDEBAR_LINE }}
           aria-hidden
         />
       )}
@@ -174,7 +196,8 @@ function DuesAlertCard({
       >
         <span
           aria-hidden
-          className="size-2.5 rounded-full bg-danger-400"
+          className="size-2.5 rounded-full"
+          style={{ background: BADGE_BG }}
         />
       </Link>
     );
@@ -182,10 +205,7 @@ function DuesAlertCard({
   return (
     <Link
       href="/dues"
-      className={cn(
-        "block rounded-field border border-danger-300/40 bg-danger-500/10 px-3 py-2.5 transition-colors hover:bg-danger-500/20",
-        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger-300",
-      )}
+      className="block rounded-field border border-danger-300/40 bg-danger-500/10 px-3 py-2.5 transition-colors hover:bg-danger-500/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger-300"
     >
       <p className="flex items-center gap-2 text-xs font-semibold text-danger-100">
         <Wallet size={14} aria-hidden className="shrink-0" />
@@ -198,13 +218,12 @@ function DuesAlertCard({
   );
 }
 
-/** السايدبار الأخضر الطبي العميق القابل للطي — بلاطة شعار، مجموعات، تنبيه مثبت */
+/** سايدبار DENTIQ الجرافيتي القابل للطي — ترويسة هوية، مجموعات، تنبيه مثبت */
 export function Sidebar({
   collapsed,
   onToggle,
   userName,
   clinicName,
-  logoLetter,
   badges,
   outstandingDuesUsd = 0,
   usdRate = DEFAULT_USD_RATE,
@@ -214,30 +233,36 @@ export function Sidebar({
 
   return (
     <aside
+      style={{ background: SIDEBAR_BG, borderInlineEnd: `1px solid ${SIDEBAR_LINE}` }}
       className={cn(
-        "fixed inset-y-0 start-0 z-40 hidden flex-col bg-primary-900 transition-[width] duration-200 md:flex",
+        "fixed inset-y-0 start-0 z-40 hidden flex-col transition-[width] duration-200 md:flex",
         collapsed ? "w-16" : "w-60",
       )}
     >
+      {/* ترويسة الهوية: بلاطة BrandMark المتدرجة + «DENTIQ عيادتي» + اسم العيادة */}
       <div
         className={cn(
-          "flex items-center gap-2.5 px-3 pt-4 pb-3",
+          "flex items-center gap-2.5 px-3.5 pt-4 pb-3",
           collapsed && "justify-center px-0",
         )}
       >
-        <span
-          aria-hidden
-          className="glow-accent grid size-12 shrink-0 place-items-center rounded-[14px] bg-gradient-to-br from-primary-400 to-primary-500 font-display text-xl font-bold text-white shadow-xs"
-        >
-          {clinicLogoLetter(logoLetter, clinicName)}
-        </span>
+        <BrandMark size={collapsed ? 32 : 36} />
         {!collapsed && (
           <span className="min-w-0">
-            <span className="block truncate font-display text-lg font-normal text-white">
-              {clinicHeaderName(clinicName)}
+            <span
+              className="block truncate text-sm font-bold tracking-wide"
+              style={{ color: ACTIVE_TEXT }}
+            >
+              <span className="numeric" style={{ color: ACCENT }}>
+                DENTIQ
+              </span>{" "}
+              عيادتي
             </span>
-            <span className="block truncate text-[11px] text-primary-100/60">
-              {SYSTEM_SUBTITLE}
+            <span
+              className="block truncate text-[11px]"
+              style={{ color: MUTED_TEXT }}
+            >
+              {clinicHeaderName(clinicName)}
             </span>
           </span>
         )}
@@ -267,8 +292,9 @@ export function Sidebar({
       </nav>
 
       <div
+        style={{ borderColor: SIDEBAR_LINE }}
         className={cn(
-          "flex flex-col gap-2 border-t border-white/10 p-3",
+          "flex flex-col gap-2 border-t p-3",
           collapsed && "items-center",
         )}
       >
@@ -278,14 +304,17 @@ export function Sidebar({
           collapsed={collapsed}
         />
         {!collapsed && (
-          <span className="truncate text-xs text-primary-100/70">
+          <span
+            className="truncate text-xs"
+            style={{ color: MUTED_TEXT }}
+          >
             {userName}
           </span>
         )}
         <div className={cn("flex items-center gap-2", collapsed && "flex-col")}>
           <LogoutButton
             className={cn(
-              "flex-1 rounded-field border border-white/20 text-primary-50 hover:bg-white/10",
+              "flex-1 rounded-field border border-[#1D2C3C] text-[#E8F2F8] hover:bg-white/10",
               collapsed && "w-full",
             )}
           />
@@ -293,7 +322,7 @@ export function Sidebar({
             type="button"
             onClick={onToggle}
             aria-label={collapsed ? "توسيع القائمة" : "طي القائمة"}
-            className="rounded-field p-2 text-primary-50/80 hover:bg-white/10 hover:text-white"
+            className="rounded-field p-2 text-[#7E95A8] transition-colors hover:bg-white/10 hover:text-[#E8F2F8]"
           >
             <ToggleIcon size={20} aria-hidden />
           </button>
