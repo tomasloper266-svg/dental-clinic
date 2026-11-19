@@ -106,17 +106,19 @@ export default function ChartTooth({
         >
           <path
             d={tooth.rootPath}
-            fill="var(--color-warm-100)"
-            stroke="var(--color-warm-400)"
+            fill="var(--color-tooth-enamel)"
+            stroke="var(--color-tooth-line-soft)"
             strokeWidth="1.2"
             strokeLinejoin="round"
           />
           <path
             d={tooth.crownPath}
             fill={
-              overlay ? "var(--color-warm-100)" : (fill ?? "var(--color-warm-100)")
+              overlay
+                ? "var(--color-tooth-enamel)"
+                : (fill ?? "var(--color-tooth-enamel)")
             }
-            stroke={faded ? "var(--color-warning-500)" : "var(--color-warm-500)"}
+            stroke={faded ? "var(--color-warning-500)" : "var(--color-tooth-line)"}
             strokeWidth={fill ? "1.6" : "1.2"}
             strokeLinejoin="round"
             strokeDasharray={faded ? "3 2.5" : undefined}

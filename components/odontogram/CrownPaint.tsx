@@ -23,11 +23,15 @@ export type CrownPaint = {
 };
 
 export const CROWN_PAINT: Record<ToothStatusKey, CrownPaint> = {
-  HEALTHY: { fill: "var(--color-warm-100)" },
+  HEALTHY: { fill: "var(--color-tooth-enamel)" },
   DECAYED: { fill: "var(--color-danger-500)" },
   FILLED: { fill: "var(--color-ink-200)", pattern: "hatch" },
   ROOT_CANAL: { fill: "var(--color-plum-200)", pattern: "dots" },
-  EXTRACTED: { fill: "var(--color-warm-100)", dashed: true, faded: true },
+  EXTRACTED: {
+    fill: "var(--color-tooth-enamel)",
+    dashed: true,
+    faded: true,
+  },
   CROWN: { fill: "var(--color-warning-300)", innerRing: true },
   IMPLANT: { fill: "var(--color-primary-300)", pattern: "threads" },
   WATCH: { fill: "transparent", dashed: true },

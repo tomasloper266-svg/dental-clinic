@@ -1,15 +1,13 @@
 @import "tailwindcss";
 
 /*
- * نظام التصميم — هوية طبية تجارية ثابتة (فاتح دائماً).
- * الألوان كلها عبر tokens: عاجي للأسطح، رمادي دافئ للنصوص،
- * أخضر طبي عميق للعناوين والسايدبار والأقسام العميقة،
- * رمادي مزرق هادئ للبيانات الثانوية،
- * كهرماني للتنبيهات وأحمر هادئ للأخطاء.
- * الكحلي ink يُستخدم للنصوص فقط — لا يعدو أسطح التطبيق.
+ * نظام التصميم — هوية DENTIQ: طبي تقني فاخر، الوضع الداكن أساسي
+ * والوضع الفاتح متكامل. الألوان كلها عبر tokens، والتبديل بين
+ * الوضعين يحدث عبر صنف `dark` على <html> (افتراضياً حاضر).
  *
- * الوضع الداكن التلقائي معطّل: المتغير `dark` في Tailwind 4
- * يُقيَّد بالصنف `.dark` الصريح الذي لا نضعه أبداً.
+ * الوضع الداكن: Deep Graphite #0A0F14 للأسطح، Dark Panel #121D29
+ * للألواح، سماوي #22D3EE وفيروزي #2DD4BF للتفاعل والتوهج المدروس.
+ * الوضع الفاتح: العاجي الدافئ والأخضر الطبي العميق (الهوية السابقة).
  */
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -17,12 +15,14 @@
   /* الخط الأساسي — IBM Plex Sans Arabic (من next/font في layout.tsx) */
   --font-sans: var(--font-plex-arabic), "IBM Plex Sans Arabic", ui-sans-serif,
     system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* الأرقام والبيانات الإنجليزية — Space Grotesk (من next/font في layout.tsx) */
+  --font-mono: var(--font-grotesk), "Space Grotesk", ui-monospace,
+    SFMono-Regular, Menlo, monospace;
 
-  /* خط العناوين المزخرف — Aref Ruqaa مطابق للمرجع (عناوين الصفحات والشعار) */
+  /* خط العناوين المزخرف — Aref Ruqaa (عناوين الصفحات والشعار) */
   --font-display: var(--font-aref-ruqaa), "Aref Ruqaa", serif;
 
-  /* الأسطح — عاجي دافئ */
+  /* الأسطح — عاجي دافئ (الوضع الفاتح) */
   --color-surface: #faf9f7;
   --color-surface-raised: #ffffff;
   --color-surface-sunken: #f2f0ea;
@@ -72,7 +72,7 @@
   --color-plum-700: #6f3f6f;
   --color-plum-900: #452645;
 
-  /* الأخضر الطبي الهادئ — لون التفاعل الأساسي */
+  /* الأخضر الطبي الهادئ — لون التفاعل الأساسي في الوضع الفاتح */
   --color-primary-50: #eef6f2;
   --color-primary-100: #d8ebe2;
   --color-primary-200: #b2d7c8;
@@ -102,11 +102,23 @@
   --color-danger-700: #7f3731;
   --color-danger-900: #4f221e;
 
+  /* الأخضر الناجح — تأكيدات وإتمام العمليات */
+  --color-success-50: #e9faf2;
+  --color-success-500: #34d399;
+  --color-success-700: #0e9f6e;
+  --color-success-900: #064e3b;
+
   /* مقياس عمق الجيب للدواعم — أخضر سليم / أصفر إنذار / أحمر جيب عميق.
-     ألوان مقياس سريري مستقلة عن درجات warning/danger الحالة. */
+     ألوان المقياس السريري مستقلة عن درجات warning/danger الحالة. */
   --color-periodontal-ok: #3d8b66;
   --color-periodontal-warn: #d09a2b;
   --color-periodontal-alert: #b3564d;
+
+  /* رسم الأسنان التشريحي — عاج ثابت في الوضعين كي لا تتلوّن
+     الأسنان بألوان السطح الداكنة أو الفاتحة */
+  --color-tooth-enamel: #f4efe6;
+  --color-tooth-line: #a2957d;
+  --color-tooth-line-soft: #c7bca4;
 
   /* نصف قطر موحّد: ألواح 12px وحقول 8px */
   --radius-panel: 12px;
@@ -120,6 +132,107 @@
     0 4px 12px -2px rgb(16 36 30 / 0.12), 0 2px 4px -2px rgb(16 36 30 / 0.06);
 }
 
+/*
+ * الوضع الداكن DENTIQ — الأساسي. إعادة تعريف نفس الرموز الدلالية
+ * (وليس إضافة أصناف جديدة): كل ألوان التطبيق تُستهلك عبر var()
+ * فتنقلب كلياً بلا مساس بأي مكوّن وظيفي.
+ */
+html.dark {
+  color-scheme: dark;
+
+  /* الأسطح — Deep Graphite وDark Panel */
+  --color-surface: #0a0f14;
+  --color-surface-raised: #121d29;
+  --color-surface-sunken: #060b10;
+  --color-surface-hover: #17242f;
+
+  /* الرمادي الدافئ ينقلب: 900 نص فاتح و50 سطح غائر */
+  --color-warm-50: #0e161d;
+  --color-warm-100: #132029;
+  --color-warm-200: #1b2b37;
+  --color-warm-300: #253746;
+  --color-warm-400: #3e5464;
+  --color-warm-500: #5c7484;
+  --color-warm-600: #7e95a8;
+  --color-warm-700: #a3b8c7;
+  --color-warm-800: #c9dae5;
+  --color-warm-900: #e8f2f8;
+
+  /* الكحلي ينقلب إلى نصوص عالية الإضاءة */
+  --color-ink-50: #0d1d2a;
+  --color-ink-100: #132736;
+  --color-ink-200: #4a7ba0;
+  --color-ink-600: #7fa3bc;
+  --color-ink-700: #a5c2d4;
+  --color-ink-800: #cfe2ee;
+  --color-ink-900: #f0f7fb;
+  --color-ink-950: #f6fbfe;
+
+  --color-steel-50: #0d1a24;
+  --color-steel-100: #132430;
+  --color-steel-200: #24384c;
+  --color-steel-300: #37536d;
+  --color-steel-400: #4a6072;
+  --color-steel-500: #7e95a8;
+  --color-steel-600: #94aab9;
+  --color-steel-700: #b4c7d4;
+  --color-steel-800: #d2e1ea;
+  --color-steel-900: #edf4f8;
+
+  /* البُرموني — بنفسجي التشخيص #A78BFA */
+  --color-plum-50: #2a2440;
+  --color-plum-100: #372e5c;
+  --color-plum-200: #8b72e9;
+  --color-plum-300: #a78bfa;
+  --color-plum-500: #a78bfa;
+  --color-plum-700: #c4b5fd;
+  --color-plum-900: #ede9fe;
+
+  /* التفاعل — سماوي #22D3EE وفيروزي #2DD4BF، و600 بعمق كافٍ لنص أبيض */
+  --color-primary-50: #0c2733;
+  --color-primary-100: #103645;
+  --color-primary-200: #145264;
+  --color-primary-300: #17a2b8;
+  --color-primary-400: #22d3ee;
+  --color-primary-500: #2dd4bf;
+  --color-primary-600: #0e7490;
+  --color-primary-700: #155e75;
+  --color-primary-800: #1c4e5e;
+  --color-primary-900: #0e1c27;
+  --color-primary-950: #0a141c;
+
+  --color-warning-50: #2b1f08;
+  --color-warning-100: #3d2d0c;
+  --color-warning-300: #e8b33c;
+  --color-warning-500: #fbbf24;
+  --color-warning-700: #fde68a;
+  --color-warning-900: #fef3c7;
+
+  --color-danger-50: #311219;
+  --color-danger-100: #431b26;
+  --color-danger-300: #a34256;
+  --color-danger-500: #fb7185;
+  --color-danger-600: #fb7185;
+  --color-danger-700: #fda4af;
+  --color-danger-900: #ffe4e6;
+
+  --color-success-50: #0b2a20;
+  --color-success-500: #34d399;
+  --color-success-700: #6ee7b7;
+  --color-success-900: #d1fae5;
+
+  --color-periodontal-ok: #34d399;
+  --color-periodontal-warn: #fbbf24;
+  --color-periodontal-alert: #fb7185;
+
+  /* ظلال محايدة داكنة — عمق بالعتمة لا بالتوهج */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-sm:
+    0 1px 3px 0 rgb(0 0 0 / 0.5), 0 1px 2px -1px rgb(0 0 0 / 0.4);
+  --shadow-md:
+    0 4px 12px -2px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+}
+
 body {
   background-color: var(--color-surface);
   color: var(--color-warm-900);
@@ -128,7 +241,7 @@ body {
 
 /*
  * الأرقام والقيود المالية — تبويبي دائماً حتى لا تقفز الأعمدة
- * عند تحديث القيم. يُستخدم مع font-mono حيث يلزم.
+ * عند تحديث القيم. يُستخدم مع font-mono حيث يلزم (Space Grotesk).
  */
 @utility numeric {
   font-variant-numeric: tabular-nums;
@@ -149,4 +262,11 @@ body {
   color: var(--color-ink-800);
   text-decoration: underline;
   text-underline-offset: 4px;
+}
+
+/* توهج سماوي مدروس — للشعار والأزرار الأولية في الوضع الداكن حصراً */
+html.dark .glow-accent {
+  box-shadow:
+    0 0 22px rgb(34 211 238 / 0.22),
+    0 0 6px rgb(45 212 191 / 0.18);
 }

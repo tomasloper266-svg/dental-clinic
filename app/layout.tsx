@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans_Arabic, Aref_Ruqaa } from "next/font/google";
+import {
+  IBM_Plex_Sans_Arabic,
+  Aref_Ruqaa,
+  Space_Grotesk,
+} from "next/font/google";
 import "./globals.css";
 
 // الهوية الطباعية: IBM Plex Sans Arabic — عناوين 600–700 ومتن 400–500.
@@ -9,18 +13,32 @@ const plexArabic = IBM_Plex_Sans_Arabic({
   weight: ["400", "500", "600", "700"],
 });
 
-// خط العناوين المزخرف — مطابق للمرجع (Aref Ruqaa) لعناوين الصفحات والشعار.
+// خط العناوين المزخرف — Aref Ruqaa لعناوين الصفحات والشعار.
 const arefRuqaa = Aref_Ruqaa({
   variable: "--font-aref-ruqaa",
   subsets: ["arabic", "latin"],
   weight: ["400", "700"],
 });
 
+// خط الأرقام والبيانات الإنجليزية — Space Grotesk.
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-grotesk",
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+});
+
 export const metadata: Metadata = {
-  title: "نظام إدارة عيادات الأسنان",
+  title: "DENTIQ — نظام إدارة عيادات الأسنان",
   description:
-    "نظام SaaS عربي لإدارة عيادات الأسنان — مرضى، مواعيد، مخطط أسنان، حسابات ومخزون",
+    "نظام DENTIQ لإدارة عيادات الأسنان — مرضى، مواعيد، مخطط أسنان تفاعلي، حسابات ومخزون",
 };
+
+/**
+ * تفضيل الثيم قبل أول رسم — يقرأ المخزن المحلي ويضبط صنف `dark`
+ * على <html>. الافتراضي داكن (هوية DENTIQ)، والفاتح باختيار صريح.
+ * سكربت مضمّن كي لا يومض الوضع الفاتح قبل الترطيب.
+ */
+const themeInitScript = `(function(){try{var t=localStorage.getItem("dentiq-theme");if(t==="light"){document.documentElement.classList.remove("dark")}}catch(e){}})();`;
 
 export default function RootLayout({
   children,
@@ -31,13 +49,15 @@ export default function RootLayout({
     <html
       lang="ar"
       dir="rtl"
-      className={`${plexArabic.variable} ${arefRuqaa.variable}`}
+      className={`${plexArabic.variable} ${arefRuqaa.variable} ${spaceGrotesk.variable} dark`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       {/*
-        متغير الخط على <html> وليس <body>: لأن `--font-sans` في
-        @theme يُصدر على :root ويشير إلى `var(--font-plex-arabic)` —
-        لو عُرّف المتغير على body فقط صار `--font-sans` غير صالحٍ
-        عند الجذر (var غير محلول) فتسقط كومة الخط كلها.
+        متغيرات الخطوط على <html> وليس <body>: لأن `--font-sans` في
+        @theme يُصدر على :root ويشير إلى متغيرات next/font —
+        لو عُرّفت على body فقط سقطت كومة الخط كلها.
       */}
       <body className="font-sans antialiased">{children}</body>
     </html>

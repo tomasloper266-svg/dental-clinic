@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/components/ui/cn";
 import { clinicLogoLetter } from "@/lib/branding";
 import { breadcrumbsFromPath, navItemByHref } from "./nav-items";
+import { ThemeToggle } from "./ThemeToggle";
 
 /** زر رجوع ذكي: يعود للتاريخ إن وُجد، وإلا للرئيسية — ويختفي في الرئيسية */
 function SmartBack({ pathname }: { pathname: string }) {
@@ -129,18 +130,21 @@ export function Topbar({
       {/* مربع الشعار المصغّر — على الموبايل فقط، حيث يغيب السايدبار وصاحبه الحرف */}
       <span
         aria-hidden
-        className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-primary-500 font-display text-sm font-bold text-white shadow-xs md:hidden"
+        className="glow-accent grid size-8 shrink-0 place-items-center rounded-[10px] bg-gradient-to-br from-primary-400 to-primary-500 font-display text-sm font-bold text-white shadow-xs md:hidden"
       >
         {clinicLogoLetter(logoLetter, clinicName)}
       </span>
       <SmartBack pathname={pathname} />
       <Breadcrumbs pathname={pathname} />
-      {current && !lockEnabled && (
-        <span className="ms-auto hidden truncate text-sm font-semibold text-warm-500 sm:inline">
-          {current.label}
-        </span>
-      )}
-      {lockEnabled && <ManualLock />}
+      <div className="ms-auto flex items-center gap-1">
+        <ThemeToggle />
+        {current && !lockEnabled && (
+          <span className="hidden truncate text-sm font-semibold text-warm-500 sm:inline">
+            {current.label}
+          </span>
+        )}
+        {lockEnabled && <ManualLock />}
+      </div>
     </div>
   );
 }

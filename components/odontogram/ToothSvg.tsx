@@ -118,8 +118,8 @@ export default function ToothSvg({
           {/* الجذور — عاجية دائماً */}
           <path
             d={tooth.rootPath}
-            fill="var(--color-warm-100)"
-            stroke="var(--color-warm-400)"
+            fill="var(--color-tooth-enamel)"
+            stroke="var(--color-tooth-line-soft)"
             strokeWidth="1.2"
             strokeLinejoin="round"
           />
@@ -128,17 +128,17 @@ export default function ToothSvg({
             d={tooth.crownPath}
             fill={
               partial
-                ? "var(--color-warm-100)"
+                ? "var(--color-tooth-enamel)"
                 : paint
                   ? paint.fill
-                  : "var(--color-warm-100)"
+                  : "var(--color-tooth-enamel)"
             }
             stroke={
               perioStroke
                 ? perioStroke
                 : paint?.dashed
                   ? "var(--color-warning-500)"
-                  : "var(--color-warm-500)"
+                  : "var(--color-tooth-line)"
             }
             strokeWidth={
               perioStroke ? "2" : status && status !== "HEALTHY" ? "1.6" : "1.2"
@@ -173,7 +173,7 @@ export default function ToothSvg({
           {paint?.faded && (
             <path
               d="M8 10 L32 50 M32 10 L8 50"
-              stroke="var(--color-warm-500)"
+              stroke="var(--color-tooth-line)"
               strokeWidth="2"
               strokeLinecap="round"
             />

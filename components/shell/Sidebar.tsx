@@ -25,7 +25,7 @@ type SidebarProps = {
 };
 
 const SYSTEM_NAME = "عيادات الأسنان";
-const SYSTEM_SUBTITLE = "نظام إدارة العيادات";
+const SYSTEM_SUBTITLE = "DENTIQ";
 
 /**
  * نقي — اسم ترويسة السايدبار: «{اسم العيادة} لطب الأسنان» لما وُجد اسم
@@ -227,7 +227,7 @@ export function Sidebar({
       >
         <span
           aria-hidden
-          className="grid size-12 shrink-0 place-items-center rounded-[14px] bg-primary-500 font-display text-xl font-bold text-white shadow-xs"
+          className="glow-accent grid size-12 shrink-0 place-items-center rounded-[14px] bg-gradient-to-br from-primary-400 to-primary-500 font-display text-xl font-bold text-white shadow-xs"
         >
           {clinicLogoLetter(logoLetter, clinicName)}
         </span>
