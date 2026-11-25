@@ -35,10 +35,10 @@ export const metadata: Metadata = {
 
 /**
  * تفضيل الثيم قبل أول رسم — يقرأ المخزن المحلي ويضبط صنف `dark`
- * على <html>. الافتراضي داكن (هوية DENTIQ)، والفاتح باختيار صريح.
- * سكربت مضمّن كي لا يومض الوضع الفاتح قبل الترطيب.
+ * على <html>. الافتراضي فاتح مطابق لصفحات المصادقة (هوية DENTIQ)،
+ * والداكن باختيار صريح. سكربت مضمّن كي لا يومض الوضع الداكن قبل الترطيب.
  */
-const themeInitScript = `(function(){try{var t=localStorage.getItem("dentiq-theme");if(t==="light"){document.documentElement.classList.remove("dark")}}catch(e){}})();`;
+const themeInitScript = `(function(){try{var t=localStorage.getItem("dentiq-theme");if(t==="dark"){document.documentElement.classList.add("dark")}}catch(e){}})();`;
 
 export default function RootLayout({
   children,
@@ -49,7 +49,9 @@ export default function RootLayout({
     <html
       lang="ar"
       dir="rtl"
-      className={`${plexArabic.variable} ${arefRuqaa.variable} ${spaceGrotesk.variable} dark`}
+      // سكربت الثيم يضبط صنف dark قبل الترطيب فيختلف عن الرندر الخادمي — فروق مقصودة
+      suppressHydrationWarning
+      className={`${plexArabic.variable} ${arefRuqaa.variable} ${spaceGrotesk.variable}`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />

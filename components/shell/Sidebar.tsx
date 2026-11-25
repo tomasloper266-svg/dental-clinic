@@ -27,20 +27,19 @@ type SidebarProps = {
 const SYSTEM_NAME = "عيادات الأسنان";
 
 /*
- * هوية السايدبار — ثوابت لوح الجرافيت من المرجع البصري (إطار «٢ الرئيسية»)
- * لا رموز منقلبة (نمط AuthShell): السايدبار سطح هوية ثابت يبقى تباينه
- * مقروءاً في الوضعين الداكن والفاتح.
+ * هوية السايدبار — مربوط بنظام التصميم عبر الرموز الدلالية (نمط AuthShell):
+ * سطح مرتفع فاتح بحد شعري، والعنصر النشط حبّة أزرق DENTIQ بنص أبيض،
+ * فيبقى متطابقاً مع الهوية في الوضعين الفاتح والداكن.
  */
-const SIDEBAR_BG = "#0F1720";
-const SIDEBAR_LINE = "#1D2C3C";
-/* == --color-surface-raised في الوضع الداكن (لوح #121D29 من المواصفة) */
-const ACTIVE_BG = "#121D29";
-const ACTIVE_TEXT = "#E8F2F8";
-const MUTED_TEXT = "#7E95A8";
-const FAINT_TEXT = "#4A6072";
-const ACCENT = "#22D3EE";
+const SIDEBAR_BG = "var(--color-surface-raised)";
+const SIDEBAR_LINE = "var(--color-warm-200)";
+const ACTIVE_BG = "var(--color-primary-500)";
+const ACTIVE_TEXT = "#FFFFFF";
+const MUTED_TEXT = "var(--color-warm-500)";
+const FAINT_TEXT = "var(--color-warm-400)";
+const ACCENT = "var(--color-primary-600)";
 /* توهج الأيقونة النشطة — نظير --glowS في المرجع */
-const ICON_GLOW = "drop-shadow(0 0 10px rgba(34, 211, 238, 0.4))";
+const ICON_GLOW = "drop-shadow(0 0 10px rgba(91, 108, 228, 0.35))";
 const BADGE_BG = "#FB7185";
 
 /**
@@ -60,7 +59,7 @@ function isItemActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-/** رابط تنقل — العنصر النشط لوح مرتفع بحد شعري وأيقونة سماوية متوهجة على شكل المرجع */
+/** رابط تنقل — العنصر النشط حبّة أزرق DENTIQ بأيقونة بيضاء متوهجة على نمط الأزرار الأولية */
 function NavEntry({
   href,
   label,
@@ -83,8 +82,8 @@ function NavEntry({
       title={collapsed ? label : undefined}
       style={active ? { background: ACTIVE_BG, color: ACTIVE_TEXT } : { color: MUTED_TEXT }}
       className={cn(
-        "relative flex items-center gap-3 rounded-[11px] px-2.5 py-2 text-[13px] font-semibold transition-colors hover:bg-white/5 hover:text-[#E8F2F8]",
-        active && "shadow-[inset_0_0_0_1px_#1D2C3C]",
+        "relative flex items-center gap-3 rounded-[11px] px-2.5 py-2 text-[13px] font-semibold transition-colors hover:bg-warm-100 hover:text-warm-900",
+        active && "shadow-[inset_0_0_0_1px_rgba(255,255,255,0.15)]",
         collapsed && "justify-center px-0",
       )}
     >
@@ -314,7 +313,7 @@ export function Sidebar({
         <div className={cn("flex items-center gap-2", collapsed && "flex-col")}>
           <LogoutButton
             className={cn(
-              "flex-1 rounded-field border border-[#1D2C3C] text-[#E8F2F8] hover:bg-white/10",
+              "flex-1 rounded-field border border-warm-200 text-warm-800 hover:bg-warm-100",
               collapsed && "w-full",
             )}
           />
@@ -322,7 +321,7 @@ export function Sidebar({
             type="button"
             onClick={onToggle}
             aria-label={collapsed ? "توسيع القائمة" : "طي القائمة"}
-            className="rounded-field p-2 text-[#7E95A8] transition-colors hover:bg-white/10 hover:text-[#E8F2F8]"
+            className="rounded-field p-2 text-warm-500 transition-colors hover:bg-warm-100 hover:text-warm-900"
           >
             <ToggleIcon size={20} aria-hidden />
           </button>

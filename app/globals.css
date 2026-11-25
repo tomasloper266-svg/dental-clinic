@@ -23,45 +23,45 @@
   --font-display: var(--font-aref-ruqaa), "Aref Ruqaa", serif;
 
   /* الأسطح — عاجي دافئ (الوضع الفاتح) */
-  --color-surface: #faf9f7;
-  --color-surface-raised: #ffffff;
-  --color-surface-sunken: #f2f0ea;
-  --color-surface-hover: #f6f4ef;
+  --color-surface: #F4F5FC;
+  --color-surface-raised: #FFFFFF;
+  --color-surface-sunken: #EAECF8;
+  --color-surface-hover: #F1F3FD;
 
   /* الرمادي الدافئ — نصوص ثانوية وحدود hairline */
-  --color-warm-50: #faf9f7;
-  --color-warm-100: #f2f0ea;
-  --color-warm-200: #e5e1d8;
-  --color-warm-300: #d3cec2;
-  --color-warm-400: #a8a294;
-  --color-warm-500: #857f72;
-  --color-warm-600: #6b665b;
-  --color-warm-700: #524e45;
-  --color-warm-800: #3a372f;
-  --color-warm-900: #262420;
+  --color-warm-50: #F7F8FD;
+  --color-warm-100: #EFF1FA;
+  --color-warm-200: #E2E5F2;
+  --color-warm-300: #CDD1E4;
+  --color-warm-400: #9BA1BC;
+  --color-warm-500: #6E7391;
+  --color-warm-600: #565B78;
+  --color-warm-700: #41465F;
+  --color-warm-800: #2F3347;
+  --color-warm-900: #25293C;
 
   /* الكحلي العميق — نصوص العناوين فقط (تقاعد من الأسطح) */
-  --color-ink-50: #eef3f9;
-  --color-ink-100: #dce6f0;
-  --color-ink-200: #c1d3e4;
-  --color-ink-600: #33547a;
-  --color-ink-700: #274466;
-  --color-ink-800: #1e3350;
-  --color-ink-900: #16263a;
-  --color-ink-950: #101d2e;
+  --color-ink-50: #EEF0FC;
+  --color-ink-100: #DDE1FB;
+  --color-ink-200: #C0C8F4;
+  --color-ink-600: #3E4AB8;
+  --color-ink-700: #3440A0;
+  --color-ink-800: #2A357F;
+  --color-ink-900: #222B63;
+  --color-ink-950: #181F47;
 
   /* الرمادي المزرق الهادئ — عناوين ثانوية وبيانات مساندة (نطاق مستقل؛
    * plum الدلالي للأودوغرام حصراً) */
-  --color-steel-50: #f4f6f7;
-  --color-steel-100: #e7ebec;
-  --color-steel-200: #cfd7d9;
-  --color-steel-300: #adbcbe;
-  --color-steel-400: #8a9fa2;
-  --color-steel-500: #6f8588;
-  --color-steel-600: #576c6f;
-  --color-steel-700: #45565a;
-  --color-steel-800: #334144;
-  --color-steel-900: #232f31;
+  --color-steel-50: #F5F6FA;
+  --color-steel-100: #EAECF4;
+  --color-steel-200: #D3D8E8;
+  --color-steel-300: #AEB6CF;
+  --color-steel-400: #8A94B0;
+  --color-steel-500: #6B7594;
+  --color-steel-600: #545E7B;
+  --color-steel-700: #424A63;
+  --color-steel-800: #313749;
+  --color-steel-900: #222633;
 
   /* البُرموني — حالات الأودوغرام (معالجة الجذور) — امتداد دلالي فقط */
   --color-plum-50: #f7f2f7;
@@ -73,17 +73,17 @@
   --color-plum-900: #452645;
 
   /* الأخضر الطبي الهادئ — لون التفاعل الأساسي في الوضع الفاتح */
-  --color-primary-50: #eef6f2;
-  --color-primary-100: #d8ebe2;
-  --color-primary-200: #b2d7c8;
-  --color-primary-300: #88bfa9;
-  --color-primary-400: #5ca48c;
-  --color-primary-500: #3e8a72;
-  --color-primary-600: #32705d;
-  --color-primary-700: #295a4b;
-  --color-primary-800: #21463b;
-  --color-primary-900: #1a372f;
-  --color-primary-950: #10241e;
+  --color-primary-50: #EEF0FC;
+  --color-primary-100: #E0E4FB;
+  --color-primary-200: #C5CCF6;
+  --color-primary-300: #9FA9EF;
+  --color-primary-400: #7D8AEA;
+  --color-primary-500: #5B6CE4;
+  --color-primary-600: #4A5BD8;
+  --color-primary-700: #3C4BB5;
+  --color-primary-800: #303C90;
+  --color-primary-900: #252D69;
+  --color-primary-950: #171D41;
 
   /* الكهرماني — تنبيهات وحدود مخزون */
   --color-warning-50: #fdf6e7;
@@ -121,15 +121,15 @@
   --color-tooth-line-soft: #c7bca4;
 
   /* نصف قطر موحّد: ألواح 12px وحقول 8px */
-  --radius-panel: 12px;
-  --radius-field: 8px;
+  --radius-panel: 14px;
+  --radius-field: 10px;
 
   /* ظلال دافئة بصبغة خضراء عميقة — ثلاث درجات فقط */
-  --shadow-xs: 0 1px 2px 0 rgb(16 36 30 / 0.06);
+  --shadow-xs: 0 1px 2px 0 rgb(38 41 92 / 0.06);
   --shadow-sm:
-    0 1px 3px 0 rgb(16 36 30 / 0.08), 0 1px 2px -1px rgb(16 36 30 / 0.05);
+    0 1px 3px 0 rgb(38 41 92 / 0.08), 0 1px 2px -1px rgb(38 41 92 / 0.05);
   --shadow-md:
-    0 4px 12px -2px rgb(16 36 30 / 0.12), 0 2px 4px -2px rgb(16 36 30 / 0.06);
+    0 4px 12px -2px rgb(38 41 92 / 0.10), 0 2px 4px -2px rgb(38 41 92 / 0.06);
 }
 
 /*
@@ -141,10 +141,10 @@ html.dark {
   color-scheme: dark;
 
   /* الأسطح — Deep Graphite وDark Panel */
-  --color-surface: #0a0f14;
-  --color-surface-raised: #121d29;
-  --color-surface-sunken: #060b10;
-  --color-surface-hover: #17242f;
+  --color-surface: #0E1124;
+  --color-surface-raised: #161A33;
+  --color-surface-sunken: #0A0D1B;
+  --color-surface-hover: #1C2142;
 
   /* الرمادي الدافئ ينقلب: 900 نص فاتح و50 سطح غائر */
   --color-warm-50: #0e161d;
@@ -189,17 +189,17 @@ html.dark {
   --color-plum-900: #ede9fe;
 
   /* التفاعل — سماوي #22D3EE وفيروزي #2DD4BF، و600 بعمق كافٍ لنص أبيض */
-  --color-primary-50: #0c2733;
-  --color-primary-100: #103645;
-  --color-primary-200: #145264;
-  --color-primary-300: #17a2b8;
-  --color-primary-400: #22d3ee;
-  --color-primary-500: #2dd4bf;
-  --color-primary-600: #0e7490;
-  --color-primary-700: #155e75;
-  --color-primary-800: #1c4e5e;
-  --color-primary-900: #0e1c27;
-  --color-primary-950: #0a141c;
+  --color-primary-50: #191E44;
+  --color-primary-100: #20265A;
+  --color-primary-200: #333D8F;
+  --color-primary-300: #AEB6F5;
+  --color-primary-400: #8A96F0;
+  --color-primary-500: #6C7CE6;
+  --color-primary-600: #4A5BD8;
+  --color-primary-700: #3C4BB5;
+  --color-primary-800: #2A3370;
+  --color-primary-900: #1A2050;
+  --color-primary-950: #121636;
 
   --color-warning-50: #2b1f08;
   --color-warning-100: #3d2d0c;
@@ -288,6 +288,6 @@ body {
 /* توهج سماوي مدروس — للشعار والأزرار الأولية في الوضع الداكن حصراً */
 html.dark .glow-accent {
   box-shadow:
-    0 0 22px rgb(34 211 238 / 0.22),
-    0 0 6px rgb(45 212 191 / 0.18);
+    0 0 22px rgb(108 124 230 / 0.25),
+    0 0 6px rgb(91 108 228 / 0.20);
 }
