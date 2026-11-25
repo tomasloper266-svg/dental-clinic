@@ -1,7 +1,7 @@
 // هوية DENTIQ — لوغو «رسمة ناعمة»: سنّ ممتلئ بحواف دائرية على بلاطة
-// فاتحة بظل خافت، بتدرج أزرق مطابق لصفحات المصادقة (#5B6CE4 / #6C7CE6).
-// الاسم بخط Space Grotesk العريض المتباعد. يستخدم في كل الصفحات:
-// لوح المصادقة الأزرق، وعمود النموذج على الشاشات الصغيرة، وسايدبار التطبيق.
+// فاتحة بظل خافت. السنّ يتبدّل حسب الخلفية: متدرّج أزرق على الأسطح
+// الفاتحة، وأبيض متدرّج فوق اللوح الأزرق حتى يطلع بوضوح.
+// الاسم بخط Space Grotesk العريض، مزخرف بتدرّج لوني ونجمة صغيرة.
 const SPACE_GROTESK = "var(--font-grotesk), system-ui, sans-serif";
 
 export function BrandMark({
@@ -9,7 +9,7 @@ export function BrandMark({
   onPanel = false,
 }: {
   size?: number;
-  /** onPanel: فوق اللوح الأزرق — البلاطة تصير بيضاء شفافة ويصير التوهج أنعم */
+  /** onPanel: فوق اللوح الأزرق — سنّ فاتح على بلاطة شفافة أنعم */
   onPanel?: boolean;
 }) {
   const gid = onPanel ? "dentiq-tooth-panel" : "dentiq-tooth-base";
@@ -36,10 +36,28 @@ export function BrandMark({
         role="presentation"
       >
         <defs>
-          <linearGradient id={gid} x1="14" y1="7" x2="36" y2="42" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#8B94F0" />
-            <stop offset="55%" stopColor="#6C7CE6" />
-            <stop offset="100%" stopColor="#5B6CE4" />
+          <linearGradient
+            id={gid}
+            x1="14"
+            y1="7"
+            x2="36"
+            y2="42"
+            gradientUnits="userSpaceOnUse"
+          >
+            {onPanel ? (
+              // على اللوح الأزرق: سنّ فاتح متدرّج من الأبيض ليبرز بوضوح
+              <>
+                <stop offset="0%" stopColor="#FFFFFF" />
+                <stop offset="60%" stopColor="#E7EAFF" />
+                <stop offset="100%" stopColor="#C9D0FA" />
+              </>
+            ) : (
+              <>
+                <stop offset="0%" stopColor="#6C7CE6" />
+                <stop offset="55%" stopColor="#5B6CE4" />
+                <stop offset="100%" stopColor="#4A5BD8" />
+              </>
+            )}
           </linearGradient>
         </defs>
         {/* السنّ — رسمة ناعمة: تاج عريض مدوّر وجذرين قصيرين بحواف مستديرة */}
@@ -54,15 +72,64 @@ export function BrandMark({
           rx="4.6"
           ry="3.2"
           transform="rotate(-24 17.5 16.5)"
-          fill="rgba(255,255,255,0.45)"
+          fill={onPanel ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.35)"}
         />
       </svg>
     </span>
   );
 }
 
-// قفل الهوية الأفقي: البلاطة + DENTIQ. tone=dark للأسطح الفاتحة،
-// وtone=panel للوح المصادقة الأزرق (نص أبيض بتوهج خافت).
+// تزيين الاسم: نجمة رباعية صغيرة تتوّج نهاية الكلمة
+function Sparkle({ size = 12, color }: { size?: number; color: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill={color}
+      aria-hidden
+      role="presentation"
+      style={{ position: "absolute", top: -size * 0.45, right: -size * 0.7 }}
+    >
+      <path d="M12 1.5c1 5.8 3.7 8.5 9.5 10.5-5.8 2-8.5 4.7-9.5 10.5-1-5.8-3.7-8.5-9.5-10.5C8.3 10 11 7.3 12 1.5Z" />
+    </svg>
+  );
+}
+
+// الاسم المزخرف: حروف بتدرّج لوني (قصّ نصّي) مع لمعة خفيفة على اللوح
+function Wordmark({
+  fontSize,
+  tone,
+}: {
+  fontSize: number;
+  tone: "dark" | "panel";
+}) {
+  const onPanel = tone === "panel";
+  return (
+    <span
+      className="relative inline-block font-bold leading-none tracking-[0.14em]"
+      style={{
+        fontFamily: SPACE_GROTESK,
+        fontSize,
+        backgroundImage: onPanel
+          ? "linear-gradient(180deg, #FFFFFF 15%, #D9DEFF 100%)"
+          : "linear-gradient(90deg, #4F5BE0 0%, #8B94F0 100%)",
+        WebkitBackgroundClip: "text",
+        backgroundClip: "text",
+        color: "transparent",
+        filter: onPanel
+          ? "drop-shadow(0 2px 14px rgba(255,255,255,0.35))"
+          : "none",
+      }}
+    >
+      DENTIQ
+      <Sparkle size={fontSize * 0.42} color={onPanel ? "#FFE9A8" : "#F6C453"} />
+    </span>
+  );
+}
+
+// قفل الهوية الأفقي: البلاطة + DENTIQ. tone=dark للأسطح الفاتحة
+// (اسم بتدرّج أزرق)، وtone=panel للوح المصادقة الأزرق (اسم أبيض متدرّج بلمعة).
 export function BrandLock({
   size = 44,
   tone = "dark",
@@ -74,32 +141,18 @@ export function BrandLock({
   return (
     <span className="inline-flex items-center gap-3">
       <BrandMark size={size} onPanel={onPanel} />
-      <span
-        className="font-bold leading-none tracking-[0.14em]"
-        style={{
-          fontFamily: SPACE_GROTESK,
-          fontSize: size * 0.5,
-          color: onPanel ? "#FFFFFF" : "#25293C",
-        }}
-      >
-        DENTIQ
-      </span>
+      <Wordmark fontSize={size * 0.5} tone={tone} />
     </span>
   );
 }
 
 // قفل الهوية العمودي المُبرز — لوسط لوح المصادقة الأزرق: البلاطة كبيرة
-// والأسم أسفلها، وهو الموضع الملفت أعلى رسالة الترحيب.
+// والاسم أسفلها بحجم أكبر، وهو الموضع الملفت أعلى رسالة الترحيب.
 export function BrandHero() {
   return (
     <span className="flex flex-col items-center gap-3">
       <BrandMark size={64} onPanel />
-      <span
-        className="font-bold leading-none tracking-[0.3em]"
-        style={{ fontFamily: SPACE_GROTESK, fontSize: 26, color: "#FFFFFF" }}
-      >
-        DENTIQ
-      </span>
+      <Wordmark fontSize={26} tone="panel" />
     </span>
   );
 }

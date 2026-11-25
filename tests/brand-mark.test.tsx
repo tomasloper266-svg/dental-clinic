@@ -24,11 +24,12 @@ describe("BrandLock", () => {
     expect(screen.getByText("DENTIQ")).toBeInTheDocument();
   });
 
-  it("يعرض الاسم بالأبيض على لوح المصادقة الأزرق (tone=panel)", () => {
+  it("يعرض الاسم المتدرّج على لوح المصادقة الأزرق (tone=panel)", () => {
     render(<BrandLock tone="panel" />);
     const name = screen.getByText("DENTIQ");
     expect(name).toBeInTheDocument();
-    expect(name.style.color).toMatch(/^#FFFFFF$|rgb\(255, 255, 255\)/);
+    expect(name.style.backgroundImage).toContain("linear-gradient");
+    expect(name.style.color).toBe("transparent");
   });
 });
 
