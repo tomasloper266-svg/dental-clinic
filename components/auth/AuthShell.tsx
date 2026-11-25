@@ -1,100 +1,70 @@
-import { BrandLock } from "./BrandMark";
+import Link from "next/link";
+import { cn } from "@/components/ui/cn";
 
-// هيكل صفحات المصادقة — هوية DENTIQ: عمود هوياتي داكن ثابت (جرافيت
-// عميق بتوهج شعاعي سماوي) على اليمين، وعمود نموذج على لوح مرتفع بحد
-// شعري على اليسار. RTL متجاوب؛ التابلت يعرض شريط هوية مصغراً.
-// ألوان لوح الهوية ثوابت هوية (#0A0F14 وحدوده الشعرية) لا رموز
-// منقلبة — كي يبقى التباين مقروءاً في الوضعين الداكن والفاتح.
-const IDENTITY_BG = "#0A0F14";
-const IDENTITY_LINE = "#1D2C3C";
-
-// توهج شعاعي سماوي على قاعدة الجرافيت — طبقتان لنقاء التوهج.
-function IdentityGlow() {
-  return (
-    <div
-      aria-hidden
-      className="pointer-events-none absolute inset-0"
-      style={{
-        background: [
-          "radial-gradient(520px circle at 78% 24%, rgba(34, 211, 238, 0.16), transparent 62%)",
-          "radial-gradient(420px circle at 30% 85%, rgba(45, 212, 191, 0.10), transparent 60%)",
-        ].join(", "),
-      }}
-    />
-  );
-}
-
-const IDENTITY_POINTS = [
-  "ملف طبي متكامل مع مخطط أسنان FDI",
-  "مواعيد وقائمة انتظار بذهن واحد",
-  "دفتر حسابات غير قابل للتعديل ومخزون بتنبيهات",
-];
+// هيكل صفحات المصادقة — بطاقة مقسومة على خلفية لافندر: لوح ترحيبي أزرق
+// (بيرينواكل) بحواف شديدة الاستدارة داخل البطاقة على جانب، ونموذج الدخول
+// أو التسجيل على الجانب المقابل. RTL؛ flip يعكس جانب اللوح (صفحة التسجيل).
+// الأزرق ثابت هوية البطاقة (#6C7CE6) مستقل عن وضعي الثيم — الأصل طلب
+// المستخدم مطابقة تصميم مرجعي بالأزرق في الوضعين.
+const PANEL_BG = "#6C7CE6";
+const CTA_BG = "#5B6CE4";
 
 export function AuthShell({
   children,
+  flip = false,
+  greetingTitle = "أهلاً بك!",
+  greetingSubtitle = "ليس لديك عيادة بعد؟",
+  ctaLabel = "إنشاء حساب",
+  ctaHref = "/signup",
 }: {
   children: React.ReactNode;
+  /** يعكس جانب اللوح الأزرق — صفحة التسجيل (اللوح يميناً والفورم يساراً) */
+  flip?: boolean;
+  greetingTitle?: string;
+  greetingSubtitle?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
 }) {
   return (
-    <main className="min-h-screen bg-surface lg:grid lg:grid-cols-[5fr_6fr]">
-      {/* لوح الهوية — جرافيت عميق بتوهج سماوي، ثابت في الوضعين */}
-      <aside
-        className="relative hidden overflow-hidden lg:block"
-        style={{ background: IDENTITY_BG }}
-      >
-        <IdentityGlow />
-        <div
-          aria-hidden
-          className="absolute inset-y-0 start-0 w-px"
-          style={{ background: IDENTITY_LINE }}
-        />
-        <div className="relative flex h-full flex-col justify-between p-12">
-          <BrandLock tone="light" size={38} />
-
-          <div className="max-w-md">
-            <p
-              className="text-3xl font-bold leading-snug"
-              style={{ color: "#E8F2F8" }}
+    <main className="flex min-h-screen items-center justify-center bg-[#dfe3f5] px-4 py-10">
+      <div className="relative w-full max-w-4xl overflow-hidden rounded-[2rem] bg-white shadow-[0_30px_60px_-15px_rgba(76,88,180,0.35)] lg:grid lg:grid-cols-2">
+        {/* لوح الترحيب — أزرق بحواف كبيرة داخل هوامش البطاقة.
+         * RTL: العمود الأول يُرسم يميناً؛ اللوح يساراً للدخول (flip=false) ويميناً للتسجيل. */}
+        <aside
+          className={cn(
+            "relative hidden p-3 lg:block",
+            flip ? "lg:order-1" : "lg:order-2",
+          )}
+        >
+          <div
+            className="flex h-full flex-col items-center justify-center gap-2 rounded-[3rem] p-10 text-center"
+            style={{ background: PANEL_BG }}
+          >
+            <p className="text-3xl font-bold text-white">{greetingTitle}</p>
+            <p className="text-sm text-white/85">{greetingSubtitle}</p>
+            <Link
+              href={ctaHref}
+              className="mt-5 rounded-lg border-2 border-white px-10 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/10"
             >
-              عيادتك كاملة
-              <br />
-              في مكان واحد هادئ
-            </p>
-            <p className="mt-4 text-sm leading-relaxed text-[#7E95A8]">
-              المرضى، المخطط السني، المواعيد، الحسابات والمخزون — بواجهة عربية
-              مصممة لعمل الطبيب اليومي دون تشتيت.
-            </p>
+              {ctaLabel}
+            </Link>
           </div>
+        </aside>
 
-          <ul className="flex flex-col gap-3 text-sm" style={{ color: "#B9CBD8" }}>
-            {IDENTITY_POINTS.map((line) => (
-              <li key={line} className="flex items-center gap-2.5">
-                <span
-                  aria-hidden
-                  className="h-1.5 w-1.5 shrink-0 rounded-full"
-                  style={{
-                    background: "#22D3EE",
-                    boxShadow: "0 0 10px rgba(34, 211, 238, 0.4)",
-                  }}
-                />
-                {line}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </aside>
-
-      {/* عمود النموذج — لوح مرتفع بحد شعري فوق قاعدة السطح */}
-      <section className="flex min-h-screen flex-col px-5 py-8 sm:px-10 lg:min-h-0 lg:px-16 lg:py-14">
-        <div className="mb-10 lg:hidden">
-          <BrandLock size={34} />
-        </div>
-        <div className="flex flex-1 items-center justify-center">
-          <div className="w-full max-w-md rounded-panel border border-warm-200 bg-surface-raised p-6 shadow-sm sm:p-8">
+        {/* عمود النموذج */}
+        <section
+          className={cn(
+            "px-6 py-10 sm:px-10 lg:px-12 lg:py-14",
+            flip ? "lg:order-2" : "lg:order-1",
+          )}
+        >
+          <div className="mx-auto flex min-h-full w-full max-w-sm flex-col justify-center">
             {children}
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </main>
   );
 }
+
+export { CTA_BG, PANEL_BG };

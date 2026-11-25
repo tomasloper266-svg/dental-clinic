@@ -3,20 +3,23 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Lock, User } from "lucide-react";
 import { AuthShell } from "@/components/auth/AuthShell";
-import { PasswordInput } from "@/components/auth/PasswordInput";
-import { Button } from "@/components/ui/Button";
+import { SocialRow } from "@/components/auth/SocialRow";
 import { Field, Input } from "@/components/ui/Field";
 
-// صفحة الدخول — أول انطباع عن النظام. نفس عقد الواجهة السابق
-// (POST /api/auth/login ثم توجيه إلى لوحة القيادة) مع «تذكرني»
-// وروابط الاستعادة الثلاثة.
+// صفحة الدخول — بطاقة مقسومة بلوح ترحيبي أزرق وفورم بالأيقونات.
+// نفس عقد الواجهة السابق (POST /api/auth/login ثم توجيه إلى لوحة
+// القيادة). حقل «تذكرني» أُسقط من الواجهة لمطابقة التصميم المرجعي؛
+// يُرسل rememberMe=false دائماً.
+
+const INPUT_CLS =
+  "h-11 rounded-lg border-0 bg-[#eceef6] text-sm text-ink-900 placeholder:text-warm-400 focus:outline-2 focus:outline-offset-0 focus:outline-[#5b6ce4]";
 
 export default function LoginPage() {
   const router = useRouter();
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -28,7 +31,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, password, rememberMe }),
+        body: JSON.stringify({ phone, password, rememberMe: false }),
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
@@ -45,80 +48,94 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthShell>
+    <AuthShell
+      greetingTitle="أهلاً بك!"
+      greetingSubtitle="ليس لديك عيادة بعد؟"
+      ctaLabel="إنشاء حساب"
+      ctaHref="/signup"
+    >
       <section aria-labelledby="login-title">
-        <h1 id="login-title" className="font-display text-[25px] font-normal leading-[1.45] text-ink-900">
+        <h1 id="login-title" className="text-center text-3xl font-bold text-ink-900">
           تسجيل الدخول
         </h1>
-        <p className="mt-2 text-sm text-warm-600">
-          أدخل بيانات حسابك للوصول إلى عيادتك
-        </p>
 
-        <form onSubmit={onSubmit} className="mt-8 space-y-5">
+        <form onSubmit={onSubmit} className="mt-8 space-y-4">
           <Field label="رقم الهاتف" htmlFor="phone">
-            <Input
-              id="phone"
-              type="tel"
-              dir="ltr"
-              required
-              className="text-left"
-              placeholder="09xxxxxxxx"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
+            <div className="relative">
+              <Input
+                id="phone"
+                type="tel"
+                dir="ltr"
+                required
+                className={`${INPUT_CLS} pr-4 pl-11 text-left`}
+                placeholder="09xxxxxxxx"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+              <User
+                aria-hidden
+                size={17}
+                className="pointer-events-none absolute inset-y-0 right-4 my-auto h-[17px] w-[17px] text-warm-400"
+              />
+            </div>
           </Field>
 
-          <div className="space-y-2">
-            <Field label="كلمة السر" htmlFor="password">
-              <PasswordInput
+          <Field label="كلمة السر" htmlFor="password">
+            <div className="relative">
+              <input
                 id="password"
+                type="password"
                 required
+                dir="ltr"
+                autoComplete="current-password"
+                className={`${INPUT_CLS} w-full px-4 py-2.5 text-left`}
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-            </Field>
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex cursor-pointer items-center gap-2 text-warm-600 select-none">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 accent-primary-600"
-                />
-                تذكرني
-              </label>
-              <Link href="/forgot-password" className="link-quiet">
-                نسيت كلمة المرور؟
-              </Link>
+              <Lock
+                aria-hidden
+                size={17}
+                className="pointer-events-none absolute inset-y-0 left-4 my-auto h-[17px] w-[17px] text-warm-400"
+              />
             </div>
-          </div>
+          </Field>
+
+          <p className="text-center">
+            <Link href="/forgot-password" className="text-xs text-[#8a8da3] hover:text-ink-700">
+              نسيت كلمة المرور؟
+            </Link>
+          </p>
 
           {error && (
             <p
               role="alert"
-              className="rounded-field border border-danger-100 bg-danger-50 px-3 py-2.5 text-sm text-danger-700"
+              className="rounded-lg border border-danger-100 bg-danger-50 px-3 py-2.5 text-sm text-danger-700"
             >
               {error}
             </p>
           )}
 
-          <Button type="submit" loading={submitting} className="w-full py-3">
+          <button
+            type="submit"
+            disabled={submitting}
+            aria-busy={submitting || undefined}
+            className="h-11 w-full rounded-lg text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            style={{ background: "#5B6CE4" }}
+          >
             دخول
-          </Button>
+          </button>
         </form>
 
-        <div className="mt-6 space-y-2 text-sm">
-          <p className="text-warm-600">
-            ليس لديك عيادة بعد؟{" "}
-            <Link href="/signup" className="font-semibold text-primary-700 hover:text-primary-800">
-              إنشاء حساب عيادة جديدة
-            </Link>
-          </p>
-          <Link href="/forgot-phone" className="link-quiet">
-            نسيت رقم الهاتف المسجل؟
+        <SocialRow />
+
+        {/* بديل لوح الترحيب على الشاشات الصغيرة — اللوح مخفي دون lg */}
+        <p className="mt-6 text-center text-sm text-warm-600 lg:hidden">
+          ليس لديك عيادة بعد؟{" "}
+          <Link href="/signup" className="font-semibold text-[#4a5cd9] hover:text-[#3a4bc4]">
+            إنشاء حساب
           </Link>
-        </div>
+        </p>
       </section>
     </AuthShell>
   );

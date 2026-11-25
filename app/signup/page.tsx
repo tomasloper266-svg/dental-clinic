@@ -5,13 +5,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { KeyRound } from "lucide-react";
 import { AuthShell } from "@/components/auth/AuthShell";
-import { PasswordInput } from "@/components/auth/PasswordInput";
-import { Button } from "@/components/ui/Button";
+import { SocialRow } from "@/components/auth/SocialRow";
 import { Field, Input } from "@/components/ui/Field";
 import { SignupPlansCard } from "@/components/subscription/SignupPlansCard";
 
-// صفحة التسجيل — أنشئ العيادة ثم اعرض رمز الاسترداد الاحتياطي مرة
-// واحدة بتحذير واضح، ثم ادخل إلى صفحة الإعداد (الجلسة تُفتح تلقائياً).
+// صفحة التسجيل — نفس بطاقة الدخول معكوسة: لوح ترحيبي أزرق يميناً
+// وزر انتقال لصفحة الدخول. أنشئ العيادة ثم اعرض رمز الاسترداد
+// الاحتياطي مرة واحدة بتحذير واضح، ثم ادخل إلى صفحة الإعداد
+// (الجلسة تُفتح تلقائياً).
+
+const INPUT_CLS =
+  "h-11 rounded-lg border-0 bg-[#eceef6] text-sm text-ink-900 placeholder:text-warm-400 focus:outline-2 focus:outline-offset-0 focus:outline-[#5b6ce4]";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -53,14 +57,19 @@ export default function SignupPage() {
 
   if (created) {
     return (
-      <AuthShell>
+      <AuthShell
+        greetingTitle="تم إنشاء العيادة"
+        greetingSubtitle="رمز الاسترداد يظهر في هذه الصفحة مرة واحدة"
+        ctaLabel="تسجيل الدخول"
+        ctaHref="/login"
+      >
         <section aria-labelledby="recovery-code-title">
-          <h1 id="recovery-code-title" className="font-display text-[25px] font-normal leading-[1.45] text-ink-900">
+          <h1 id="recovery-code-title" className="text-center text-3xl font-bold text-ink-900">
             تم إنشاء عيادتك
           </h1>
 
-          <div className="mt-6 rounded-panel border-2 border-primary-200 bg-primary-50 p-6">
-            <h2 className="flex items-center gap-2 text-base font-semibold text-primary-900">
+          <div className="mt-6 rounded-2xl border-2 border-[#c9d0f5] bg-[#eef0fb] p-6">
+            <h2 className="flex items-center justify-center gap-2 text-base font-semibold text-[#3a4bc4]">
               <KeyRound size={18} aria-hidden />
               رمز الاسترداد الاحتياطي
             </h2>
@@ -70,7 +79,7 @@ export default function SignupPage() {
             >
               {created.recoveryCode}
             </p>
-            <p className="mt-4 text-sm leading-6 text-primary-800">
+            <p className="mt-4 text-sm leading-6 text-[#3a4bc4]">
               احفظه الآن في مكان آمن — يُعرض <strong>مرة واحدة فقط</strong>{" "}
               ولن نستطيع استرجاعه. إن ضاع رقم هاتفك ولا يوجد بريد موثق، فهذا
               الرمز هو طريقك الوحيد لاستعادة الحساب دون مراجعة الدعم.
@@ -78,16 +87,18 @@ export default function SignupPage() {
           </div>
 
           <div className="mt-6 flex flex-col gap-3">
-            <Button
+            <button
+              type="button"
               onClick={() => {
                 router.push("/setup");
                 router.refresh();
               }}
-              className="w-full py-3"
+              className="h-11 w-full rounded-lg text-sm font-semibold text-white transition-colors hover:opacity-90"
+              style={{ background: "#5B6CE4" }}
             >
               متابعة إلى إعداد العيادة
-            </Button>
-            <Link href="/login" className="link-quiet text-center">
+            </button>
+            <Link href="/login" className="text-center text-xs text-[#8a8da3] hover:text-ink-700">
               الدخول لاحقاً من صفحة تسجيل الدخول
             </Link>
           </div>
@@ -97,20 +108,27 @@ export default function SignupPage() {
   }
 
   return (
-    <AuthShell>
+    <AuthShell
+      flip
+      greetingTitle="أهلاً بعودتك!"
+      greetingSubtitle="لديك حساب بالفعل؟"
+      ctaLabel="تسجيل الدخول"
+      ctaHref="/login"
+    >
       <section aria-labelledby="signup-title">
-        <h1 id="signup-title" className="font-display text-[25px] font-normal leading-[1.45] text-ink-900">
-          تسجيل عيادة جديدة
+        <h1 id="signup-title" className="text-center text-3xl font-bold text-ink-900">
+          إنشاء حساب
         </h1>
-        <p className="mt-2 text-sm text-warm-600">
+        <p className="mt-2 text-center text-sm text-warm-600">
           أنشئ مساحة عيادتك الخاصة وابدأ بإدارة المرضى والمواعيد
         </p>
 
-        <form onSubmit={onSubmit} className="mt-8 space-y-5">
+        <form onSubmit={onSubmit} className="mt-8 space-y-4">
           <Field label="اسم العيادة" htmlFor="clinicName">
             <Input
               id="clinicName"
               required
+              className={INPUT_CLS}
               placeholder="مثال: عيادة الابتسامة"
               value={form.clinicName}
               onChange={(e) => setForm({ ...form, clinicName: e.target.value })}
@@ -121,6 +139,7 @@ export default function SignupPage() {
             <Input
               id="name"
               required
+              className={INPUT_CLS}
               placeholder="د. محمد"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -133,7 +152,7 @@ export default function SignupPage() {
               type="tel"
               dir="ltr"
               required
-              className="text-left"
+              className={`${INPUT_CLS} text-left`}
               placeholder="09xxxxxxxx"
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
@@ -141,10 +160,14 @@ export default function SignupPage() {
           </Field>
 
           <Field label="كلمة السر" htmlFor="password" hint="8 أحرف على الأقل">
-            <PasswordInput
+            <input
               id="password"
+              type="password"
               required
               minLength={8}
+              dir="ltr"
+              autoComplete="new-password"
+              className={`${INPUT_CLS} w-full px-4 py-2.5 text-left`}
               placeholder="••••••••"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
@@ -154,26 +177,32 @@ export default function SignupPage() {
           {error && (
             <p
               role="alert"
-              className="rounded-field border border-danger-100 bg-danger-50 px-3 py-2.5 text-sm text-danger-700"
+              className="rounded-lg border border-danger-100 bg-danger-50 px-3 py-2.5 text-sm text-danger-700"
             >
               {error}
             </p>
           )}
 
-          <Button type="submit" loading={submitting} className="w-full py-3">
+          <button
+            type="submit"
+            disabled={submitting}
+            aria-busy={submitting || undefined}
+            className="h-11 w-full rounded-lg text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            style={{ background: "#5B6CE4" }}
+          >
             إنشاء العيادة
-          </Button>
+          </button>
         </form>
+
+        <SocialRow />
 
         {/* العرض مرئي أثناء التسجيل نفسه — الدفع متاح من أول يوم */}
         <SignupPlansCard />
 
-        <p className="mt-6 text-sm text-warm-600">
+        {/* بديل لوح الترحيب على الشاشات الصغيرة — اللوح مخفي دون lg */}
+        <p className="mt-6 text-center text-sm text-warm-600 lg:hidden">
           لديك حساب بالفعل؟{" "}
-          <Link
-            href="/login"
-            className="font-semibold text-primary-700 hover:text-primary-800"
-          >
+          <Link href="/login" className="font-semibold text-[#4a5cd9] hover:text-[#3a4bc4]">
             تسجيل الدخول
           </Link>
         </p>
