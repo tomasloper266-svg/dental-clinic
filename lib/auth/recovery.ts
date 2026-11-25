@@ -48,7 +48,7 @@ export type Identifier =
 
 export function parseIdentifier(body: unknown): Identifier | RecoveryError {
   if (typeof body !== "object" || body === null) {
-    return { code: "invalid-input", message: "طلب غير صالح" };
+    return { code: "invalid-input", message: "Invalid request" };
   }
   const b = body as Record<string, unknown>;
   const phone = typeof b.phone === "string" ? normalizePhone(b.phone.trim()) : "";
@@ -56,13 +56,13 @@ export function parseIdentifier(body: unknown): Identifier | RecoveryError {
   if (phone) return { kind: "phone", value: phone };
   if (email) {
     if (!isValidEmail(email)) {
-      return { code: "invalid-input", message: "البريد الإلكتروني غير صالح" };
+      return { code: "invalid-input", message: "Invalid email address" };
     }
     return { kind: "email", value: email };
   }
   return {
     code: "invalid-input",
-    message: "أدخل رقم الهاتف أو البريد الإلكتروني الموثق",
+    message: "Enter your phone number or verified email",
   };
 }
 
@@ -74,7 +74,7 @@ export function parseNewPassword(body: unknown): string | RecoveryError {
   if (typeof password !== "string" || password.length < 8) {
     return {
       code: "invalid-input",
-      message: "كلمة السر يجب ألا تقل عن 8 أحرف",
+      message: "Password must be at least 8 characters",
     };
   }
   return password;
@@ -107,7 +107,7 @@ async function issueOtp(input: {
       ok: false,
       error: {
         code: "cooldown",
-        message: "أُرسل رمز قبل لحظات — انتظر دقيقة ثم أعد الإرسال",
+        message: "A code was just sent — wait a minute and try again",
       },
     };
   }
@@ -168,13 +168,13 @@ export async function verifyOtp(input: {
   if (!token) {
     return {
       ok: false,
-      error: { code: "not-found", message: "لا يوجد رمز نشط — أعد طلب رمز جديد" },
+      error: { code: "not-found", message: "No active code — request a new one" },
     };
   }
   if (token.expiresAt < new Date()) {
     return {
       ok: false,
-      error: { code: "expired", message: "انتهت صلاحية الرمز — اطلب رمزاً جديداً" },
+      error: { code: "expired", message: "The code expired — request a new one" },
     };
   }
   if (token.attempts >= OTP_MAX_ATTEMPTS) {
@@ -182,7 +182,7 @@ export async function verifyOtp(input: {
       ok: false,
       error: {
         code: "too-many-attempts",
-        message: "تجاوزت عدد المحاولات المسموح — اطلب رمزاً جديداً",
+        message: "Too many attempts — request a new code",
       },
     };
   }
@@ -193,7 +193,7 @@ export async function verifyOtp(input: {
     });
     return {
       ok: false,
-      error: { code: "invalid-code", message: "الرمز غير صحيح — تحقق وأعد المحاولة" },
+      error: { code: "invalid-code", message: "Incorrect code — check it and try again" },
     };
   }
   return { ok: true };
@@ -212,7 +212,7 @@ async function resolveUserByIdentifier(
       select: { id: true },
     });
     if (users.length === 0) {
-      return { code: "not-found", message: "لا يوجد حساب بهذا الرقم" };
+      return { code: "not-found", message: "No account found with this phone number" };
     }
     if (users.length > 1) {
       return {
@@ -231,11 +231,11 @@ async function resolveUserByIdentifier(
   if (users.length === 0) {
     return {
       code: "not-found",
-      message: "لا يوجد حساب بهذا البريد الموثق",
+      message: "No account found with this verified email",
     };
   }
   if (users.length > 1) {
-    return { code: "ambiguous", message: "تواصل مع الدعم لإكمال الاستعادة" };
+    return { code: "ambiguous", message: "Contact support to complete recovery" };
   }
   return { id: users[0].id };
 }
@@ -290,7 +290,7 @@ export async function resetPassword(input: {
   if (!token) {
     return {
       ok: false,
-      error: { code: "not-found", message: "لا يوجد رمز نشط — أعد طلب رمز جديد" },
+      error: { code: "not-found", message: "No active code — request a new one" },
     };
   }
 
@@ -318,7 +318,7 @@ export async function requestPhoneRecoveryByEmail(
   if (!isValidEmail(normalized)) {
     return {
       ok: false,
-      error: { code: "invalid-input", message: "البريد الإلكتروني غير صالح" },
+      error: { code: "invalid-input", message: "Invalid email address" },
     };
   }
   const users = await prisma.user.findMany({
@@ -328,7 +328,7 @@ export async function requestPhoneRecoveryByEmail(
   if (users.length === 0) {
     return {
       ok: false,
-      error: { code: "not-found", message: "لا يوجد حساب بهذا البريد الموثق" },
+      error: { code: "not-found", message: "No account found with this verified email" },
     };
   }
   return issueOtp({
@@ -355,7 +355,7 @@ export async function verifyPhoneRecovery(input: {
   if (users.length === 0) {
     return {
       ok: false,
-      error: { code: "not-found", message: "لا يوجد حساب بهذا البريد الموثق" },
+      error: { code: "not-found", message: "No account found with this verified email" },
     };
   }
   const verdict = await verifyOtp({
@@ -398,7 +398,7 @@ export async function recoverPhoneByRecoveryCode(input: {
   if (!input.recoveryCode || input.recoveryCode.trim().length < 8) {
     return {
       ok: false,
-      error: { code: "invalid-input", message: "أدخل رمز الاسترداد الاحتياطي" },
+      error: { code: "invalid-input", message: "Enter the backup recovery code" },
     };
   }
   const user = await prisma.user.findFirst({
@@ -408,7 +408,7 @@ export async function recoverPhoneByRecoveryCode(input: {
   if (!user) {
     return {
       ok: false,
-      error: { code: "invalid-code", message: "رمز الاسترداد غير صحيح" },
+      error: { code: "invalid-code", message: "Incorrect recovery code" },
     };
   }
   return { ok: true, account: { phone: user.phone, clinicName: user.clinic.name } };
@@ -425,16 +425,16 @@ export async function createSupportRequest(input: {
   const clinicName = input.clinicName.trim();
   const message = input.message.trim();
   if (clinicName.length < 2) {
-    return { code: "invalid-input", message: "أدخل اسم العيادة" };
+    return { code: "invalid-input", message: "Enter the clinic name" };
   }
   if (message.length < 10) {
-    return { code: "invalid-input", message: "اكتب وصفاً واضحاً (10 أحرف على الأقل)" };
+    return { code: "invalid-input", message: "Write a clear description (at least 10 characters)" };
   }
   const contactEmail = input.contactEmail?.trim()
     ? normalizeEmail(input.contactEmail)
     : undefined;
   if (contactEmail && !isValidEmail(contactEmail)) {
-    return { code: "invalid-input", message: "البريد الإلكتروني غير صالح" };
+    return { code: "invalid-input", message: "Invalid email address" };
   }
   const contactPhone = input.contactPhone?.trim()
     ? normalizePhone(input.contactPhone)
