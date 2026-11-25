@@ -2,30 +2,16 @@
 
 import type { ReactNode } from "react";
 
-// صف المنصات الاجتماعية — شكل مرجعي فقط حالياً: لا يوجد تكامل OAuth
-// في الخادم بعد، فالأزرار زخرفية (type=button بلا فعل) حتى يُربط
-// مزوّد فعلي لكل أيقونة. الأيقونات SVG مضمّنة — lucide أزال أيقونات
-// العلامات التجارية (Facebook/Github/Linkedin undefined في v1.72).
+// صف المنصات الاجتماعية — نسخة مطابقة للمرجع: أزرار مربعة بيضاء بإطار
+// فاتح وأيقونات أحادية اللون داكنة، بترتيب المرجع (G, f, github, in).
+// شكل مرجعي فقط حالياً: لا يوجد تكامل OAuth في الخادم بعد، فالأزرار
+// زخرفية (type=button بلا فعل). الأيقونات SVG مضمّنة — lucide أزال
+// أيقونات العلامات التجارية (Facebook/Github/Linkedin undefined في v1.72).
 
 function GoogleIcon() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden className="h-5 w-5">
-      <path
-        fill="#4285F4"
-        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-      />
-      <path
-        fill="#34A853"
-        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z"
-      />
-      <path
-        fill="#EA4335"
-        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-      />
+    <svg viewBox="0 0 24 24" aria-hidden className="h-5 w-5" fill="currentColor">
+      <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.334 1.334-3.147 2.08-5.32 2.08-4.107 0-7.507-3.4-7.507-7.507s3.4-7.507 7.507-7.507c1.96 0 3.707.68 5.08 2l2.307-2.307C18.737 3.226 16.06 2 12.48 2 7.32 2 3.08 6.24 3.08 11.92s4.24 9.92 9.4 9.92c5.48 0 9.067-3.853 9.067-9.04 0-.693-.067-1.333-.187-1.88h-8.88z" />
     </svg>
   );
 }
@@ -58,24 +44,24 @@ const SOCIAL_ITEMS: Array<{
   label: string;
   icon: ReactNode;
 }> = [
-  { label: "جوجل", icon: <GoogleIcon /> },
-  { label: "فيسبوك", icon: <FacebookIcon /> },
-  { label: "جيت هب", icon: <GithubIcon /> },
-  { label: "لينكد إن", icon: <LinkedinIcon /> },
+  { label: "Google", icon: <GoogleIcon /> },
+  { label: "Facebook", icon: <FacebookIcon /> },
+  { label: "GitHub", icon: <GithubIcon /> },
+  { label: "LinkedIn", icon: <LinkedinIcon /> },
 ];
 
-export function SocialRow() {
+export function SocialRow({ caption = "or login with social platforms" }: { caption?: string }) {
   return (
-    <div className="mt-8 text-center">
-      <p className="text-xs text-[#8a8da3]">أو الدخول عبر المنصات الاجتماعية</p>
+    <div className="mt-6 text-center">
+      <p className="text-[13px] text-[#3d4152]">{caption}</p>
       <div className="mt-3 flex items-center justify-center gap-3">
         {SOCIAL_ITEMS.map((item) => (
           <button
             key={item.label}
             type="button"
-            title={`${item.label} — قريباً`}
-            aria-label={`${item.label} — قريباً`}
-            className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#e2e4ee] bg-white text-[#4c4f63] transition-colors hover:bg-[#f4f5fa]"
+            title={`${item.label} — coming soon`}
+            aria-label={`${item.label} — coming soon`}
+            className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-[#dfe1ec] bg-white text-[#3d4152] transition-colors hover:bg-[#f4f5fa]"
           >
             {item.icon}
           </button>

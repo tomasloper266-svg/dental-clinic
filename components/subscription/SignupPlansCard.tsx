@@ -1,26 +1,28 @@
+"use client";
+
 import { Check, Smartphone } from "lucide-react";
 import { SUBSCRIPTION_PLANS, TRIAL_DAYS } from "@/lib/billing/plans";
 import { cn } from "@/components/ui/cn";
 
-// بطاقة عرض الاشتراك في صفحة التسجيل — عرض فقط بلا تفاعل: الشكل والنصوص من
-// النموذج المعتمد «رحلة الاشتراك المقترحة — 5 شاشات» (شاشة 01)، والأسعار
-// والمدد تُقرأ من ثوابت الفوترة حصراً.
+// بطاقة عرض الاشتراك في صفحة التسجيل — عرض فقط بلا تفاعل: الأسعار
+// والمدد تُقرأ من ثوابت الفوترة حصراً. النصوص إنكليزية والألوان
+// ثابتة فاتحة (بلا رموز ثيم) لتطابق صفحة التسجيل في الوضعين.
 
 const PLAN_ORDER = ["YEARLY", "MONTHLY"] as const;
 
 export function SignupPlansCard() {
   return (
     <aside
-      aria-label="عرض الاشتراك"
-      className="mt-6 rounded-panel border-2 border-primary-200 bg-primary-50 p-5"
+      aria-label="Subscription offer"
+      className="mt-6 rounded-2xl border-2 border-[#c9d0f5] bg-[#eef0fb] p-5"
     >
-      <p className="flex items-center gap-1.5 text-sm font-bold text-primary-900">
-        <Check size={16} aria-hidden className="text-primary-700" />
-        ابدأ مجاناً — {TRIAL_DAYS} يوم تجربة كاملة
+      <p className="flex items-center gap-1.5 text-sm font-bold text-[#3a4bc4]">
+        <Check size={16} aria-hidden className="text-[#4a5cd9]" />
+        Start free — {TRIAL_DAYS}-day full trial
       </p>
-      <p className="mt-1.5 text-sm leading-6 text-primary-800">
-        تجربة مجانية كاملة لـ {TRIAL_DAYS} يوماً — كل الميزات مفتوحة دائماً بدون
-        بطاقة ولا التزام
+      <p className="mt-1.5 text-sm leading-6 text-[#5a66c0]">
+        Every feature unlocked for the full {TRIAL_DAYS}-day trial — no card,
+        no commitment
       </p>
 
       <ul className="mt-4 grid grid-cols-2 gap-3">
@@ -31,19 +33,19 @@ export function SignupPlansCard() {
             <li
               key={name}
               className={cn(
-                "relative rounded-field border bg-surface px-3 py-3 text-center",
-                isYearly ? "border-primary-500" : "border-warm-200",
+                "relative rounded-[10px] border bg-white px-3 py-3 text-center",
+                isYearly ? "border-[#5b6ce4]" : "border-[#d8dcee]",
               )}
             >
               {isYearly && (
-                <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-field bg-warning-100 px-2 py-0.5 text-[11px] font-bold text-warning-900">
-                  الأوفر
+                <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-[#fde9c8] px-2 py-0.5 text-[11px] font-bold text-[#8a5a00]">
+                  Best value
                 </span>
               )}
-              <span className="block text-xs text-steel-600">
-                باقة {spec.label} — {isYearly ? "سنّة" : "شهر"}
+              <span className="block text-xs text-[#6a7396]">
+                {isYearly ? "Yearly" : "Monthly"} plan
               </span>
-              <span className="mt-0.5 block text-lg font-bold text-primary-700">
+              <span className="mt-0.5 block text-lg font-bold text-[#4a5cd9]">
                 {spec.priceUsd}$
               </span>
             </li>
@@ -51,9 +53,10 @@ export function SignupPlansCard() {
         })}
       </ul>
 
-      <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-xs font-semibold text-amber-700">
+      <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-xs font-semibold text-[#b45309]">
         <Smartphone size={14} aria-hidden />
-        الدفع عبر شام كاش — تقدر تدفع من أول يوم حتى قبل ما تنتهي التجربة
+        Pay via SHAM Cash — you can pay from day one, even before your trial
+        ends
       </p>
     </aside>
   );

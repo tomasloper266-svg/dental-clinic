@@ -17,22 +17,22 @@ describe("بطاقة عرض الاشتراك في التسجيل", () => {
   it("تعرض التجربة المجانية 15 يوماً", () => {
     render(<SignupPlansCard />);
     expect(
-      screen.getByText(/ابدأ مجاناً — 15 يوم تجربة كاملة/),
+      screen.getByText(/Start free — 15-day full trial/),
     ).toBeInTheDocument();
-    expect(screen.getByText(/تجربة مجانية كاملة لـ 15 يوماً/)).toBeInTheDocument();
+    expect(screen.getByText(/Every feature unlocked for the full 15-day trial/)).toBeInTheDocument();
   });
 
   it("تعرض الخطتين 15$ شهرياً و120$ سنوياً مع شارة الأوفر للسنوي", () => {
     render(<SignupPlansCard />);
     expect(screen.getByText("15$")).toBeInTheDocument();
     expect(screen.getByText("120$")).toBeInTheDocument();
-    expect(screen.getByText("الأوفر")).toBeInTheDocument();
+    expect(screen.getByText("Best value")).toBeInTheDocument();
   });
 
   it("تعرض سطر الدفع عبر شام كاش من أول يوم", () => {
     render(<SignupPlansCard />);
     expect(
-      screen.getByText(/الدفع عبر شام كاش — تقدر تدفع من أول يوم/),
+      screen.getByText(/Pay via SHAM Cash — you can pay from day one/),
     ).toBeInTheDocument();
   });
 });
@@ -40,9 +40,9 @@ describe("بطاقة عرض الاشتراك في التسجيل", () => {
 describe("صفحة التسجيل تعرض العرض", () => {
   it("نموذج التسجيل وعرض الاشتراك معاً في الشاشة نفسها", () => {
     render(<SignupPage />);
-    expect(screen.getByLabelText("اسم العيادة")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "إنشاء العيادة" })).toBeInTheDocument();
-    expect(screen.getByLabelText("عرض الاشتراك")).toBeInTheDocument();
-    expect(screen.getByText(/ابدأ مجاناً — 15 يوم تجربة كاملة/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Clinic Name")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create Account" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Subscription offer")).toBeInTheDocument();
+    expect(screen.getByText(/Start free — 15-day full trial/)).toBeInTheDocument();
   });
 });
