@@ -5,20 +5,26 @@ import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { FallbackCodeNotice } from "@/components/auth/FallbackCodeNotice";
+import { SupportPhoneCard } from "@/components/auth/SupportPhoneCard";
 
-// مسار «نسيت كلمة المرور» — ثلاث خطوات: تحديد الهوية، رمز التحقق، كلمة السر.
-// الرمز لا يُستهلك إلا عند التعيين النهائي. التصميم مطابق لصفحتي الدخول
-// والتسجيل: حقول رمادية فاتحة بنص يسار، عنوان أسود عريض، زر أزرق ثابت
-// اللون، وإنكليزي بالكامل. المنطق ونقاط الـAPI كما كانت دون تغيير.
+// مسار «نسيت كلمة المرور» — ثلاثة تبويبات:
+// «Send a Code»: رمز تحقق عبر الهاتف أو البريد الموثق (ثلاث خطوات).
+// «Recovery Code»: تعيين كلمة سر جديدة بحيازة رمز الاسترداد الاحتياطي
+// (حيازته تثبت الملكية). «Support»: بطاقة رقم الدعم المشتركة.
+// التصميم مطابق لصفحات المصادقة: حقول رمادية فاتحة بنص يسار، عنوان أسود
+// عريض، زر أزرق ثابت اللون، وإنكليزي بالكامل.
 
 const INPUT_CLS =
   "h-12 w-full rounded-[10px] border-0 bg-[#f1f2f6] text-[15px] text-[#25293c] placeholder:text-[#9aa0b5] focus:outline-2 focus:outline-offset-0 focus:outline-[#5b6ce4]";
 
 type Step = "identifier" | "code" | "newPassword" | "done";
 
+type Path = "sendCode" | "recoveryCode" | "support";
+
 const RESEND_SECONDS = 60;
 
 export default function ForgotPasswordPage() {
+  const [path, setPath] = useState<Path>("sendCode");
   const [step, setStep] = useState<Step>("identifier");
   const [mode, setMode] = useState<"phone" | "email">("phone");
   const [phone, setPhone] = useState("");
@@ -139,6 +145,38 @@ export default function ForgotPasswordPage() {
       ctaLabel="Login"
       ctaHref="/login"
     >
+      <div
+        role="tablist"
+        aria-label="Recovery method"
+        className="grid grid-cols-3 gap-1 rounded-[10px] bg-[#e7e9f2] p-1"
+      >
+        {(
+          [
+            ["sendCode", "Send a Code"],
+            ["recoveryCode", "Recovery Code"],
+            ["support", "Support"],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            role="tab"
+            aria-selected={path === value}
+            onClick={() => setPath(value)}
+            className={`rounded-[8px] px-1 py-2.5 text-[13px] font-medium transition-colors ${
+              path === value
+                ? "bg-white text-[#16181d] shadow-sm"
+                : "text-[#9aa0b5] hover:text-[#25293c]"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-7">
+      {path === "sendCode" && (
+      <>
       {step === "identifier" && (
         <section aria-labelledby="forgot-title">
           <h1
@@ -434,6 +472,11 @@ export default function ForgotPasswordPage() {
           </Link>
         </section>
       )}
+      </>
+      )}
+      {path === "recoveryCode" && <RecoveryCodeResetPath />}
+      {path === "support" && <SupportPhoneCard />}
+      </div>
     </AuthShell>
   );
 }
@@ -446,5 +489,182 @@ function FormError({ message }: { message: string }) {
     >
       {message}
     </p>
+  );
+}
+
+// ─── تبويب رمز الاسترداد — تعيين كلمة سر جديدة بحيازة الرمز ──────────────
+
+function RecoveryCodeResetPath() {
+  const [recoveryCode, setRecoveryCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (newPassword !== confirm) {
+      setError("Passwords don't match");
+      return;
+    }
+    setError(null);
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/auth/forgot-password/recovery-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recoveryCode, newPassword }),
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setError(data.error ?? "Couldn't set the new password");
+        return;
+      }
+      setDone(true);
+    } catch {
+      setError("Couldn't reach the server, please try again");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (done) {
+    return (
+      <section className="rounded-2xl bg-white px-6 py-8 text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#eceefc]">
+          <svg
+            width="26"
+            height="26"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden
+          >
+            <path
+              d="M5 13l4 4L19 7"
+              stroke="#4a5cd9"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+        <h1 className="mt-5 text-xl font-bold text-[#16181d]">
+          Your password has been updated
+        </h1>
+        <p className="mt-2 text-sm leading-6 text-[#6a6f83]">
+          All old sessions were signed out on every device — sign in with
+          your new password.
+        </p>
+        <Link
+          href="/login"
+          className="mt-6 inline-block h-12 w-full rounded-[10px] px-4 text-[15px] font-semibold leading-[48px] text-white transition-colors hover:opacity-90"
+          style={{ background: "#5B6CE4" }}
+        >
+          Login
+        </Link>
+      </section>
+    );
+  }
+
+  return (
+    <section aria-labelledby="rc-reset-title">
+      <h1
+        id="rc-reset-title"
+        className="text-center text-[32px] font-bold leading-tight text-[#16181d]"
+      >
+        Recovery Code
+      </h1>
+      <p className="mt-2 text-center text-sm text-[#6a6f83]">
+        The 12-character backup code shown once when your clinic account was
+        created — it proves you own the account, so you can set a new
+        password directly.
+      </p>
+
+      <form onSubmit={onSubmit} className="mt-6 space-y-4">
+        <input
+          id="rc-reset"
+          dir="ltr"
+          required
+          aria-label="Backup recovery code (12 characters, shown when your clinic was created)"
+          className={`${INPUT_CLS} px-4 text-left tracking-widest`}
+          placeholder="XXXX-XXXX-XXXX"
+          value={recoveryCode}
+          onChange={(e) => setRecoveryCode(e.target.value.toUpperCase())}
+        />
+
+        <div className="relative">
+          <input
+            id="rc-newPassword"
+            type={showNewPassword ? "text" : "password"}
+            required
+            minLength={8}
+            dir="ltr"
+            autoComplete="new-password"
+            aria-label="New Password (at least 8 characters)"
+            className={`${INPUT_CLS} pl-12 pr-12 text-left`}
+            placeholder="New Password (at least 8 characters)"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+          />
+          <button
+            type="button"
+            onClick={() => setShowNewPassword((v) => !v)}
+            aria-label={showNewPassword ? "Hide password" : "Show password"}
+            aria-pressed={showNewPassword}
+            className="absolute inset-y-0 left-3 my-auto flex h-7 w-7 items-center justify-center rounded text-[#25293c] hover:text-[#16181d]"
+          >
+            {showNewPassword ? (
+              <EyeOff aria-hidden size={18} />
+            ) : (
+              <Eye aria-hidden size={18} />
+            )}
+          </button>
+        </div>
+
+        <div className="relative">
+          <input
+            id="rc-confirm"
+            type={showConfirm ? "text" : "password"}
+            required
+            minLength={8}
+            dir="ltr"
+            autoComplete="new-password"
+            aria-label="Confirm Password"
+            className={`${INPUT_CLS} pl-12 pr-12 text-left`}
+            placeholder="Confirm Password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirm((v) => !v)}
+            aria-label={showConfirm ? "Hide password" : "Show password"}
+            aria-pressed={showConfirm}
+            className="absolute inset-y-0 left-3 my-auto flex h-7 w-7 items-center justify-center rounded text-[#25293c] hover:text-[#16181d]"
+          >
+            {showConfirm ? (
+              <EyeOff aria-hidden size={18} />
+            ) : (
+              <Eye aria-hidden size={18} />
+            )}
+          </button>
+        </div>
+
+        {error && <FormError message={error} />}
+
+        <button
+          type="submit"
+          disabled={submitting}
+          aria-busy={submitting || undefined}
+          className="h-12 w-full rounded-[10px] text-[15px] font-semibold text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          style={{ background: "#5B6CE4" }}
+        >
+          Set New Password
+        </button>
+      </form>
+    </section>
   );
 }

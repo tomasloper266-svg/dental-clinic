@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LifeBuoy, Phone } from "lucide-react";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { FallbackCodeNotice } from "@/components/auth/FallbackCodeNotice";
+import { SupportPhoneCard } from "@/components/auth/SupportPhoneCard";
 
 // «نسيت رقم الهاتف» — ثلاثة أبواب: بريد موثق (رمز تحقق)، رمز الاسترداد
 // الاحتياطي (الرمز من 12 حرفاً الذي عُرض عند إنشاء العيادة)، أو الدعم
@@ -13,9 +13,6 @@ import { FallbackCodeNotice } from "@/components/auth/FallbackCodeNotice";
 
 const INPUT_CLS =
   "h-12 w-full rounded-[10px] border-0 bg-[#f1f2f6] text-[15px] text-[#25293c] placeholder:text-[#9aa0b5] focus:outline-2 focus:outline-offset-0 focus:outline-[#5b6ce4]";
-
-const SUPPORT_PHONE = "0997934237";
-const SUPPORT_PHONE_DISPLAY = "0997 934 237";
 
 type Path = "email" | "recoveryCode" | "support";
 
@@ -76,7 +73,7 @@ export default function ForgotPhonePage() {
       <div className="mt-7">
         {path === "email" && <EmailPath />}
         {path === "recoveryCode" && <RecoveryCodePath />}
-        {path === "support" && <SupportPath />}
+        {path === "support" && <SupportPhoneCard />}
       </div>
 
       <div className="mt-6 flex flex-col gap-2 text-center text-sm">
@@ -416,39 +413,4 @@ function RecoveryCodePath() {
   );
 }
 
-// ─── المسار 3: الدعم — رقم الهاتف مباشرة ────────────────────────────────────
-
-function SupportPath() {
-  return (
-    <section
-      aria-label="Contact support"
-      className="rounded-2xl bg-white px-6 py-8 text-center"
-    >
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#eceefc]">
-        <LifeBuoy size={26} color="#4a5cd9" aria-hidden />
-      </div>
-      <h2 className="mt-4 text-lg font-bold text-[#16181d]">
-        Call us and we&apos;ll recover your account
-      </h2>
-      <p className="mt-2 text-sm leading-6 text-[#6a6f83]">
-        Have proof of ownership ready (registration documents, latest
-        subscription invoices) so we can verify you faster.
-      </p>
-      <a
-        href={`tel:${SUPPORT_PHONE}`}
-        dir="ltr"
-        className="mt-5 flex items-center justify-center gap-2 text-3xl font-bold tracking-wide text-[#16181d] hover:text-[#4a5cd9]"
-      >
-        <Phone size={24} color="#4a5cd9" aria-hidden />
-        {SUPPORT_PHONE_DISPLAY}
-      </a>
-      <a
-        href={`tel:${SUPPORT_PHONE}`}
-        className={`${PRIMARY_BTN_CLS} mt-6 inline-block leading-[48px]`}
-        style={{ background: "#5B6CE4" }}
-      >
-        Call Support
-      </a>
-    </section>
-  );
-}
+// ─── المسار 3: الدعم — بطاقة الرقم المشتركة ────────────────────────────────

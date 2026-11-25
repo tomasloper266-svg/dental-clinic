@@ -10,6 +10,7 @@ import {
   requestPasswordReset,
   resetPassword,
   recoverPhoneByRecoveryCode,
+  resetPasswordByRecoveryCode,
   requestPhoneRecoveryByEmail,
   verifyPasswordResetCode,
   verifyPhoneRecovery,
@@ -221,6 +222,49 @@ describeDb("نسيت رقم الهاتف — integration", () => {
     });
     expect(wrong.ok).toBe(false);
     if (!wrong.ok) expect(wrong.error.code).toBe("invalid-code");
+  });
+
+  it("يعيّن كلمة سر جديدة برمز الاسترداد ويفسخ الجلسات القديمة", async () => {
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        recoveryCodeHash: hashRecoveryCode("K7M2-4Q9X-T3WZ"),
+        passwordHash: await hashPassword("old-password-1"),
+      },
+    });
+    const session = await prisma.session.create({
+      data: {
+        userId,
+        tokenHash: "stale-session-token-hash",
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    });
+
+    const ok = await resetPasswordByRecoveryCode({
+      recoveryCode: "k7m24q9xt3wz",
+      newPassword: "new-password-2",
+    });
+    expect(ok.ok).toBe(true);
+
+    const updated = await prisma.user.findUnique({ where: { id: userId } });
+    expect(updated?.passwordHash).not.toBe("old-password-1");
+    expect(await authenticate(PHONE, "new-password-2")).not.toBeNull();
+    expect(await authenticate(PHONE, "old-password-1")).toBeNull();
+    expect(await prisma.session.findUnique({ where: { id: session.id } })).toBeNull();
+
+    const wrong = await resetPasswordByRecoveryCode({
+      recoveryCode: "XXXX-XXXX-XXXX",
+      newPassword: "whatever-3",
+    });
+    expect(wrong.ok).toBe(false);
+    if (!wrong.ok) expect(wrong.error.code).toBe("invalid-code");
+
+    const short = await resetPasswordByRecoveryCode({
+      recoveryCode: "K7M2-4Q9X-T3WZ",
+      newPassword: "short",
+    });
+    expect(short.ok).toBe(false);
+    if (!short.ok) expect(short.error.code).toBe("invalid-input");
   });
 
   it("يسجل طلب دعم صالحاً ويرفض غير المكتمل", async () => {

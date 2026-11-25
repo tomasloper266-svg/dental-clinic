@@ -218,7 +218,7 @@ async function resolveUserByIdentifier(
       return {
         code: "ambiguous",
         message:
-          "هذا الرقم مستخدم في أكثر من عيادة — استخدم البريد الإلكتروني الموثق أو تواصل مع الدعم",
+          "This number is used by more than one clinic — use your verified email or contact support",
       };
     }
     return { id: users[0].id };
@@ -412,6 +412,46 @@ export async function recoverPhoneByRecoveryCode(input: {
     };
   }
   return { ok: true, account: { phone: user.phone, clinicName: user.clinic.name } };
+}
+
+// تعيين كلمة سر جديدة بحيازة رمز الاسترداد — حيازته تثبت الملكية، فنحدّث
+// الهاش ونبطل كل الجلسات القديمة. الرمز نفسه لا يُستهلك (يبقى مفتاح طوارئ).
+export async function resetPasswordByRecoveryCode(input: {
+  recoveryCode: string;
+  newPassword: string;
+}): Promise<VerifyOutcome> {
+  const code = input.recoveryCode?.trim() ?? "";
+  if (code.length < 8) {
+    return {
+      ok: false,
+      error: { code: "invalid-input", message: "Enter the backup recovery code" },
+    };
+  }
+  if (typeof input.newPassword !== "string" || input.newPassword.length < 8) {
+    return {
+      ok: false,
+      error: { code: "invalid-input", message: "Password must be at least 8 characters" },
+    };
+  }
+  const user = await prisma.user.findFirst({
+    where: { recoveryCodeHash: hashRecoveryCode(code) },
+    select: { id: true },
+  });
+  if (!user) {
+    return {
+      ok: false,
+      error: { code: "invalid-code", message: "Incorrect recovery code" },
+    };
+  }
+  const passwordHash = await hashPassword(input.newPassword);
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash },
+    }),
+    prisma.session.deleteMany({ where: { userId: user.id } }),
+  ]);
+  return { ok: true };
 }
 
 // ─── مسار الدعم — «نسيت رقم الهاتف» بلا قناة موثقة ينتهي هنا ────────────────
