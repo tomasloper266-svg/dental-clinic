@@ -2,14 +2,20 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LifeBuoy } from "lucide-react";
+import { LifeBuoy, Phone } from "lucide-react";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { FallbackCodeNotice } from "@/components/auth/FallbackCodeNotice";
-import { Button } from "@/components/ui/Button";
-import { Field, Input, Textarea } from "@/components/ui/Field";
 
-// مسار «نسيت رقم الهاتف» — ثلاثة أبواب حقيقية:
-// بريد موثق (OTP) أو رمز الاسترداد الاحتياطي أو طلب دعم للتحقق من الملكية.
+// «نسيت رقم الهاتف» — ثلاثة أبواب: بريد موثق (رمز تحقق)، رمز الاسترداد
+// الاحتياطي (الرمز من 12 حرفاً الذي عُرض عند إنشاء العيادة)، أو الدعم
+// (رقم هاتف مباشر). التصميم مطابق لصفحات المصادقة: ألوان ثابتة فاتحة
+// وإنكليزي بالكامل، فلا تنكسر في الوضع الداكن. المنطق ونقاط الـAPI كما كانت.
+
+const INPUT_CLS =
+  "h-12 w-full rounded-[10px] border-0 bg-[#f1f2f6] text-[15px] text-[#25293c] placeholder:text-[#9aa0b5] focus:outline-2 focus:outline-offset-0 focus:outline-[#5b6ce4]";
+
+const SUPPORT_PHONE = "0997934237";
+const SUPPORT_PHONE_DISPLAY = "0997 934 237";
 
 type Path = "email" | "recoveryCode" | "support";
 
@@ -19,41 +25,53 @@ export default function ForgotPhonePage() {
   const [path, setPath] = useState<Path>("email");
 
   return (
-    <AuthShell>
-      <h1 className="font-display text-[25px] font-normal leading-[1.45] text-ink-900">نسيت رقم الهاتف؟</h1>
-      <p className="mt-2 text-sm text-warm-600">
-        اختر طريقة استعادة حسابك — لا يمكن تغيير رقم الهاتف دون إثبات ملكية
-        الحساب.
-      </p>
+    <AuthShell
+      greetingTitle="Hello, Welcome!"
+      greetingSubtitle="Don't have an account?"
+      ctaLabel="Register"
+      ctaHref="/signup"
+    >
+      <section aria-labelledby="forgot-phone-title">
+        <h1
+          id="forgot-phone-title"
+          className="text-center text-[32px] font-bold leading-tight text-[#16181d]"
+        >
+          Forgot Your Phone Number?
+        </h1>
+        <p className="mt-2 text-center text-sm text-[#6a6f83]">
+          Choose how to recover your account — the phone number can&apos;t
+          change without proving you own the account.
+        </p>
 
-      <div
-        role="tablist"
-        aria-label="طريقة الاستعادة"
-        className="mt-6 grid grid-cols-3 gap-1 rounded-field bg-surface-sunken p-1"
-      >
-        {(
-          [
-            ["email", "البريد الموثق"],
-            ["recoveryCode", "رمز الاسترداد"],
-            ["support", "الدعم"],
-          ] as const
-        ).map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            role="tab"
-            aria-selected={path === value}
-            onClick={() => setPath(value)}
-            className={`rounded-[6px] py-2 text-xs font-medium transition-colors sm:text-sm ${
-              path === value
-                ? "bg-surface-raised text-ink-900 shadow-sm"
-                : "text-warm-500 hover:text-ink-700"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+        <div
+          role="tablist"
+          aria-label="Recovery method"
+          className="mt-7 grid grid-cols-3 gap-1 rounded-[10px] bg-[#e7e9f2] p-1"
+        >
+          {(
+            [
+              ["email", "Verified Email"],
+              ["recoveryCode", "Recovery Code"],
+              ["support", "Support"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-selected={path === value}
+              onClick={() => setPath(value)}
+              className={`rounded-[8px] px-1 py-2.5 text-[13px] font-medium transition-colors ${
+                path === value
+                  ? "bg-white text-[#16181d] shadow-sm"
+                  : "text-[#9aa0b5] hover:text-[#25293c]"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
 
       <div className="mt-7">
         {path === "email" && <EmailPath />}
@@ -61,12 +79,18 @@ export default function ForgotPhonePage() {
         {path === "support" && <SupportPath />}
       </div>
 
-      <div className="mt-6 flex flex-col gap-2 text-sm">
-        <Link href="/forgot-password" className="link-quiet">
-          نسيت كلمة المرور؟
+      <div className="mt-6 flex flex-col gap-2 text-center text-sm">
+        <Link
+          href="/forgot-password"
+          className="text-[13px] text-[#3d4152] hover:underline"
+        >
+          Forgot your password?
         </Link>
-        <Link href="/login" className="link-quiet">
-          العودة إلى تسجيل الدخول
+        <Link
+          href="/login"
+          className="text-[13px] text-[#3d4152] hover:underline"
+        >
+          Back to login
         </Link>
       </div>
     </AuthShell>
@@ -77,12 +101,15 @@ function FormError({ message }: { message: string }) {
   return (
     <p
       role="alert"
-      className="rounded-field border border-danger-100 bg-danger-50 px-3 py-2.5 text-sm text-danger-700"
+      className="rounded-lg border border-[#f3c8c8] bg-[#fdeeee] px-3 py-2.5 text-sm text-[#b23a3a]"
     >
       {message}
     </p>
   );
 }
+
+const PRIMARY_BTN_CLS =
+  "h-12 w-full rounded-[10px] text-[15px] font-semibold text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60";
 
 // ─── المسار 1: بريد موثق + OTP ──────────────────────────────────────────────
 
@@ -112,17 +139,23 @@ function EmailPath() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      const data = (await res.json()) as { error?: string; fallbackCode?: string; destinationHint?: string };
+      const data = (await res.json()) as {
+        error?: string;
+        fallbackCode?: string;
+        destinationHint?: string;
+      };
       if (!res.ok) {
-        setError(data.error ?? "تعذر إرسال الرمز، حاول مرة أخرى");
+        setError(data.error ?? "Couldn't send the code — please try again");
         return;
       }
       setDestinationHint(data.destinationHint ?? "");
-      setFallbackCode(typeof data.fallbackCode === "string" ? data.fallbackCode : null);
+      setFallbackCode(
+        typeof data.fallbackCode === "string" ? data.fallbackCode : null,
+      );
       setResendIn(60);
       setStep("code");
     } catch {
-      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+      setError("Couldn't reach the server, please try again");
     } finally {
       setSubmitting(false);
     }
@@ -143,13 +176,13 @@ function EmailPath() {
         accounts?: RecoveredAccount[];
       };
       if (!res.ok || !data.accounts) {
-        setError(data.error ?? "تعذر التحقق من الرمز");
+        setError(data.error ?? "Couldn't verify the code");
         return;
       }
       setAccounts(data.accounts);
       setStep("revealed");
     } catch {
-      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+      setError("Couldn't reach the server, please try again");
     } finally {
       setSubmitting(false);
     }
@@ -157,20 +190,21 @@ function EmailPath() {
 
   if (step === "revealed") {
     return (
-      <section aria-label="أرقام الهواتف المستعادة">
-        <p className="text-sm text-warm-600">
-          تم إثبات ملكية البريد — هذه الأرقام المسجلة به:
+      <section aria-label="Recovered phone numbers">
+        <p className="text-sm text-[#6a6f83]">
+          Your email is verified — here are the phone numbers registered with
+          it:
         </p>
         <ul className="mt-4 space-y-3">
           {accounts.map((a) => (
             <li
               key={`${a.clinicName}-${a.phone}`}
-              className="flex items-center justify-between rounded-panel bg-surface-raised px-4 py-3 ring-1 ring-warm-200"
+              className="flex items-center justify-between rounded-xl bg-[#f7f8fb] px-4 py-3"
             >
-              <span className="text-sm font-medium text-ink-900">
+              <span className="text-sm font-medium text-[#16181d]">
                 {a.clinicName}
               </span>
-              <span dir="ltr" className="numeric text-sm text-ink-700">
+              <span dir="ltr" className="text-sm text-[#25293c]">
                 {a.phone}
               </span>
             </li>
@@ -178,9 +212,10 @@ function EmailPath() {
         </ul>
         <Link
           href="/login"
-          className="mt-6 inline-block w-full rounded-field bg-primary-600 px-4 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-primary-700"
+          className={`${PRIMARY_BTN_CLS} mt-6 inline-block leading-[48px]`}
+          style={{ background: "#5B6CE4" }}
         >
-          تسجيل الدخول بهذا الرقم
+          Login with this number
         </Link>
       </section>
     );
@@ -188,66 +223,99 @@ function EmailPath() {
 
   return (
     <form
-      onSubmit={step === "email" ? (e) => { e.preventDefault(); requestCode(); } : onSubmitCode}
-      className="space-y-5"
-      aria-label={step === "email" ? "إرسال رمز إلى البريد الموثق" : "إدخال رمز التحقق"}
+      onSubmit={
+        step === "email"
+          ? (e) => {
+              e.preventDefault();
+              requestCode();
+            }
+          : onSubmitCode
+      }
+      className="space-y-4"
+      aria-label={
+        step === "email"
+          ? "Send a code to your verified email"
+          : "Enter the verification code"
+      }
     >
       {step === "email" ? (
-        <Field label="البريد الإلكتروني الموثق" htmlFor="fp-email">
-          <Input
-            id="fp-email"
-            type="email"
-            dir="ltr"
-            required
-            className="text-left"
-            placeholder="doctor@clinic.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </Field>
+        <input
+          id="fp-email"
+          type="email"
+          dir="ltr"
+          required
+          autoComplete="email"
+          aria-label="Verified Email"
+          className={`${INPUT_CLS} px-4 text-left`}
+          placeholder="doctor@clinic.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
       ) : (
         <>
-          <p className="text-sm text-warm-600">
-            أرسلنا رمز تحقق إلى {destinationHint || "بريدك"} — صالح لعشر دقائق.
+          <p className="text-sm text-[#6a6f83]">
+            We sent a verification code to {destinationHint || "your email"} —
+            valid for 10 minutes.
           </p>
           {fallbackCode && (
-            <FallbackCodeNotice code={fallbackCode} destinationHint={destinationHint} />
-          )}
-          <Field label="رمز التحقق" htmlFor="fp-code">
-            <Input
-              id="fp-code"
-              inputMode="numeric"
-              dir="ltr"
-              required
-              maxLength={6}
-              className="numeric text-center text-lg tracking-[0.4em]"
-              placeholder="••••••"
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            <FallbackCodeNotice
+              code={fallbackCode}
+              destinationHint={destinationHint}
             />
-          </Field>
+          )}
+          <input
+            id="fp-code"
+            inputMode="numeric"
+            dir="ltr"
+            required
+            maxLength={6}
+            aria-label="Verification Code"
+            autoComplete="one-time-code"
+            className={`${INPUT_CLS} text-center text-lg tracking-[0.4em]`}
+            placeholder="••••••"
+            value={code}
+            onChange={(e) =>
+              setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+            }
+          />
         </>
       )}
 
       {error && <FormError message={error} />}
 
       {step === "email" ? (
-        <Button type="submit" loading={submitting} className="w-full py-3">
-          إرسال رمز التحقق
-        </Button>
+        <button
+          type="submit"
+          disabled={submitting}
+          aria-busy={submitting || undefined}
+          className={PRIMARY_BTN_CLS}
+          style={{ background: "#5B6CE4" }}
+        >
+          Send Verification Code
+        </button>
       ) : (
         <>
-          <Button type="submit" loading={submitting} className="w-full py-3">
-            تحقق وأظهر الرقم
-          </Button>
           <button
-            type="button"
-            onClick={requestCode}
-            disabled={resendIn > 0 || submitting}
-            className="text-sm font-medium text-primary-700 disabled:text-warm-400"
+            type="submit"
+            disabled={submitting}
+            aria-busy={submitting || undefined}
+            className={PRIMARY_BTN_CLS}
+            style={{ background: "#5B6CE4" }}
           >
-            {resendIn > 0 ? `إعادة الإرسال بعد ${resendIn} ثانية` : "إعادة إرسال الرمز"}
+            Verify and Show Number
           </button>
+          <div className="text-center text-[13px]">
+            <button
+              type="button"
+              onClick={requestCode}
+              disabled={resendIn > 0 || submitting}
+              className="font-medium text-[#4a5cd9] hover:underline disabled:text-[#9aa0b5] disabled:hover:no-underline"
+            >
+              {resendIn > 0
+                ? `Resend code in ${resendIn}s`
+                : "Resend code"}
+            </button>
+          </div>
         </>
       )}
     </form>
@@ -277,12 +345,12 @@ function RecoveryCodePath() {
         account?: RecoveredAccount;
       };
       if (!res.ok || !data.account) {
-        setError(data.error ?? "تعذر التحقق من الرمز");
+        setError(data.error ?? "Couldn't verify the code");
         return;
       }
       setAccount(data.account);
     } catch {
-      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+      setError("Couldn't reach the server, please try again");
     } finally {
       setSubmitting(false);
     }
@@ -290,157 +358,97 @@ function RecoveryCodePath() {
 
   if (account) {
     return (
-      <section aria-label="الرقم المستعاد">
-        <p className="text-sm text-warm-600">
-          رمز الاسترداد صحيح — رقم هاتفك المسجل في {account.clinicName}:
+      <section aria-label="Recovered number">
+        <p className="text-sm text-[#6a6f83]">
+          Recovery code verified — the phone number registered with{" "}
+          {account.clinicName}:
         </p>
         <p
           dir="ltr"
-          className="numeric mt-4 rounded-panel bg-surface-raised px-4 py-4 text-center text-xl font-bold text-ink-900 ring-1 ring-warm-200"
+          className="mt-4 rounded-[10px] bg-[#f7f8fb] px-4 py-4 text-center text-xl font-bold text-[#16181d]"
         >
           {account.phone}
         </p>
         <Link
           href="/login"
-          className="mt-6 inline-block w-full rounded-field bg-primary-600 px-4 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-primary-700"
+          className={`${PRIMARY_BTN_CLS} mt-6 inline-block leading-[48px]`}
+          style={{ background: "#5B6CE4" }}
         >
-          تسجيل الدخول
+          Login
         </Link>
       </section>
     );
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-5" aria-label="استعادة برمز الاسترداد">
-      <Field
-        label="رمز الاسترداد الاحتياطي"
-        htmlFor="rc"
-        hint="الرمز المكون من 12 حرفاً الذي عُرض عند إنشاء العيادة"
-      >
-        <Input
-          id="rc"
-          dir="ltr"
-          required
-          className="numeric text-left tracking-widest"
-          placeholder="XXXX-XXXX-XXXX"
-          value={recoveryCode}
-          onChange={(e) => setRecoveryCode(e.target.value)}
-        />
-      </Field>
+    <form onSubmit={onSubmit} className="space-y-4" aria-label="Recover with recovery code">
+      <div className="rounded-xl bg-[#f7f8fb] p-4 text-sm leading-6 text-[#4a4e63]">
+        The <strong className="font-semibold text-[#16181d]">recovery code</strong>{" "}
+        is the 12-character code (like{" "}
+        <span dir="ltr" className="text-[#25293c]">XXXX-XXXX-XXXX</span>) shown
+        once when your clinic account was created. Saved it? Enter it here to
+        see your registered phone number. Lost it? Use the{" "}
+        <strong className="font-semibold text-[#16181d]">Support</strong> tab.
+      </div>
+      <input
+        id="rc"
+        dir="ltr"
+        required
+        aria-label="Backup recovery code (12 characters, shown when your clinic was created)"
+        className={`${INPUT_CLS} px-4 text-left tracking-widest`}
+        placeholder="XXXX-XXXX-XXXX"
+        value={recoveryCode}
+        onChange={(e) => setRecoveryCode(e.target.value.toUpperCase())}
+      />
 
       {error && <FormError message={error} />}
 
-      <Button type="submit" loading={submitting} className="w-full py-3">
-        تحقق وأظهر الرقم
-      </Button>
+      <button
+        type="submit"
+        disabled={submitting}
+        aria-busy={submitting || undefined}
+        className={PRIMARY_BTN_CLS}
+        style={{ background: "#5B6CE4" }}
+      >
+        Verify and Show Number
+      </button>
     </form>
   );
 }
 
-// ─── المسار 3: طلب دعم — يُخزَّن ويُعالج من فريق الدعم ──────────────────────
+// ─── المسار 3: الدعم — رقم الهاتف مباشرة ────────────────────────────────────
 
 function SupportPath() {
-  const [form, setForm] = useState({
-    clinicName: "",
-    contactEmail: "",
-    contactPhone: "",
-    message: "",
-  });
-  const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/support/requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const data = (await res.json()) as { error?: string; message?: string };
-      if (!res.ok) {
-        setError(data.error ?? "تعذر إرسال الطلب، حاول مرة أخرى");
-        return;
-      }
-      setDone(data.message ?? "تم إرسال طلبك");
-    } catch {
-      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  if (done) {
-    return (
-      <section
-        role="status"
-        className="rounded-panel border border-primary-100 bg-primary-50 p-5 text-center"
-      >
-        <LifeBuoy size={26} className="mx-auto text-primary-700" aria-hidden />
-        <p className="mt-3 text-sm font-medium text-primary-900">{done}</p>
-        <p className="mt-2 text-xs text-primary-700">
-          جهّز ما يثبت ملكيتك للعيادة (وثائق التسجيل، آخر فواتير الاشتراك).
-        </p>
-      </section>
-    );
-  }
-
   return (
-    <form onSubmit={onSubmit} className="space-y-5" aria-label="طلب دعم">
-      <Field label="اسم العيادة" htmlFor="sp-clinic">
-        <Input
-          id="sp-clinic"
-          required
-          value={form.clinicName}
-          onChange={(e) => setForm({ ...form, clinicName: e.target.value })}
-          placeholder="مثال: عيادة الابتسامة"
-        />
-      </Field>
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="بريد للتواصل (اختياري)" htmlFor="sp-email">
-          <Input
-            id="sp-email"
-            type="email"
-            dir="ltr"
-            className="text-left"
-            value={form.contactEmail}
-            onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
-            placeholder="doctor@clinic.com"
-          />
-        </Field>
-        <Field label="هاتف للتواصل (اختياري)" htmlFor="sp-phone">
-          <Input
-            id="sp-phone"
-            type="tel"
-            dir="ltr"
-            className="text-left"
-            value={form.contactPhone}
-            onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
-            placeholder="09xxxxxxxx"
-          />
-        </Field>
+    <section
+      aria-label="Contact support"
+      className="rounded-2xl bg-white px-6 py-8 text-center"
+    >
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#eceefc]">
+        <LifeBuoy size={26} color="#4a5cd9" aria-hidden />
       </div>
-      <Field
-        label="وصف الحالة"
-        htmlFor="sp-message"
-        hint="اذكر اسم العيادة واسم الطبيب وآخر معلومة تتذكرها عن الحساب"
+      <h2 className="mt-4 text-lg font-bold text-[#16181d]">
+        Call us and we&apos;ll recover your account
+      </h2>
+      <p className="mt-2 text-sm leading-6 text-[#6a6f83]">
+        Have proof of ownership ready (registration documents, latest
+        subscription invoices) so we can verify you faster.
+      </p>
+      <a
+        href={`tel:${SUPPORT_PHONE}`}
+        dir="ltr"
+        className="mt-5 flex items-center justify-center gap-2 text-3xl font-bold tracking-wide text-[#16181d] hover:text-[#4a5cd9]"
       >
-        <Textarea
-          id="sp-message"
-          required
-          value={form.message}
-          onChange={(e) => setForm({ ...form, message: e.target.value })}
-        />
-      </Field>
-
-      {error && <FormError message={error} />}
-
-      <Button type="submit" loading={submitting} className="w-full py-3">
-        إرسال طلب إلى الدعم
-      </Button>
-    </form>
+        <Phone size={24} color="#4a5cd9" aria-hidden />
+        {SUPPORT_PHONE_DISPLAY}
+      </a>
+      <a
+        href={`tel:${SUPPORT_PHONE}`}
+        className={`${PRIMARY_BTN_CLS} mt-6 inline-block leading-[48px]`}
+        style={{ background: "#5B6CE4" }}
+      >
+        Call Support
+      </a>
+    </section>
   );
 }
