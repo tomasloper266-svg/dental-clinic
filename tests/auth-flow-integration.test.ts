@@ -28,6 +28,7 @@ describeDb("createClinicWithOwner", () => {
       clinicName: "عيادة تسجيل (اختبار)",
       name: "د. تسجيل",
       phone: PHONE,
+      username: "test-signup-owner",
       password: "signup-pass-1",
     });
 

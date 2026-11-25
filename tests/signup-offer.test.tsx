@@ -32,7 +32,7 @@ describe("بطاقة عرض الاشتراك في التسجيل", () => {
   it("تعرض سطر الدفع عبر شام كاش من أول يوم", () => {
     render(<SignupPlansCard />);
     expect(
-      screen.getByText(/Pay via SHAM Cash — you can pay from day one/),
+      screen.getByText(/Pay via SHAM Cash — from day one/),
     ).toBeInTheDocument();
   });
 });
@@ -41,7 +41,10 @@ describe("صفحة التسجيل تعرض العرض", () => {
   it("نموذج التسجيل وعرض الاشتراك معاً في الشاشة نفسها", () => {
     render(<SignupPage />);
     expect(screen.getByLabelText("Clinic Name")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create Account" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Username")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Create Your Clinic Account" }),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Subscription offer")).toBeInTheDocument();
     expect(screen.getByText(/Start free — 15-day full trial/)).toBeInTheDocument();
   });

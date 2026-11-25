@@ -20,20 +20,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
   }
 
-  const { phone, password } = (body ?? {}) as {
-    phone?: unknown;
-    password?: unknown;
-  };
-  if (typeof phone !== "string" || typeof password !== "string") {
+  // الحقل المعروض Username — نقبل أيضاً phone للتوافق مع العملاء الأقدم.
+  const body2 = (body ?? {}) as Record<string, unknown>;
+  const identifier =
+    typeof body2.username === "string" && body2.username.trim()
+      ? body2.username
+      : typeof body2.phone === "string"
+        ? body2.phone
+        : undefined;
+  const password = body2.password;
+  if (typeof identifier !== "string" || typeof password !== "string") {
     return NextResponse.json(
-      { error: "أدخل رقم الهاتف وكلمة السر" },
+      { error: "أدخل اسم المستخدم وكلمة السر" },
       { status: 400 },
     );
   }
 
-  // تحديد المحاولات — الهاتف المغلق مؤقتاً يُرد بـ429 حتى قبل فحص كلمة السر
-  const trimmedPhone = phone.trim();
-  const lockRemainingSec = loginLockRemainingSec(trimmedPhone);
+  // تحديد المحاولات — المعرّف المغلق مؤقتاً يُرد بـ429 حتى قبل فحص كلمة السر
+  const trimmedIdentifier = identifier.trim();
+  const lockRemainingSec = loginLockRemainingSec(trimmedIdentifier);
   if (lockRemainingSec > 0) {
     return NextResponse.json(
       {
@@ -43,15 +48,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const user = await authenticate(trimmedPhone, password);
+  const user = await authenticate(trimmedIdentifier, password);
   if (!user) {
-    recordLoginFailure(trimmedPhone);
+    recordLoginFailure(trimmedIdentifier);
     return NextResponse.json(
-      { error: "رقم الهاتف أو كلمة السر غير صحيحة" },
+      { error: "اسم المستخدم أو كلمة السر غير صحيحة" },
       { status: 401 },
     );
   }
-  clearLoginAttempts(trimmedPhone);
+  clearLoginAttempts(trimmedIdentifier);
 
   const rememberMe = (body as Record<string, unknown>).rememberMe === true;
   const { token, expiresAt } = await createSession(user.userId, rememberMe);

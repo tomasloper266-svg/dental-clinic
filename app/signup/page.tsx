@@ -21,6 +21,7 @@ export default function SignupPage() {
     clinicName: "",
     name: "",
     phone: "",
+    username: "",
     password: "",
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -127,7 +128,7 @@ export default function SignupPage() {
           id="signup-title"
           className="text-center text-[32px] font-bold leading-tight text-[#16181d]"
         >
-          Create Account
+          Create Your Clinic Account
         </h1>
 
         <form onSubmit={onSubmit} className="mt-8 space-y-4">
@@ -169,6 +170,23 @@ export default function SignupPage() {
             placeholder="Phone Number"
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
+          />
+
+          <input
+            id="username"
+            name="username"
+            type="text"
+            dir="ltr"
+            required
+            minLength={3}
+            maxLength={30}
+            pattern="[A-Za-z0-9_.\-]+"
+            aria-label="Username"
+            autoComplete="username"
+            className={`${INPUT_CLS} text-left`}
+            placeholder="Username"
+            value={form.username}
+            onChange={(e) => setForm({ ...form, username: e.target.value })}
           />
 
           <div className="relative">
@@ -217,7 +235,7 @@ export default function SignupPage() {
             className="h-12 w-full rounded-[10px] text-[15px] font-semibold text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             style={{ background: "#5B6CE4" }}
           >
-            Create Account
+            Create Your Clinic Account
           </button>
         </form>
 

@@ -197,6 +197,9 @@ model User {
   clinicId     String
   name         String
   phone        String
+  // معرف الدخول (Username) — فريد عالمياً؛ يُستخدم في صفحة تسجيل الدخول.
+  // اختياري: مستخدمو ما قبل الإضافة يدخلون برقم الهاتف (username = null).
+  username     String?  @unique
   passwordHash String
   role         UserRole @default(DENTIST)
   createdAt    DateTime @default(now())

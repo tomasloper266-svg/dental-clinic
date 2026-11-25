@@ -34,6 +34,18 @@ export async function POST(req: NextRequest) {
     );
     return res;
   } catch (err) {
+    // تسليم اسم مستخدم محجوز برسالة واضحة — P2002 هو انتهاك الفريد في Prisma.
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      (err as { code?: string }).code === "P2002"
+    ) {
+      return NextResponse.json(
+        { error: "اسم المستخدم محجوز، اختر اسماً آخر" },
+        { status: 409 },
+      );
+    }
     // خطأ غير متوقع (اتصال قاعدة بيانات، قيد، ...) — يُسجل ولا يُكتم.
     console.error("[signup] failed to create clinic:", err);
     return NextResponse.json(

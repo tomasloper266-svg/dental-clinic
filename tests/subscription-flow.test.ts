@@ -48,6 +48,7 @@ beforeAll(async () => {
     clinicName: CLINIC_NAME,
     name: "د. اشتراكات",
     phone: PHONE,
+    username: "test-subscription-owner",
     password: "subscription-pass-1",
   });
   clinicId = created.clinicId;
@@ -222,6 +223,7 @@ describeDb("الدفع المبكر والتفعيل اليدوي الإداري
       clinicName: EARLY_NAME,
       name: "د. مبكر",
       phone: EARLY_PHONE,
+      username: "test-early-owner",
       password: "early-pass-1",
     });
     earlyClinicId = created.clinicId;
@@ -312,6 +314,7 @@ describeDb("الدفع المبكر والتفعيل اليدوي الإداري
       clinicName: "عيادة محجوبة (اختبار)",
       name: "د. محجوب",
       phone: "0955555888",
+      username: "test-blocked-owner",
       password: "blocked-pass-1",
     });
     await prisma.clinic.update({

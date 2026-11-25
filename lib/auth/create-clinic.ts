@@ -30,6 +30,7 @@ export async function createClinicWithOwner(
         clinicId: created.id,
         name: input.name,
         phone: input.phone,
+        username: input.username,
         passwordHash,
         recoveryCodeHash,
         role: "DENTIST",
