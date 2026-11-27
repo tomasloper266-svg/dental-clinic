@@ -8,10 +8,10 @@ export const TRIAL_DAYS = 15;
 export const LAUNCH_GIFT_DAYS = 365;
 
 /** سعر الاشتراك الشهري بالدولار */
-export const MONTHLY_PRICE_USD = 15;
+export const MONTHLY_PRICE_USD = 12;
 
 /** سعر الاشتراك السنوي بالدولار */
-export const YEARLY_PRICE_USD = 120;
+export const YEARLY_PRICE_USD = 100;
 
 /** مدة الاشتراك الشهري بالأيام */
 export const MONTHLY_DAYS = 30;
