@@ -1,4 +1,4 @@
-import { getServerT } from "@/lib/i18n";
+import { getRequestT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { authenticate } from "@/lib/auth/login";
 import {
@@ -14,7 +14,7 @@ import {
 } from "@/lib/auth/session";
 
 export async function POST(req: NextRequest) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   let body: unknown;
   try {
     body = await req.json();

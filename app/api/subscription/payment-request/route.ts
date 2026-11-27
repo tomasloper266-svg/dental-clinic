@@ -1,4 +1,4 @@
-import { getServerT, tMaybe } from "@/lib/i18n";
+import { tMaybe, getRequestT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
 import {
@@ -10,7 +10,7 @@ import {
 // الاشتراك مستثناة عمداً: العيادة المنتهية والنشطة (تجديد مبكر أو دفع من
 // أول يوم) كلها معنية بالرفع.
 export async function POST(req: NextRequest) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   const session = await getSessionUser(token);
   if (!session) {

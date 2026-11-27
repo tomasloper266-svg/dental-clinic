@@ -1,4 +1,4 @@
-import { getServerT } from "@/lib/i18n";
+import { getRequestT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import { listMaterialMovements } from "@/lib/services/inventory";
@@ -8,7 +8,7 @@ type Params = { params: Promise<{ materialId: string }> };
 // سجل حركات مادة — الدفتر الإلحاقي للتوريد والاستعمال والتسويات، الأحدث أولاً.
 
 export async function GET(req: NextRequest, { params }: Params) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;

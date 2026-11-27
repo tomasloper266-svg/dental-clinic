@@ -1,11 +1,11 @@
-import { getServerT, tMaybe } from "@/lib/i18n";
+import { tMaybe, getRequestT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { recoverPhoneByRecoveryCode } from "@/lib/auth/recovery";
 
 // استعادة رقم الهاتف برمز الاسترداد الاحتياطي — يُنشأ عند التسجيل
 // ويُعرض مرة واحدة، وحيازته تثبت الملكية.
 export async function POST(req: NextRequest) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   let body: unknown;
   try {
     body = await req.json();

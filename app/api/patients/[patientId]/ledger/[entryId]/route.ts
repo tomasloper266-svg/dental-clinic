@@ -1,4 +1,4 @@
-import {getServerT, tMaybe } from "@/lib/i18n";
+import { getRequestT, tMaybe } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import { deleteUnallocatedCharge } from "@/lib/services/ledger";
@@ -10,7 +10,7 @@ type Params = { params: Promise<{ patientId: string; entryId: string }> };
 // يعيد توزيع الدفعات بأثر رجعي.
 
 export async function DELETE(req: NextRequest, { params }: Params) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;

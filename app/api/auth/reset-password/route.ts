@@ -1,11 +1,11 @@
-import { getServerT, tMaybe } from "@/lib/i18n";
+import { tMaybe, getRequestT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { parseIdentifier, parseNewPassword, resetPassword } from "@/lib/auth/recovery";
 
 // تعيين كلمة السر الجديدة — يتحقق من الرمز مرة أخيرة، يستهلكه، يحدّث الهاش،
 // ويبطل كل جلسات الدخول القديمة على كل الأجهزة.
 export async function POST(req: NextRequest) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   let body: unknown;
   try {
     body = await req.json();

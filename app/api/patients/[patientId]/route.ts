@@ -1,4 +1,4 @@
-import { getServerT, keyForSourceText, tMaybe } from "@/lib/i18n";
+import { keyForSourceText, tMaybe, getRequestT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import {
@@ -14,7 +14,7 @@ import {
 type RouteContext = { params: Promise<{ patientId: string }> };
 
 export async function GET(_req: NextRequest, ctx: RouteContext) {
-  const t = await getServerT();
+  const t = await getRequestT(_req);
   const gate = await requireGate(_req);
   if (!gate.ok) return gate.response;
   const tenant = gate.ctx;
@@ -28,7 +28,7 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
 }
 
 export async function PATCH(req: NextRequest, ctx: RouteContext) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const tenant = gate.ctx;
@@ -59,7 +59,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
 }
 
 export async function DELETE(_req: NextRequest, ctx: RouteContext) {
-  const t = await getServerT();
+  const t = await getRequestT(_req);
   const gate = await requireGate(_req);
   if (!gate.ok) return gate.response;
   const tenant = gate.ctx;

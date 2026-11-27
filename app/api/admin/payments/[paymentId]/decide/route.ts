@@ -1,4 +1,4 @@
-import { getServerT, tMaybe } from "@/lib/i18n";
+import { getRequestT, getServerT, tMaybe } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminSession } from "@/lib/auth/admin";
 import {
@@ -14,7 +14,7 @@ export async function POST(
   req: NextRequest,
   ctx: { params: Promise<{ paymentId: string }> },
 ) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   if (!isAdminSession(req.cookies)) {
     return NextResponse.json({ error: t("api.unauthorized") }, { status: 401 });
   }

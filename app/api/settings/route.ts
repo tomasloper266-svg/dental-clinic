@@ -1,4 +1,4 @@
-import { getServerT, tMaybe } from "@/lib/i18n";
+import { tMaybe, getRequestT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import { requireRole } from "@/lib/tenant/context";
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;

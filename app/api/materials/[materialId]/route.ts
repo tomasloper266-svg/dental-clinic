@@ -1,4 +1,4 @@
-import { getServerT, tMaybe } from "@/lib/i18n";
+import { tMaybe, getRequestT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import {
@@ -13,7 +13,7 @@ type Params = { params: Promise<{ materialId: string }> };
 // الخدمة، التي تسجّل الفرق سطر حركة تسوية في الدفتر.
 
 export async function PATCH(req: NextRequest, { params }: Params) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
@@ -48,7 +48,7 @@ export async function DELETE(
   req: NextRequest,
   { params }: Params,
 ) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;

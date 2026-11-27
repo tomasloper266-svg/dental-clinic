@@ -1,11 +1,11 @@
-import { getServerT, tMaybe } from "@/lib/i18n";
+import { tMaybe, getRequestT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { parseSignup } from "@/lib/auth/signup";
 import { createClinicWithOwner } from "@/lib/auth/create-clinic";
 import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/session";
 
 export async function POST(req: NextRequest) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   let body: unknown;
   try {
     body = await req.json();

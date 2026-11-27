@@ -1,11 +1,11 @@
-import { getServerT, tMaybe } from "@/lib/i18n";
+import { tMaybe, getRequestT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { verifyPhoneRecovery } from "@/lib/auth/recovery";
 
 // كشف أرقام الهواتف بعد إثبات ملكية البريد — لا يُعاد أي رقم قبل
 // التحقق من الرمز.
 export async function POST(req: NextRequest) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   let body: unknown;
   try {
     body = await req.json();

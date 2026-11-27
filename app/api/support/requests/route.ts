@@ -1,11 +1,11 @@
-import { getServerT, tMaybe } from "@/lib/i18n";
+import { tMaybe, getRequestT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { createSupportRequest } from "@/lib/auth/recovery";
 
 // طلب دعم — مسار التحقق من ملكية العيادة حين لا تتوفر قناة موثقة.
 // يُخزَّن الطلب في قاعدة البيانات ويُعالج من فريق الدعم.
 export async function POST(req: NextRequest) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   let body: unknown;
   try {
     body = await req.json();

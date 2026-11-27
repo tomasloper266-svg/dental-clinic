@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import type { NextRequest } from "next/server";
 
 import {
   LOCALE_COOKIE,
@@ -21,6 +22,15 @@ export { formatDate, formatNumber, formatCurrency, formatTime } from "./format";
 export async function getLocale(): Promise<Locale> {
   const store = await cookies();
   return parseLocaleCookie(store.get(LOCALE_COOKIE)?.value);
+}
+
+/**
+ * الترجمة من كوكي الطلب نفسه — للـ route handlers. قراءة الكوكي من
+ * NextRequest بدل next/headers تجعل الـ handler قابلاً للاستدعاء المباشر
+ * في اختبارات التكامل خارج نطاق طلب Next.
+ */
+export function getRequestT(req: NextRequest): T {
+  return createT(parseLocaleCookie(req.cookies.get(LOCALE_COOKIE)?.value));
 }
 
 /** مترجم مكوّنات الخادم — مربوط بلغة الجلسة الحالية */

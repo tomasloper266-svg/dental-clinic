@@ -1,4 +1,4 @@
-import { getServerT } from "@/lib/i18n";
+import { getRequestT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
 import { tenantContextFromSession } from "@/lib/tenant/context";
@@ -10,7 +10,7 @@ import { verifyLockPin } from "@/lib/services/account";
 // والجلسة نفسها لا تُمس — الفتح هويّة متصفح فقط لا تصريح إضافي.
 
 export async function POST(req: NextRequest) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   const session = await getSessionUser(token);
   if (!session) {
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   const session = await getSessionUser(req.cookies.get(SESSION_COOKIE)?.value);
   if (!session) {
     return NextResponse.json({ error: t("api.unauthorized") }, { status: 401 });

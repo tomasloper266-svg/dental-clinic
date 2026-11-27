@@ -1,11 +1,11 @@
-import { getServerT, tMaybe } from "@/lib/i18n";
+import { tMaybe, getRequestT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requestPhoneRecoveryByEmail } from "@/lib/auth/recovery";
 
 // طلب استعادة رقم الهاتف عبر البريد الإلكتروني الموثق — يُرسل رمز تحقق
 // إلى البريد، والملكية تثبت عند إدخاله.
 export async function POST(req: NextRequest) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   let body: unknown;
   try {
     body = await req.json();

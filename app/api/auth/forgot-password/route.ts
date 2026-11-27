@@ -1,10 +1,10 @@
-import { getServerT, tMaybe } from "@/lib/i18n";
+import { tMaybe, getRequestT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { parseIdentifier, requestPasswordReset } from "@/lib/auth/recovery";
 
 // طلب رمز استعادة كلمة المرور — عبر هاتف أو بريد إلكتروني موثق.
 export async function POST(req: NextRequest) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   let body: unknown;
   try {
     body = await req.json();

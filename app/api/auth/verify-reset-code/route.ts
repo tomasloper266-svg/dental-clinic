@@ -1,11 +1,11 @@
-import { getServerT, tMaybe } from "@/lib/i18n";
+import { tMaybe, getRequestT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { parseIdentifier, verifyPasswordResetCode } from "@/lib/auth/recovery";
 
 // خطوة تحقق وسيطة — تؤكد صحة الرمز قبل عرض نموذج كلمة السر الجديدة،
 // مع رسائل صريحة للانتهاء أو الخطأ. الاستهلاك النهائي في /reset-password.
 export async function POST(req: NextRequest) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   let body: unknown;
   try {
     body = await req.json();

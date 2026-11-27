@@ -1,4 +1,4 @@
-import { getServerT, tMaybe } from "@/lib/i18n";
+import { tMaybe, getRequestT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import { undoWaitlistAutoFill } from "@/lib/services/waitlist";
@@ -6,7 +6,7 @@ import { undoWaitlistAutoFill } from "@/lib/services/waitlist";
 // تراجع بضغطة عن حجز تلقائي من قائمة الانتظار — المعرفات الثلاثة تأتي من
 // نتيجة PATCH الحالة (waitlistFill) فيتحقق الخادم من صحة كلٍّ منها قبل التنفيذ.
 export async function POST(req: NextRequest) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;

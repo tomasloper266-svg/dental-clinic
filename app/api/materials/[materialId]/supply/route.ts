@@ -1,4 +1,4 @@
-import { getServerT, tMaybe } from "@/lib/i18n";
+import { tMaybe, getRequestT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import { parseSupplyInput, supplyMaterial } from "@/lib/services/inventory";
@@ -9,7 +9,7 @@ type Params = { params: Promise<{ materialId: string }> };
 // بملاحظات اختيارية وتاريخ الحركة كما أدخله المستخدم.
 
 export async function POST(req: NextRequest, { params }: Params) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;

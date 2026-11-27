@@ -1,4 +1,4 @@
-import { getServerT } from "@/lib/i18n";
+import { getRequestT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import {
   ADMIN_COOKIE,
@@ -11,7 +11,7 @@ import {
 // دخول لوحة إدارة المنصة — سر مستقل عن حسابات العيادات (PLATFORM_ADMIN_KEY).
 // النجاح يصدر كوكي جلسة إدارية (بصمة HMAC لا السر نفسه).
 export async function POST(req: NextRequest) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   let body: unknown;
   try {
     body = await req.json();

@@ -1,4 +1,4 @@
-import { getServerT, tMaybe } from "@/lib/i18n";
+import { tMaybe, getRequestT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import { getPatient } from "@/lib/services/patients";
@@ -14,7 +14,7 @@ type Params = { params: Promise<{ patientId: string; itemId: string }> };
 
 // تعديل بند مخطط أو مقبول — البند المنفَّذ نهائي.
 export async function PATCH(req: NextRequest, { params }: Params) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
@@ -51,7 +51,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
 // بدء التنفيذ: يتحول البند إلى منفذ ويُسجَّل مشاهدة علاج منفذ على السن.
 export async function POST(req: NextRequest, { params }: Params) {
-  const t = await getServerT();
+  const t = await getRequestT(req);
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
 // حذف بند غير منفذ — البند المنفذ نهائي.
 export async function DELETE(_req: NextRequest, { params }: Params) {
-  const t = await getServerT();
+  const t = await getRequestT(_req);
   const gate = await requireGate(_req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
