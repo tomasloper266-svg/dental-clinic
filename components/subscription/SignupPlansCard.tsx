@@ -33,7 +33,7 @@ export function SignupPlansCard() {
       <h2 className="mt-1 text-[17px] font-bold leading-snug text-[#1e2233]">
         {t("auth.plans.startFree", { days: TRIAL_DAYS })}
       </h2>
-      <p className="mt-2 text-[14px] leading-7 text-[#6b7280]">
+      <p className="mt-1.5 text-[12.5px] leading-6 text-[#6b7280]">
         {t("auth.plans.everyFeature", { days: TRIAL_DAYS })}
       </p>
 
