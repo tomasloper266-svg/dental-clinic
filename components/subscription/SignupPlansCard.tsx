@@ -30,7 +30,7 @@ export function SignupPlansCard() {
         <span aria-hidden>✨</span> {t("auth.plans.limitedOffer")}
       </p>
 
-      <h2 className="mt-1 text-[21px] font-extrabold leading-snug text-[#1e2233]">
+      <h2 className="mt-1 text-[17px] font-bold leading-snug text-[#1e2233]">
         {t("auth.plans.startFree", { days: TRIAL_DAYS })}
       </h2>
       <p className="mt-2 text-[14px] leading-7 text-[#6b7280]">
@@ -87,10 +87,10 @@ export function SignupPlansCard() {
         })}
       </ul>
 
-      <p className="mt-5 flex items-center justify-center gap-2 text-[13px] font-medium text-[#1e2233]">
+      <p className="mt-4 flex items-center justify-center gap-2 text-[11.5px] font-medium text-[#1e2233]">
         <span
           aria-hidden
-          className="flex h-5 w-5 items-center justify-center rounded-md bg-[#eef0ff] text-[11px] text-[#4f46e5]"
+          className="flex h-4 w-4 items-center justify-center rounded-md bg-[#eef0ff] text-[9px] text-[#4f46e5]"
         >
           🏧
         </span>
