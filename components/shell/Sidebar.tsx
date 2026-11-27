@@ -207,11 +207,11 @@ function DuesAlertCard({
       href="/dues"
       className="block rounded-field border border-danger-300/40 bg-danger-500/10 px-3 py-2.5 transition-colors hover:bg-danger-500/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger-300"
     >
-      <p className="flex items-center gap-2 text-xs font-semibold text-danger-100">
+      <p className="flex items-center gap-2 text-xs font-semibold text-danger-700">
         <Wallet size={14} aria-hidden className="shrink-0" />
         مستحقات غير مسددة
       </p>
-      <p className="numeric mt-1 text-sm font-bold text-white">
+      <p className="numeric mt-1 text-sm font-bold text-danger-900">
         {formatDualFromUsd(dues, usdRate)}
       </p>
     </Link>

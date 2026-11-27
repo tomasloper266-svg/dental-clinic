@@ -8,7 +8,9 @@ import { listAppointments } from "@/lib/services/appointments";
 import { lowStockMaterials } from "@/lib/services/inventory";
 import { listPatients } from "@/lib/services/patients";
 import { listClinicLedgerEntries } from "@/lib/services/ledger";
-import { dayStart } from "@/lib/dates";
+import { dayStart, formatWeekdayDateCell } from "@/lib/dates";
+// تسمية اليوم الطويلة لعنوان بطاقة مواعيد اليوم داخل المحتوى
+import { formatDayLabel } from "@/lib/appointment-ui";
 import {
   appointmentsWithin,
   greetingForDate,
@@ -22,7 +24,6 @@ import {
 import { localDayOf } from "@/lib/local-day";
 import { getClinicUsdRate } from "@/lib/services/account";
 import { formatDualFromUsd } from "@/lib/currency";
-import { formatDayLabel } from "@/lib/appointment-ui";
 import { CalendarDays, Coins, Users, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
@@ -87,7 +88,7 @@ export default async function DashboardPage() {
     <div className={pageWrapClass("wide")}>
       <PageHeader
         title={`${greetingForDate(now)}، ${session.name}`}
-        description={formatDayLabel(now)}
+        description={formatWeekdayDateCell(now)}
         actions={<QuickActions />}
       />
 

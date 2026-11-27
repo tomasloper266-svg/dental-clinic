@@ -10,6 +10,8 @@ import { SUBSCRIPTION_PLANS } from "@/lib/billing/plans";
 import { prisma } from "@/lib/db";
 import SettingsBoard from "@/components/settings/SettingsBoard";
 import { SubscriptionStatusCard } from "@/components/subscription/SubscriptionStatusCard";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { formatWeekdayDateCell } from "@/lib/dates";
 
 // صفحة الإعدادات — بيانات العيادة والطبيب والحساب والأمان، محمية بالجلسة،
 // وبياناتها من واجهة برمجة الحساب المرتبطة بالعيادة حصراً. قسم الاشتراك
@@ -42,6 +44,8 @@ export default async function SettingsPage() {
 
   return (
     <div className={pageWrapClass("wide")}>
+      {/* الترويسة أولاً ككل الصفحات، ثم بطاقة الاشتراك، ثم اللوحة نفسها */}
+      <PageHeader title="الإعدادات" description={formatWeekdayDateCell(new Date())} />
       {subscription && progress && (
         <div className="mb-8">
           <SubscriptionStatusCard

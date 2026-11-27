@@ -146,7 +146,7 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
         actions={
           <>
             <ExportButton onClick={exportCsv} disabled={!materials?.length} />
-            <Button variant="gold" onClick={() => setFormTarget({ mode: "create" })}>
+            <Button onClick={() => setFormTarget({ mode: "create" })}>
               <Plus size={16} aria-hidden />
               مادة جديدة
             </Button>

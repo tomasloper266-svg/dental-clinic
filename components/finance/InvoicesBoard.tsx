@@ -241,7 +241,6 @@ export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
         description={formatWeekdayDateCell(new Date())}
         actions={
           <Button
-            variant="gold"
             shape="pill"
             onClick={() => setNewOpen(true)}
             disabled={patients !== null && patients.length === 0}
