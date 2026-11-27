@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import {
   IBM_Plex_Sans_Arabic,
-  Aref_Ruqaa,
   Space_Grotesk,
 } from "next/font/google";
 import "./globals.css";
@@ -13,14 +12,8 @@ const plexArabic = IBM_Plex_Sans_Arabic({
   weight: ["400", "500", "600", "700"],
 });
 
-// خط العناوين المزخرف — Aref Ruqaa لعناوين الصفحات والشعار.
-const arefRuqaa = Aref_Ruqaa({
-  variable: "--font-aref-ruqaa",
-  subsets: ["arabic", "latin"],
-  weight: ["400", "700"],
-});
-
-// خط الأرقام والبيانات الإنجليزية — Space Grotesk.
+// خط الأرقام والبيانات الإنجليزية — Space Grotesk، وهو كذلك خط العناوين
+// (font-display): الصوت الحديث لشعار DENTIQ بدل الرقعة الكلاسيكية.
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-grotesk",
   subsets: ["latin"],
@@ -51,7 +44,7 @@ export default function RootLayout({
       dir="rtl"
       // سكربت الثيم يضبط صنف dark قبل الترطيب فيختلف عن الرندر الخادمي — فروق مقصودة
       suppressHydrationWarning
-      className={`${plexArabic.variable} ${arefRuqaa.variable} ${spaceGrotesk.variable}`}
+      className={`${plexArabic.variable} ${spaceGrotesk.variable}`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />

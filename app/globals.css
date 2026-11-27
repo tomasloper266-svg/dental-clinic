@@ -1,13 +1,14 @@
 @import "tailwindcss";
 
 /*
- * نظام التصميم — هوية DENTIQ: طبي تقني فاخر، الوضع الداكن أساسي
- * والوضع الفاتح متكامل. الألوان كلها عبر tokens، والتبديل بين
- * الوضعين يحدث عبر صنف `dark` على <html> (افتراضياً حاضر).
+ * نظام التصميم — هوية DENTIQ: فاتح أساسي وموحّد مع صفحات المصادقة.
+ * الألوان كلها عبر tokens، والتبديل بين الوضعين يحدث عبر صنف `dark`
+ * على <html> (الافتراضي فاتح، والداكن باختيار صريح من ThemeToggle).
  *
- * الوضع الداكن: Deep Graphite #0A0F14 للأسطح، Dark Panel #121D29
- * للألواح، سماوي #22D3EE وفيروزي #2DD4BF للتفاعل والتوهج المدروس.
- * الوضع الفاتح: العاجي الدافئ والأخضر الطبي العميق (الهوية السابقة).
+ * الوضع الفاتح: خلفية صفحات الدخول اللافندر #DFE3F5، بطاقات بيضاء
+ * مرتفعة، ونيلي التفاعل من هوية المصادقة #5B6CE4/#4A5BD8.
+ * الوضع الداكن: أسطح كحلية عميقة بنفس الصبغة النيلية — بلا سماوي أو
+ * فيروزي — ليتفق الوضعان على هوية واحدة.
  */
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -19,14 +20,16 @@
   --font-mono: var(--font-grotesk), "Space Grotesk", ui-monospace,
     SFMono-Regular, Menlo, monospace;
 
-  /* خط العناوين المزخرف — Aref Ruqaa (عناوين الصفحات والشعار) */
-  --font-display: var(--font-aref-ruqaa), "Aref Ruqaa", serif;
+  /* خط العناوين — الصوت الحديث لشعار DENTIQ: Space Grotesk
+   * للاتيني والأرقام، وIBM Plex Sans Arabic للعربية (من next/font). */
+  --font-display: var(--font-grotesk), var(--font-plex-arabic),
+    "Space Grotesk", "IBM Plex Sans Arabic", sans-serif;
 
-  /* الأسطح — عاجي دافئ (الوضع الفاتح) */
-  --color-surface: #F4F5FC;
+  /* الأسطح — خلفية صفحات المصادقة اللافندر وبطاقات بيضاء مرتفعة */
+  --color-surface: #DFE3F5;
   --color-surface-raised: #FFFFFF;
-  --color-surface-sunken: #EAECF8;
-  --color-surface-hover: #F1F3FD;
+  --color-surface-sunken: #D3D9EF;
+  --color-surface-hover: #E9EDFA;
 
   /* الرمادي الدافئ — نصوص ثانوية وحدود hairline */
   --color-warm-50: #F7F8FD;
@@ -120,22 +123,23 @@
   --color-tooth-line: #a2957d;
   --color-tooth-line-soft: #c7bca4;
 
-  /* نصف قطر موحّد: ألواح 12px وحقول 8px */
-  --radius-panel: 14px;
-  --radius-field: 10px;
+  /* نصف القطر — ألواح 20px وحقول 12px، أقرب إلى لغة زوايا بطاقة المصادقة */
+  --radius-panel: 20px;
+  --radius-field: 12px;
 
-  /* ظلال دافئة بصبغة خضراء عميقة — ثلاث درجات فقط */
-  --shadow-xs: 0 1px 2px 0 rgb(38 41 92 / 0.06);
+  /* ظلال نيلية بصبغة ظل بطاقة المصادقة rgb(76 88 180) — ثلاث درجات */
+  --shadow-xs: 0 1px 2px 0 rgb(76 88 180 / 0.08);
   --shadow-sm:
-    0 1px 3px 0 rgb(38 41 92 / 0.08), 0 1px 2px -1px rgb(38 41 92 / 0.05);
+    0 1px 3px 0 rgb(76 88 180 / 0.10), 0 1px 2px -1px rgb(76 88 180 / 0.06);
   --shadow-md:
-    0 4px 12px -2px rgb(38 41 92 / 0.10), 0 2px 4px -2px rgb(38 41 92 / 0.06);
+    0 4px 12px -2px rgb(76 88 180 / 0.14), 0 2px 4px -2px rgb(76 88 180 / 0.08);
 }
 
 /*
- * الوضع الداكن DENTIQ — الأساسي. إعادة تعريف نفس الرموز الدلالية
+ * الوضع الداكن DENTIQ — إعادة تعريف نفس الرموز الدلالية
  * (وليس إضافة أصناف جديدة): كل ألوان التطبيق تُستهلك عبر var()
- * فتنقلب كلياً بلا مساس بأي مكوّن وظيفي.
+ * فتنقلب كلياً بلا مساس بأي مكوّن وظيفي. النيوترالات تنقلب إلى
+ * صبغة كحلية-نيلية توازن #6C7CE6 بدل الصبغة السماوية القديمة.
  */
 html.dark {
   color-scheme: dark;
@@ -146,38 +150,38 @@ html.dark {
   --color-surface-sunken: #0A0D1B;
   --color-surface-hover: #1C2142;
 
-  /* الرمادي الدافئ ينقلب: 900 نص فاتح و50 سطح غائر */
-  --color-warm-50: #0e161d;
-  --color-warm-100: #132029;
-  --color-warm-200: #1b2b37;
-  --color-warm-300: #253746;
-  --color-warm-400: #3e5464;
-  --color-warm-500: #5c7484;
-  --color-warm-600: #7e95a8;
-  --color-warm-700: #a3b8c7;
-  --color-warm-800: #c9dae5;
-  --color-warm-900: #e8f2f8;
+  /* الرمادي الدافئ ينقلب: 900 نص فاتح و50 سطح غائر — بصبغة نيلية لا سماوية */
+  --color-warm-50: #12152B;
+  --color-warm-100: #181C36;
+  --color-warm-200: #232849;
+  --color-warm-300: #333A61;
+  --color-warm-400: #4E5580;
+  --color-warm-500: #6E76A0;
+  --color-warm-600: #8F96BE;
+  --color-warm-700: #B0B6D8;
+  --color-warm-800: #CFD3EC;
+  --color-warm-900: #EAECF9;
 
-  /* الكحلي ينقلب إلى نصوص عالية الإضاءة */
-  --color-ink-50: #0d1d2a;
-  --color-ink-100: #132736;
-  --color-ink-200: #4a7ba0;
-  --color-ink-600: #7fa3bc;
-  --color-ink-700: #a5c2d4;
-  --color-ink-800: #cfe2ee;
-  --color-ink-900: #f0f7fb;
-  --color-ink-950: #f6fbfe;
+  /* الكحلي ينقلب إلى نصوص عالية الإضاءة — لافندر فاتح على الكحلي */
+  --color-ink-50: #141733;
+  --color-ink-100: #1D2145;
+  --color-ink-200: #5D68C0;
+  --color-ink-600: #8F98E6;
+  --color-ink-700: #AEB5F0;
+  --color-ink-800: #CFD3FA;
+  --color-ink-900: #EDEFFF;
+  --color-ink-950: #F6F7FF;
 
-  --color-steel-50: #0d1a24;
-  --color-steel-100: #132430;
-  --color-steel-200: #24384c;
-  --color-steel-300: #37536d;
-  --color-steel-400: #4a6072;
-  --color-steel-500: #7e95a8;
-  --color-steel-600: #94aab9;
-  --color-steel-700: #b4c7d4;
-  --color-steel-800: #d2e1ea;
-  --color-steel-900: #edf4f8;
+  --color-steel-50: #121528;
+  --color-steel-100: #1A1E3A;
+  --color-steel-200: #2C3255;
+  --color-steel-300: #414972;
+  --color-steel-400: #5A628D;
+  --color-steel-500: #7F87AD;
+  --color-steel-600: #98A0C2;
+  --color-steel-700: #B6BCD9;
+  --color-steel-800: #D3D7EC;
+  --color-steel-900: #EDEFFA;
 
   /* البُرموني — بنفسجي التشخيص #A78BFA */
   --color-plum-50: #2a2440;
@@ -188,18 +192,19 @@ html.dark {
   --color-plum-700: #c4b5fd;
   --color-plum-900: #ede9fe;
 
-  /* التفاعل — سماوي #22D3EE وفيروزي #2DD4BF، و600 بعمق كافٍ لنص أبيض */
-  --color-primary-50: #191E44;
-  --color-primary-100: #20265A;
-  --color-primary-200: #333D8F;
-  --color-primary-300: #AEB6F5;
-  --color-primary-400: #8A96F0;
+  /* التفاعل — نفس نيلي هوية المصادقة: 500 لوح #6C7CE6، و600 زر
+   * #5B6CE4 بعمق كافٍ لنص أبيض، و700/#4A5BD8 أعمق من هوية اللوجو */
+  --color-primary-50: #171A3D;
+  --color-primary-100: #1F244F;
+  --color-primary-200: #2C3478;
+  --color-primary-300: #A9B1F4;
+  --color-primary-400: #8390EE;
   --color-primary-500: #6C7CE6;
-  --color-primary-600: #4A5BD8;
-  --color-primary-700: #3C4BB5;
-  --color-primary-800: #2A3370;
-  --color-primary-900: #1A2050;
-  --color-primary-950: #121636;
+  --color-primary-600: #5B6CE4;
+  --color-primary-700: #4A5BD8;
+  --color-primary-800: #37418F;
+  --color-primary-900: #20265A;
+  --color-primary-950: #161A3E;
 
   --color-warning-50: #2b1f08;
   --color-warning-100: #3d2d0c;
@@ -237,6 +242,16 @@ body {
   background-color: var(--color-surface);
   color: var(--color-warm-900);
   font-family: var(--font-sans);
+}
+
+/*
+ * الزاوية المميّزة — لغة بطاقة المصادقة (28px بزاوية سفلية كبيرة 110px)
+ * للأسطح الكبرى التي تستحق التمييز، تُستخدم باعتدال. في RTL تنعكس
+ * الزاوية تلقائياً إلى الجهة المقابلة عبر border-end-start.
+ */
+@utility rounded-hero {
+  border-radius: 28px;
+  border-end-start-radius: 110px;
 }
 
 /*
@@ -285,7 +300,7 @@ body {
   }
 }
 
-/* توهج سماوي مدروس — للشعار والأزرار الأولية في الوضع الداكن حصراً */
+/* توهج نيلي مدروس بلون لوح المصادقة — للشعار والأزرار الأولية في الوضع الداكن حصراً */
 html.dark .glow-accent {
   box-shadow:
     0 0 22px rgb(108 124 230 / 0.25),
