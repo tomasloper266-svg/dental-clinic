@@ -37,7 +37,7 @@ export function SignupPlansCard() {
         {t("auth.plans.everyFeature", { days: TRIAL_DAYS })}
       </p>
 
-      <ul className="mt-4 grid grid-cols-2 gap-3.5">
+      <ul className="mt-4 grid grid-cols-2 gap-3">
         {PLAN_ORDER.map((name) => {
           const spec = SUBSCRIPTION_PLANS[name];
           const isYearly = name === "YEARLY";
@@ -45,7 +45,7 @@ export function SignupPlansCard() {
             <li
               key={name}
               className={cn(
-                "relative rounded-xl px-3 pb-3.5 pt-4 transition-all duration-200",
+                "relative rounded-xl px-3 pb-2.5 pt-3 transition-all duration-200",
                 "hover:-translate-y-1 hover:shadow-[0_14px_30px_-16px_rgba(79,70,229,0.35)]",
                 isYearly
                   ? "border-[1.5px] border-[#d4a94a] bg-gradient-to-b from-[#fbf7ec] to-white shadow-[0_16px_34px_-16px_rgba(196,150,40,0.45)]"
@@ -68,7 +68,7 @@ export function SignupPlansCard() {
               </span>
               <span
                 className={cn(
-                  "mt-1 block text-[26px] font-extrabold leading-tight",
+                  "mt-1 block text-[22px] font-extrabold leading-tight",
                   isYearly ? "text-[#a97e1d]" : "text-[#1e2233]",
                 )}
               >
@@ -78,7 +78,7 @@ export function SignupPlansCard() {
                 {isYearly ? t("auth.plans.perYear") : t("auth.plans.perMonth")}
               </span>
               {isYearly && (
-                <span className="mt-2.5 inline-block rounded-full border border-[#bfe9d4] bg-[#e3f7ee] px-3 py-0.5 text-[11px] font-bold leading-snug text-[#0d7a4f]">
+                <span className="mt-1.5 inline-block whitespace-nowrap rounded-full border border-[#bfe9d4] bg-[#e3f7ee] px-3 py-0.5 text-[11px] font-bold leading-snug text-[#0d7a4f]">
                   {t("auth.plans.saveYearly", { amount: savings })}
                 </span>
               )}

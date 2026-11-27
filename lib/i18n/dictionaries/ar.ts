@@ -582,7 +582,7 @@ export const ar = {
   "auth.plans.monthly": "شهري",
   "auth.plans.perMonth": "شهرياً",
   "auth.plans.perYear": "سنوياً",
-  "auth.plans.saveYearly": "وفّر {amount}$ مقارنة بالدفع الشهري",
+  "auth.plans.saveYearly": "وفّر {amount}$ سنوياً",
   "auth.plans.shamCash": "الدفع عبر شام كاش — من اليوم الأول، حتى قبل انتهاء تجربتك",
   "auth.plans.startFree": "ابدأ مجاناً — تجربة كاملة لمدة {days} يوماً",
   "auth.plans.yearly": "سنوي",
