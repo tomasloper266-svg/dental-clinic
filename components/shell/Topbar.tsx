@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/components/ui/cn";
-import { clinicLogoLetter } from "@/lib/branding";
+import { BrandMark } from "@/components/auth/BrandMark";
 import {
   activeBadgeEntries,
   badgeTotal,
@@ -85,13 +85,13 @@ function SearchPill() {
     <Link
       href={PATIENTS_SEARCH_HREF}
       aria-label="ابحث عن مريض، موعد، فاتورة"
-      className="hidden max-w-80 flex-1 items-center gap-2 rounded-full border border-warm-200 bg-surface-raised px-4 py-1.5 text-xs text-warm-500 transition-colors hover:border-warm-300 hover:text-warm-600 md:flex"
+      className="hidden max-w-80 flex-1 items-center gap-2 rounded-full border border-warm-200 bg-surface-raised px-4 py-1.5 text-xs text-warm-500 transition-colors hover:border-primary-300 hover:text-primary-600 md:flex"
     >
       <Search size={14} aria-hidden className="shrink-0" />
       <span className="flex-1 truncate">
         ابحث عن مريض، موعد، فاتورة…
       </span>
-      <kbd className="numeric shrink-0 rounded border border-warm-200 px-1.5 py-0.5 text-[9px] text-warm-400">
+      <kbd className="numeric shrink-0 rounded border border-primary-200 bg-primary-50 px-1.5 py-0.5 text-[9px] text-primary-600">
         ⌘K
       </kbd>
     </Link>
@@ -224,17 +224,11 @@ function ManualLock() {
 export function Topbar({
   className,
   lockEnabled = false,
-  logoLetter,
-  clinicName,
   badges,
 }: {
   className?: string;
   /** يظهر زر القفل اليدوي فقط حين يكون قفل حساب الجلسة مفعّلاً */
   lockEnabled?: boolean;
-  /** حرف الشعار المخصّص — يظهر على الموبايل حيث السايدبار مخفي */
-  logoLetter?: string;
-  /** اسم العيادة — مصدر الحرف البديل عند غياب الحرف المخزّن */
-  clinicName?: string;
   /** شارات التنبيه القائمة — عدّاد الجرس من انتظار/مستحقات/مخزون */
   badges?: Partial<Record<BadgeKey, number>>;
 }) {
@@ -249,12 +243,9 @@ export function Topbar({
         className,
       )}
     >
-      {/* مربع الشعار المصغّر — على الموبايل فقط، حيث يغيب السايدبار وصاحبه الحرف */}
-      <span
-        aria-hidden
-        className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-gradient-to-br from-primary-400 to-primary-500 font-display text-sm font-bold text-white shadow-xs md:hidden"
-      >
-        {clinicLogoLetter(logoLetter, clinicName)}
+      {/* بلاطة DENTIQ المصغّرة — على الموبايل فقط، حيث يغيب السايدبار وترويسته */}
+      <span aria-hidden data-testid="topbar-brand" className="shrink-0 md:hidden">
+        <BrandMark size={32} />
       </span>
       <SearchPill />
       <SmartBack pathname={pathname} />

@@ -120,8 +120,6 @@ export function AppShell({
       >
         <Topbar
           lockEnabled={lockEnabled}
-          logoLetter={logoLetter}
-          clinicName={clinicName}
           badges={{ ...badges, dues: duesBadge }}
         />
         {subscriptionBanner && (
