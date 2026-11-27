@@ -32,10 +32,10 @@ describe("بطاقة عرض الاشتراك في التسجيل", () => {
     ).toBeInTheDocument();
   });
 
-  it("تعرض الخطتين 15$ شهرياً و120$ سنوياً مع شارة الأوفر للسنوي", () => {
+  it("تعرض الخطتين 12$ شهرياً و100$ سنوياً مع شارة الأوفر للسنوي", () => {
     render(withLocale(<SignupPlansCard />));
-    expect(screen.getByText("15$")).toBeInTheDocument();
-    expect(screen.getByText("120$")).toBeInTheDocument();
+    expect(screen.getByText("12$")).toBeInTheDocument();
+    expect(screen.getByText("100$")).toBeInTheDocument();
     expect(screen.getByText("Best value")).toBeInTheDocument();
   });
 

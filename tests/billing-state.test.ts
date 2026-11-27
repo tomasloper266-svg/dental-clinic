@@ -181,12 +181,12 @@ describe("subscriptionProgress", () => {
 
 // الثوابت — قرارات مقفلة في المواصفة
 describe("plans", () => {
-  it("الأسعار 15$ شهرياً و120$ سنوياً والتجربة 15 يوماً", () => {
-    expect(MONTHLY_PRICE_USD).toBe(15);
-    expect(YEARLY_PRICE_USD).toBe(120);
+  it("الأسعار 12$ شهرياً و100$ سنوياً والتجربة 15 يوماً", () => {
+    expect(MONTHLY_PRICE_USD).toBe(12);
+    expect(YEARLY_PRICE_USD).toBe(100);
     expect(TRIAL_DAYS).toBe(15);
-    expect(planPriceUsd("MONTHLY")).toBe(15);
-    expect(planPriceUsd("YEARLY")).toBe(120);
+    expect(planPriceUsd("MONTHLY")).toBe(12);
+    expect(planPriceUsd("YEARLY")).toBe(100);
     expect(SUBSCRIPTION_PLANS.MONTHLY.durationDays).toBe(30);
     expect(SUBSCRIPTION_PLANS.YEARLY.durationDays).toBe(365);
   });
