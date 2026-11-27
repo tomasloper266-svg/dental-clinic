@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { Eye, EyeOff } from "lucide-react";
 import { forwardRef, useState } from "react";
@@ -15,6 +16,7 @@ type PasswordInputProps = Omit<
 // حقل كلمة السر مع إظهار/إخفاء — الزر حقيقي ويعمل بلوحة المفاتيح.
 export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
   function PasswordInput({ className, toggleLabel, ...rest }, ref) {
+  const { t } = useI18n();
     const [visible, setVisible] = useState(false);
     return (
       <div className="relative">
@@ -34,7 +36,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
         <button
           type="button"
           onClick={() => setVisible((v) => !v)}
-          aria-label={toggleLabel ?? (visible ? "إخفاء كلمة السر" : "إظهار كلمة السر")}
+          aria-label={toggleLabel ?? (visible ? t("auth.hidePassword") : t("auth.showPassword"))}
           aria-pressed={visible}
           className="absolute inset-y-0 left-0 flex w-10 items-center justify-center rounded-field text-warm-500 transition-colors hover:text-ink-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
         >

@@ -1,10 +1,12 @@
 "use client";
+import { toothStatusLabel } from "@/lib/odontogram/statuses";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useEffect, useState } from "react";
 import type { PlanItemDto } from "@/lib/services/treatment-plan";
 import { isUsdAmount } from "@/lib/currency";
 import { planStatusMeta } from "@/lib/treatment-plan-view";
-import { formatSurfaceAr } from "@/lib/odontogram/surfaces";
+import { formatSurface } from "@/lib/odontogram/surfaces";
 import {
   buildChargeWithItemsBody,
   type InvoiceItemPayload,
@@ -45,6 +47,7 @@ export default function IssueInvoiceModal({
   doctors,
   onIssued,
 }: Props) {
+  const { t, locale } = useI18n();
   const { toast } = useToast();
   const money = useMoney();
   const [doctorName, setDoctorName] = useState("");
@@ -80,11 +83,11 @@ export default function IssueInvoiceModal({
 
   async function issue() {
     if (selectedItems.length === 0) {
-      setError("اختر بنداً واحداً على الأقل لإصدار الفاتورة");
+      setError(t("invoices.pickOneItem"));
       return;
     }
     if (!isUsdAmount(discount) || discount < 0) {
-      setError("الخصم يجب أن يكون رقماً غير سالب بمنزلتين عشريتين كحد أقصى");
+      setError(t("api.ledger.discountInvalid"));
       return;
     }
     setError(null);
@@ -108,7 +111,7 @@ export default function IssueInvoiceModal({
             items: payloadItems,
             note:
               notes.trim() ||
-              `فاتورة خطة — ${payloadItems.length} بنود`,
+              t("invoices.planNote", { count: payloadItems.length }),
           }),
           // بند واحد مختار يبقى مربوطاً برقم بند الخطة — حاجز التكرار مع
           // القيد التلقائي (recordTreatmentCharge) كما هو. متعدد البنود لا
@@ -122,7 +125,7 @@ export default function IssueInvoiceModal({
         const data = (await res.json().catch(() => null)) as {
           error?: string;
         } | null;
-        setError(data?.error ?? "تعذر إصدار الفاتورة، لم يُسجَّل أي قيد");
+        setError(data?.error ?? t("invoices.issueNoEntry"));
         return;
       }
       const data = (await res.json()) as IssueResult;
@@ -134,20 +137,20 @@ export default function IssueInvoiceModal({
           body: JSON.stringify({
             type: "ADJUSTMENT",
             amountUsd: -discount,
-            note: notes.trim() ? `خصم — ${notes.trim()}` : "خصم فاتورة",
+            note: notes.trim() ? t("invoices.discountNote", { note: notes.trim() }) : t("invoices.invoiceDiscount"),
           }),
         });
         if (!res.ok) {
-          setError("صدرت الفاتورة لكن تعذر تسجيل الخصم");
+          setError(t("invoices.issuedDiscountFailed"));
           onIssued(chargeIds);
           return;
         }
       }
-      toast("صدرت الفاتورة وسُجلت بقيود الدفتر");
+      toast(t("invoices.issuedAndRecorded"));
       emitLedgerChanged();
       onIssued(chargeIds);
     } catch {
-      setError("تعذر الاتصال بالخادم");
+      setError(t("errors.server"));
     } finally {
       setSaving(false);
     }
@@ -157,15 +160,15 @@ export default function IssueInvoiceModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="إصدار الفاتورة"
+      title={t("invoices.issue")}
       titleClassName="text-warning-500 text-base font-bold"
       className="max-w-2xl"
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="المريض *" htmlFor="issue-patient">
+        <Field label={t("common.patientRequired")} htmlFor="issue-patient">
           <Input id="issue-patient" value={patientName} readOnly />
         </Field>
-        <Field label="الطبيب" htmlFor="issue-doctor">
+        <Field label={t("staff.theDoctor")} htmlFor="issue-doctor">
           <select
             id="issue-doctor"
             value={doctorName}
@@ -180,7 +183,7 @@ export default function IssueInvoiceModal({
             ))}
           </select>
         </Field>
-        <Field label="التاريخ" htmlFor="issue-date">
+        <Field label={t("common.date")} htmlFor="issue-date">
           <Input
             id="issue-date"
             type="date"
@@ -188,7 +191,7 @@ export default function IssueInvoiceModal({
             onChange={(event) => setDate(event.target.value)}
           />
         </Field>
-        <Field label="خصم" htmlFor="issue-discount">
+        <Field label={t("finance.discount")} htmlFor="issue-discount">
           <Input
             id="issue-discount"
             type="number"
@@ -202,13 +205,13 @@ export default function IssueInvoiceModal({
       </div>
 
       <p className="text-steel-500 mt-3 text-xs">
-        بنود العناصر «{planName}» — احتسب ما سيُدرج في الفاتورة (للبنود المختارة مسبقاً)
+        {t("finance.itemsOfPrefix")}{planName}{t("invoices.countPreview")}
       </p>
 
       <ul className="border-warm-200 mt-2 divide-y divide-warm-100 rounded-field border">
         {items.length === 0 && (
           <li className="text-steel-500 px-3 py-3 text-sm">
-            لا بنود في هذه الخطة بعد.
+            {t("plans.noItemsInPlan")}
           </li>
         )}
         {items.map((item) => {
@@ -226,15 +229,15 @@ export default function IssueInvoiceModal({
                 <span className="text-ink-900">{item.procedure}</span>
                 {item.toothFdi > 0 && (
                   <span className="numeric text-steel-500 text-xs">
-                    سن {item.toothFdi}
-                    {item.surface ? ` — ${formatSurfaceAr(item.surface)}` : ""}
+                    {t("common.toothUnit")} {item.toothFdi}
+                    {item.surface ? ` — ${formatSurface(locale, item.surface)}` : ""}
                   </span>
                 )}
                 <span
                   className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${meta.toneClass}`}
                 >
                   <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                  {meta.labelAr}
+                  {toothStatusLabel(locale, meta.status)}
                 </span>
               </label>
               <span className="numeric text-sm font-semibold text-warning-500">
@@ -246,7 +249,7 @@ export default function IssueInvoiceModal({
       </ul>
 
       <div className="mt-3">
-        <Field label="ملاحظات" htmlFor="issue-notes">
+        <Field label={t("common.notes")} htmlFor="issue-notes">
           <textarea
             id="issue-notes"
             value={notes}
@@ -265,10 +268,10 @@ export default function IssueInvoiceModal({
 
       <footer className="mt-4 flex items-center justify-end gap-2">
         <Button variant="secondary" onClick={onClose}>
-          إغلاق
+          {t("common.close")}
         </Button>
         <Button variant="gold" onClick={issue} loading={saving}>
-          إصدار الفاتورة
+          {t("invoices.issue")}
         </Button>
       </footer>
     </Modal>

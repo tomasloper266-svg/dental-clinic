@@ -34,6 +34,38 @@ export const OTHER_SURFACE = "OTHER";
 /** تسمية OTHER العربية للعرض. */
 export const OTHER_SURFACE_LABEL_AR = "أخرى";
 
+/** تسميات العرض الإنجليزية للأسطح — بنفس ترتيب SURFACE_OPTIONS. */
+const SURFACE_LABEL_EN: Record<string, string> = {
+  "المضغية": "Occlusal",
+  "الحدّية": "Incisal",
+  "القريبة": "Mesial",
+  "البعيدة": "Distal",
+  "الشدقية": "Buccal",
+  "اللسانية": "Lingual",
+  [OTHER_SURFACE]: "Other",
+};
+
+/** نقّي — العرض بلغة محددة لقيمة مخزنة: ar «المضغية+القريبة»، en «Occlusal+Mesial». */
+export function formatSurface(locale: "ar" | "en", stored: string): string {
+  return stored
+    .split("+")
+    .map((token) => {
+      if (locale === "en") {
+        if (token === OTHER_SURFACE) return SURFACE_LABEL_EN[OTHER_SURFACE];
+        const option = (SURFACE_OPTIONS as readonly string[]).find(
+          (surface) => CODE_BY_LABEL[surface] === token,
+        );
+        return option ? SURFACE_LABEL_EN[option] ?? option : token;
+      }
+      if (token === OTHER_SURFACE) return OTHER_SURFACE_LABEL_AR;
+      const option = (SURFACE_OPTIONS as readonly string[]).find(
+        (surface) => CODE_BY_LABEL[surface] === token,
+      );
+      return option ?? token;
+    })
+    .join("+");
+}
+
 /** بحث موسّع بالرموز القادمة من نص خارجي — لا يضيف مفاتيح، يوسّع القراءة فقط. */
 const CODE_BY_LABEL = SURFACE_CODES as Record<string, string>;
 

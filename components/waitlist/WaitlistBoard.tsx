@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -59,6 +60,7 @@ type GapsState =
     };
 
 export default function WaitlistBoard({ initialDate }: { initialDate: string }) {
+  const { t } = useI18n();
   const [entries, setEntries] = useState<WaitlistEntryJson[] | null>(null);
   const [entriesError, setEntriesError] = useState<string | null>(null);
   const [dateValue, setDateValue] = useState(initialDate);
@@ -77,9 +79,9 @@ export default function WaitlistBoard({ initialDate }: { initialDate: string }) 
       const data = (await res.json()) as { entries: WaitlistEntryJson[] };
       setEntries(data.entries);
     } catch {
-      setEntriesError("تعذر تحميل قائمة الانتظار — تحقق من الاتصال ثم أعد المحاولة.");
+      setEntriesError(t("waitlist.loadFailed"));
     }
-  }, []);
+  }, [t]);
 
   const refreshGaps = useCallback(async (date: string) => {
     setGapsState({ kind: "loading" });
@@ -147,23 +149,23 @@ export default function WaitlistBoard({ initialDate }: { initialDate: string }) 
   return (
     <>
       <PageHeader
-        title="قائمة الانتظار"
-        description="مرضى طالبو موعداً، وفجوات شاغرة في جدول اليوم — الحجز في الفجوة يحجز للمنتظر الأعلى أولوية أولاً."
+        title={t("common.waitlist")}
+        description={t("waitlist.boardHint")}
         actions={
           <Button onClick={() => setAdding(true)}>
             <UserPlus size={16} aria-hidden />
-            إضافة مريض للانتظار
+            {t("waitlist.addPatient")}
           </Button>
         }
       />
 
       <div className="mt-5 grid gap-6 lg:grid-cols-5">
         {/* قائمة المرضى المنتظرين — بطاقة محتوى بشريط بحث وتصفية */}
-        <section className="lg:col-span-2" aria-label="المرضى في قائمة الانتظار">
+        <section className="lg:col-span-2" aria-label={t("waitlist.patientsWaiting")}>
           <Card>
             <CardHeader className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle>
-                المرضى المنتظرون
+                {t("waitlist.waitingPatients")}
                 {entries && entries.length > 0 && (
                   <span className="numeric ms-2 text-xs font-normal text-warm-500">
                     {entries.length}
@@ -176,15 +178,15 @@ export default function WaitlistBoard({ initialDate }: { initialDate: string }) 
               <SearchInput
                 value={query}
                 onChange={setQuery}
-                placeholder="بحث بالاسم أو الملاحظة…"
-                aria-label="بحث في قائمة الانتظار"
+                placeholder={t("patients.searchNotesPlaceholder")}
+                aria-label={t("waitlist.search")}
               />
               <FilterPills
-                ariaLabel="تصفية بحالة الانتظار"
+                ariaLabel={t("waitlist.filterByStatus")}
                 value={statusFilter}
                 onChange={setStatusFilter}
                 options={[
-                  { value: "all", label: "الكل" },
+                  { value: "all", label: t("common.all") },
                   ...WAITLIST_STATUS_ORDER.map((status) => ({
                     value: status,
                     label: WAITLIST_STATUS_META[status].label,
@@ -201,7 +203,7 @@ export default function WaitlistBoard({ initialDate }: { initialDate: string }) 
                 >
                   <p className="text-xs font-medium text-danger-700">{entriesError}</p>
                   <Button variant="secondary" size="sm" onClick={() => void refreshEntries()}>
-                    إعادة المحاولة
+                    {t("common.retry")}
                   </Button>
                 </div>
               ) : entries === null ? (
@@ -209,20 +211,20 @@ export default function WaitlistBoard({ initialDate }: { initialDate: string }) 
               ) : entries.length === 0 ? (
                 <EmptyState
                   icon={Hourglass}
-                  title="لا أحد في الانتظار"
-                  description="أضف مريضاً طالب موعداً وسيظهر هنا مع فترته المفضلة وأولويته."
+                  title={t("waitlist.nobody")}
+                  description={t("waitlist.emptyAction")}
                   action={
                     <Button size="sm" onClick={() => setAdding(true)}>
                       <UserPlus size={14} aria-hidden />
-                      إضافة مريض للانتظار
+                      {t("waitlist.addPatient")}
                     </Button>
                   }
                 />
               ) : visibleEntries.length === 0 ? (
                 <EmptyState
                   icon={SearchX}
-                  title="لا نتائج مطابقة"
-                  description="لا مريض يطابق نص البحث أو التصفية الحالية — جرّب كلمة أخرى أو أعد التصفية إلى الكل."
+                  title={t("common.noMatches")}
+                  description={t("patients.noMatchFilter")}
                 />
               ) : (
                 <>
@@ -246,10 +248,10 @@ export default function WaitlistBoard({ initialDate }: { initialDate: string }) 
                           )}
                           {e.priority > 0 ? (
                             <Badge tone="warning">
-                              أولوية <span className="numeric">{e.priority}</span>
+                              {t("plans.priority")} <span className="numeric">{e.priority}</span>
                             </Badge>
                           ) : (
-                            <Badge tone="neutral">عادية</Badge>
+                            <Badge tone="neutral">{t("odontogram.ordinary")}</Badge>
                           )}
                           <StatusPill tone={WAITLIST_STATUS_META[e.status].tone}>
                             {WAITLIST_STATUS_META[e.status].label}
@@ -278,7 +280,7 @@ export default function WaitlistBoard({ initialDate }: { initialDate: string }) 
                         </div>
                         {e.priority > 0 && (
                           <Badge tone="warning" className="mt-2">
-                            أولوية <span className="numeric">{e.priority}</span>
+                            {t("plans.priority")} <span className="numeric">{e.priority}</span>
                           </Badge>
                         )}
                         {e.note && (
@@ -294,10 +296,10 @@ export default function WaitlistBoard({ initialDate }: { initialDate: string }) 
         </section>
 
         {/* فجوات اليوم — بطاقة محتوى بترويسة وتنقل يوم */}
-        <section className="lg:col-span-3" aria-label="فجوات جدول اليوم">
+        <section className="lg:col-span-3" aria-label={t("waitlist.dayGaps")}>
           <Card>
             <CardHeader className="flex flex-wrap items-center justify-between gap-2">
-              <CardTitle>فجوات جدول اليوم</CardTitle>
+              <CardTitle>{t("waitlist.dayGaps")}</CardTitle>
               <div className="flex items-center gap-1.5">
                 <Button
                   variant="secondary"
@@ -307,7 +309,7 @@ export default function WaitlistBoard({ initialDate }: { initialDate: string }) 
                       toDateInputValue(addDays(new Date(`${d}T00:00:00`), -1)),
                     )
                   }
-                  aria-label="اليوم السابق"
+                  aria-label={t("common.previousDay")}
                 >
                   <ChevronRight size={16} aria-hidden />
                 </Button>
@@ -316,7 +318,7 @@ export default function WaitlistBoard({ initialDate }: { initialDate: string }) 
                   size="sm"
                   onClick={() => setDateValue(toDateInputValue(new Date()))}
                 >
-                  اليوم
+                  {t("common.today")}
                 </Button>
                 <Button
                   variant="secondary"
@@ -326,7 +328,7 @@ export default function WaitlistBoard({ initialDate }: { initialDate: string }) 
                       toDateInputValue(addDays(new Date(`${d}T00:00:00`), 1)),
                     )
                   }
-                  aria-label="اليوم التالي"
+                  aria-label={t("common.nextDay")}
                 >
                   <ChevronLeft size={16} aria-hidden />
                 </Button>
@@ -343,14 +345,14 @@ export default function WaitlistBoard({ initialDate }: { initialDate: string }) 
                   className="flex flex-col items-start gap-2 rounded-panel border border-danger-300 bg-danger-50 px-4 py-4"
                 >
                   <p className="text-xs font-medium text-danger-700">
-                    تعذر تحميل الفجوات — تحقق من الاتصال ثم أعد المحاولة.
+                    {t("waitlist.gapsLoadFailed")}
                   </p>
                   <Button
                     variant="secondary"
                     size="sm"
                     onClick={() => void refreshGaps(dateValue)}
                   >
-                    إعادة المحاولة
+                    {t("common.retry")}
                   </Button>
                 </div>
               ) : gapsState.kind === "loading" ? (
@@ -370,8 +372,8 @@ export default function WaitlistBoard({ initialDate }: { initialDate: string }) 
                     <EmptyState
                       icon={CalendarDays}
                       className="mt-3"
-                      title="لا فجوات شاغرة هذا اليوم"
-                      description="كل فترات ساعات العمل محجوزة — إلغاء أي موعد يفتح فجوة تُقترح هنا تلقائياً، أو جرّب يوماً آخر."
+                      title={t("waitlist.noGaps")}
+                      description={t("waitlist.noGapsHint")}
                     />
                   ) : (
                     <ul className="mt-3 flex flex-col gap-2">
@@ -387,13 +389,13 @@ export default function WaitlistBoard({ initialDate }: { initialDate: string }) 
                               </span>
                             </p>
                             <p className="mt-0.5 text-xs text-warm-500">
-                              فجوة شاغرة لمدة <span className="numeric">{gap.durationMin}</span> دقيقة
+                              {t("waitlist.gapDuration")} <span className="numeric">{gap.durationMin}</span> {t("common.minutes")}
                             </p>
                           </div>
                           <div className="flex items-center gap-1.5">
                             {waiting.slice(0, 2).map((e) => (
                               <StatusPill key={e.id} tone="warning">
-                                اقتراح: {e.patientName}
+                                {t("waitlist.suggestion")} {e.patientName}
                               </StatusPill>
                             ))}
                             <PillAction
@@ -401,11 +403,11 @@ export default function WaitlistBoard({ initialDate }: { initialDate: string }) 
                               disabled={waiting.length === 0}
                               title={
                                 waiting.length === 0
-                                  ? "لا مرضى في قائمة الانتظار"
+                                  ? t("waitlist.empty")
                                   : undefined
                               }
                             >
-                              حجز في الفجوة
+                              {t("waitlist.bookInGap")}
                             </PillAction>
                           </div>
                         </li>
@@ -452,6 +454,7 @@ function DayStrip({
   busy: BusyBlock[];
   gaps: GapJson[];
 }) {
+  const { t } = useI18n();
   const windowStartMs = Date.parse(windowStart);
   return (
     <div className="mt-3 rounded-panel border border-warm-200 bg-surface-raised px-4 py-3">
@@ -490,11 +493,11 @@ function DayStrip({
         <span className="flex items-center gap-3">
           <span className="flex items-center gap-1">
             <span aria-hidden className="size-2 rounded-sm bg-ink-600/25" />
-            محجوز
+            {t("waitlist.bookedShort")}
           </span>
           <span className="flex items-center gap-1">
             <span aria-hidden className="size-2 rounded-sm bg-primary-100" />
-            فجوة شاغرة
+            {t("waitlist.openGap")}
           </span>
         </span>
         <span>{formatTime(windowEnd)}</span>

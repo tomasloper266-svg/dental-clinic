@@ -1,3 +1,4 @@
+import { getServerT, tMaybe } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import { changeAppointmentStatus } from "@/lib/services/appointment-state";
@@ -16,6 +17,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const t = await getServerT();
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
@@ -26,12 +28,12 @@ export async function PATCH(
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
+    return NextResponse.json({ error: t("api.invalidRequest") }, { status: 400 });
   }
 
   const status = (body as { status?: unknown }).status;
   if (typeof status !== "string" || !STATUSES.has(status)) {
-    return NextResponse.json({ error: "حالة غير معروفة" }, { status: 400 });
+    return NextResponse.json({ error: t("api.unknownStatus") }, { status: 400 });
   }
 
   const result = await changeAppointmentStatus(
@@ -41,7 +43,7 @@ export async function PATCH(
   );
   if (!result.ok) {
     const code = result.code === "INVALID" ? 422 : 404;
-    return NextResponse.json({ error: result.error }, { status: code });
+    return NextResponse.json({ error: tMaybe(t, result.error) }, { status: code });
   }
   // waitlistFill يُحمل فقط حين يُفتح موعد CANCELLED/NO_SHOW ويُحجز منتظر
   // مناسباً في الفجوة — يغذي رسالة المكوّن وزر التراجع بضغطة.

@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useEffect, useState } from "react";
 import { Search, UserPlus } from "lucide-react";
@@ -22,6 +23,7 @@ export default function WaitlistEntryForm({
   onClose,
   onAdded,
 }: WaitlistEntryFormProps) {
+  const { t } = useI18n();
   const { toast } = useToast();
   const [selected, setSelected] = useState<PatientOption | null>(null);
   const [search, setSearch] = useState("");
@@ -43,11 +45,11 @@ export default function WaitlistEntryForm({
 
   async function submit() {
     if (!selected) {
-      setError("اختر مريضاً أولاً");
+      setError(t("patients.chooseFirst"));
       return;
     }
     if (preferredWindow.trim().length < 2) {
-      setError("اكتب الفترة المفضلة (حرفان على الأقل)");
+      setError(t("waitlist.windowPlaceholder"));
       return;
     }
     setSaving(true);
@@ -64,23 +66,23 @@ export default function WaitlistEntryForm({
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
-        setError(data.error ?? "تعذر الإضافة");
+        setError(data.error ?? t("common.addFailed"));
         return;
       }
       toast(`أُضيف ${selected.name} إلى قائمة الانتظار`);
       onAdded();
       onClose();
     } catch {
-      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+      setError(t("errors.serverRetry"));
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="إضافة لقائمة الانتظار">
+    <Modal open={open} onClose={onClose} title={t("waitlist.addToList")}>
       <div className="flex flex-col gap-4">
-        <Field label="المريض" htmlFor="waitlist-patient">
+        <Field label={t("common.patient")} htmlFor="waitlist-patient">
           {selected ? (
             <div className="flex items-center justify-between rounded-field border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-800">
               <span>
@@ -92,7 +94,7 @@ export default function WaitlistEntryForm({
                 onClick={() => setSelected(null)}
                 className="text-xs font-medium text-primary-700 underline"
               >
-                تغيير
+                {t("common.change")}
               </button>
             </div>
           ) : (
@@ -107,7 +109,7 @@ export default function WaitlistEntryForm({
                 type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="ابحث بالاسم أو الهاتف…"
+                placeholder={t("patients.searchPhonePlaceholder")}
                 className="ps-9"
               />
               {options.length > 0 && (
@@ -136,25 +138,25 @@ export default function WaitlistEntryForm({
         </Field>
 
         <Field
-          label="الفترة المفضلة"
+          label={t("waitlist.preferredWindow")}
           htmlFor="waitlist-window"
-          hint="مثلاً: صباح الثلاثاء، أو أي وقت بعد الرابعة"
+          hint={t("waitlist.windowExample")}
         >
           <Input
             id="waitlist-window"
             type="text"
             value={preferredWindow}
             onChange={(e) => setPreferredWindow(e.target.value)}
-            placeholder="صباح الثلاثاء"
+            placeholder={t("waitlist.exampleTuesday")}
           />
         </Field>
 
-        <Field label="ملاحظة (اختياري)" htmlFor="waitlist-note">
+        <Field label={t("common.noteOptional")} htmlFor="waitlist-note">
           <Textarea
             id="waitlist-note"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="تفاصيل تساعد في اختيار الوقت المناسب"
+            placeholder={t("appointments.detailsHint")}
           />
         </Field>
 
@@ -170,10 +172,10 @@ export default function WaitlistEntryForm({
         <div className="flex gap-2">
           <Button onClick={submit} loading={saving}>
             <UserPlus size={16} aria-hidden />
-            {saving ? "جارٍ الإضافة…" : "إضافة للانتظار"}
+            {saving ? t("common.adding") : t("waitlist.addToWaitlist")}
           </Button>
           <Button variant="secondary" onClick={onClose} disabled={saving}>
-            إلغاء
+            {t("common.cancel")}
           </Button>
         </div>
       </div>

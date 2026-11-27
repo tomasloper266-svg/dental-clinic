@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 // دونات نتائج المواعيد — SVG خالص: شرائح بألوان الحالات الدلالية من
 // توكنات الهوية، المجموع في المركز، والأسطورة بجانبه. بلا مواعيد في
@@ -49,6 +50,7 @@ export default function AppointmentOutcomesDonut({
 }: {
   outcomes: { status: OutcomeStatus; count: number }[];
 }) {
+  const { t } = useI18n();
   if (outcomes.length === 0) {
     return (
       <div
@@ -57,7 +59,7 @@ export default function AppointmentOutcomesDonut({
       >
         <ToothIcon className="size-12 text-warning-600/70" />
         <p className="text-sm font-semibold text-warm-500">
-          لا مواعيد بالفترة
+          {t("dashboard.noneInPeriod")}
         </p>
       </div>
     );
@@ -114,7 +116,7 @@ export default function AppointmentOutcomesDonut({
           fontSize={12}
           fill="var(--color-warm-500)"
         >
-          موعد
+          {t("appointments.appointment")}
         </text>
       </svg>
 

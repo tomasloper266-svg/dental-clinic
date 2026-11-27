@@ -1,3 +1,4 @@
+import { getServerT } from "@/lib/i18n";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
@@ -13,6 +14,7 @@ export const dynamic = "force-dynamic";
 // مطلوبة، لكن بوابة الاشتراك مستثناة: هذه هي صفحة الحل بعد المنع الكلي.
 // رقم حساب شام كاش من إعدادات المنصة (متغير بيئة) — إن غاب يُخفى القسم.
 export default async function SubscriptionExpiredPage() {
+  const t = await getServerT();
   const cookieStore = await cookies();
   const session = await getSessionUser(cookieStore.get(SESSION_COOKIE)?.value);
   if (!session) redirect("/login");
@@ -42,16 +44,15 @@ export default async function SubscriptionExpiredPage() {
           <ToothIcon size={26} />
         </span>
         <h1 className="font-display text-2xl font-normal text-ink-900">
-          {clinic?.name ?? "عيادتك"}
+          {clinic?.name ?? t("subscription.yourClinic")}
         </h1>
         {expired ? (
           <p className="max-w-md text-sm text-steel-600">
-            انتهت فترة صلاحية الوصول. هذا المنع كامل — لا قراءة ولا كتابة — لكن
-            كل بيانات العيادة محفوظة وتعود مجرد التجديد.
+            {t("subscription.expiredFull")}
           </p>
         ) : (
           <p className="max-w-md text-sm text-steel-600">
-            وصولك قائم — يمكنك التجديد مبكراً من هذه الصفحة.
+            {t("subscription.activeRenewEarly")}
           </p>
         )}
       </div>
@@ -67,7 +68,7 @@ export default async function SubscriptionExpiredPage() {
           type="submit"
           className="focus-ring rounded-field px-3 py-1.5 text-steel-600 transition-colors hover:bg-surface-hover"
         >
-          تسجيل الخروج
+          {t("subscription.logout")}
         </button>
       </form>
     </main>

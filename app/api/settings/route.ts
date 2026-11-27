@@ -1,3 +1,4 @@
+import { getServerT, tMaybe } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import { requireRole } from "@/lib/tenant/context";
@@ -19,6 +20,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const t = await getServerT();
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
@@ -27,17 +29,17 @@ export async function PATCH(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
+    return NextResponse.json({ error: t("api.invalidRequest") }, { status: 400 });
   }
   const raw = body as Record<string, unknown>;
 
   const settingsInput = parseSettingsInput(raw);
   if (!settingsInput.ok) {
-    return NextResponse.json({ error: settingsInput.error }, { status: 400 });
+    return NextResponse.json({ error: tMaybe(t, settingsInput.error) }, { status: 400 });
   }
   const lockInput = parseLockInput(raw);
   if (!lockInput.ok) {
-    return NextResponse.json({ error: lockInput.error }, { status: 400 });
+    return NextResponse.json({ error: tMaybe(t, lockInput.error) }, { status: 400 });
   }
 
   // بيانات العيادة (الاسم والعملة وسعر الصرف وساعات العمل) للطبيب حصراً؛
@@ -45,13 +47,13 @@ export async function PATCH(req: NextRequest) {
   if (Object.keys(settingsInput.value).length > 0) {
     const roleError = requireRole(ctx, "DENTIST");
     if (roleError) {
-      return NextResponse.json({ error: roleError }, { status: 403 });
+      return NextResponse.json({ error: tMaybe(t, roleError) }, { status: 403 });
     }
   }
 
   const result = await updateSettings(ctx, settingsInput.value, lockInput.value);
   if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: 400 });
+    return NextResponse.json({ error: tMaybe(t, result.error.message) }, { status: 400 });
   }
   return NextResponse.json(result.value, { status: 200 });
 }

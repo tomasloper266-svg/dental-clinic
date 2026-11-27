@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useMemo, useState } from "react";
 import { toothAnatomy, type ToothAnatomy } from "@/lib/odontogram/anatomy";
@@ -34,11 +35,11 @@ type Props = {
   onFindingsChanged?: () => void;
 };
 
-// عروض المخطط الثلاثة — الترتيب ثابت والتسمية كما في المرجع
+// عروض المخطط الثلاثة — الترتيب ثابت والتسمية تُترجم عند الرسم
 const CHART_VIEWS = [
-  { key: "grid", label: "شبكي" },
-  { key: "panoramic", label: "بانورامي" },
-  { key: "table", label: "جدولي" },
+  { key: "grid", labelKey: "dental.gridView" },
+  { key: "panoramic", labelKey: "dental.panoramicView" },
+  { key: "table", labelKey: "dental.tableView" },
 ] as const;
 
 type ChartView = (typeof CHART_VIEWS)[number]["key"];
@@ -74,6 +75,7 @@ export default function DentalChart({
   planItems,
   onFindingsChanged,
 }: Props) {
+  const { t, locale } = useI18n();
   const [findings, setFindings] = useState<FindingDto[]>(initialFindings);
   const [readings, setReadings] =
     useState<PeriodontalReadingDto[]>(initialReadings);
@@ -142,15 +144,15 @@ export default function DentalChart({
         <div className="flex items-center gap-2">
           <ToothIcon className="text-warning-500 h-5 w-5" aria-hidden />
           <h2 className="text-ink-900 text-base font-semibold">
-            مخطط الأسنان — انقر على أي سن لتسجيل حالة أو إجراء
+            {t("dental.chartHint")}
           </h2>
         </div>
         <div
           role="group"
-          aria-label="عرض المخطط"
+          aria-label={t("dental.viewChart")}
           className="border-warm-200 bg-surface-sunken rounded-field flex gap-1 border p-1"
         >
-          {CHART_VIEWS.map(({ key, label }) => (
+          {CHART_VIEWS.map(({ key, labelKey }) => (
             <button
               key={key}
               type="button"
@@ -163,7 +165,7 @@ export default function DentalChart({
                   : "text-warm-600 hover:bg-surface-hover",
               )}
             >
-              {label}
+              {t(labelKey)}
             </button>
           ))}
         </div>
@@ -174,24 +176,24 @@ export default function DentalChart({
         <div className="mx-auto w-max min-w-full">
           {/* الفك العلوي — يمين المريض يميناً في الحاوية RTL */}
           <div className="flex items-start justify-center gap-6">
-            {renderArch(arches.upperRight, "يمين المريض")}
+            {renderArch(arches.upperRight, t("dental.patientRight"))}
             <MidDivider />
-            {renderArch(arches.upperLeft, "يسار المريض")}
+            {renderArch(arches.upperLeft, t("dental.patientLeft"))}
           </div>
 
           {/* خط سطح الإطباق بين الفكين */}
           <div className="my-2 flex items-center" aria-hidden>
             <span className="text-warm-400 shrink-0 ps-2 text-[10px]">
-              سطح الإطباق
+              {t("dental.occlusalSurface")}
             </span>
             <span className="border-warm-300 grow border-t border-dashed" />
           </div>
 
           {/* الفك السفلي — الاسم أعلى السن والرقم أسفله، ووسام الربع أسفل الأرقام */}
           <div className="flex items-start justify-center gap-6">
-            {renderArch(arches.lowerRight, "يمين المريض", "below")}
+            {renderArch(arches.lowerRight, t("dental.patientRight"), "below")}
             <MidDivider />
-            {renderArch(arches.lowerLeft, "يسار المريض", "below")}
+            {renderArch(arches.lowerLeft, t("dental.patientLeft"), "below")}
           </div>
         </div>
       </div>
@@ -232,7 +234,7 @@ export default function DentalChart({
       <div className="border-warm-200 mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 border-t pt-3">
         {TOOTH_CHART_LEGEND.map((item) => (
           <span
-            key={item.labelAr}
+            key={locale === "en" ? item.labelEn : item.labelAr}
             className="text-warm-600 inline-flex items-center gap-1.5 text-[11px]"
           >
             {item.fill ? (
@@ -255,7 +257,7 @@ export default function DentalChart({
       <Drawer
         open={selectedTooth !== null}
         onClose={() => setSelectedTooth(null)}
-        title={selectedTooth !== null ? toothPanelTitle(selectedTooth) : ""}
+        title={selectedTooth !== null ? toothPanelTitle(locale, selectedTooth) : ""}
         className="max-w-md"
       >
         {selectedTooth !== null && (

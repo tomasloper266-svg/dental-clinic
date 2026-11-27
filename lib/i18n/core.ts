@@ -74,3 +74,27 @@ export function translate(
 export function createT(locale: Locale): T {
   return (key, params) => translate(locale, key, params);
 }
+
+/**
+ * فهرس عكسي: النص العربي الأصلي -> مفتاحه. الطبقة الخدمية تعيد رسائلها
+ * بالعربية (لغة المصدر) — عند العرض في واجهة بلغة أخرى تُترجم الرسائل
+ * المعروفة عبر هذا الفهرس، وغير المعروفة تمر كما هي.
+ */
+const sourceToKey = new Map<string, TranslationKey>(
+  Object.entries(ar).map(([key, text]) => [text, key as TranslationKey]),
+);
+
+/** مفتاح رسالة خدمية معروفة بنصها العربي الأصلي — غير معروفة تعود undefined */
+export function keyForSourceText(text: string): TranslationKey | undefined {
+  return sourceToKey.get(text.trim());
+}
+
+/** ترجمة رسالة خدمية عند عرضها — الرسالة غير المعروفة تمر كما هي */
+export function tMaybe(
+  t: T,
+  text: string | null | undefined,
+): string {
+  if (!text) return text ?? "";
+  const key = keyForSourceText(text);
+  return key ? t(key) : text;
+}

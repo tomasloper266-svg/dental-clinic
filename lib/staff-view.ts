@@ -1,4 +1,5 @@
 // دوال عرض الطاقم — نقية بلا I/O، تُختبر في وحدة منفصلة عن اللوحة.
+import type { TranslationKey } from "@/lib/i18n/core";
 // الأفاتار الملوّن يتبع لون التمييز الذي يختاره المستخدم (colorHex) بنفس
 // صيغة المرجع: حد شفاف وخلفية تدرّج من نفس درجة اللون.
 
@@ -31,6 +32,17 @@ export const STAFF_ROLE_LABELS: Record<StaffRoleKey, string> = {
   ASSISTANT: "مساعد طبيب",
   ACCOUNTANT: "محاسب",
 };
+
+export const STAFF_ROLE_LABEL_KEYS: Record<StaffRoleKey, TranslationKey> = {
+  DENTIST: "staff.roleDentist",
+  RECEPTION: "staff.roleReception",
+  ASSISTANT: "staff.roleAssistant",
+  ACCOUNTANT: "staff.roleAccountant",
+};
+
+export function staffRoleLabelKey(role: StaffRoleKey): TranslationKey {
+  return STAFF_ROLE_LABEL_KEYS[role];
+}
 
 export function staffRoleLabel(role: StaffRoleKey): string {
   return STAFF_ROLE_LABELS[role] ?? role;

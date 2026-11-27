@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Stethoscope } from "lucide-react";
@@ -53,6 +54,7 @@ function SingleFieldCard({
   value: string;
   onSaved: (patch: Record<string, string>) => Promise<string | null>;
 }) {
+  const { t } = useI18n();
   const [draft, setDraft] = useState(value);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -97,10 +99,10 @@ function SingleFieldCard({
           )}
           <div className="flex items-center gap-3">
             <Button type="submit" loading={saving} disabled={!dirty}>
-              حفظ
+              {t("common.save")}
             </Button>
             {!dirty && !saving && (
-              <span className="text-xs text-warm-500">لا تغييرات لحفظها</span>
+              <span className="text-xs text-warm-500">{t("common.noChanges")}</span>
             )}
           </div>
         </CardBody>
@@ -110,6 +112,7 @@ function SingleFieldCard({
 }
 
 export default function SettingsBoard() {
+  const { t } = useI18n();
   const [overview, setOverview] = useState<Overview | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -122,14 +125,14 @@ export default function SettingsBoard() {
         return;
       }
       if (!res.ok) {
-        setLoadError("تعذر تحميل بيانات الإعدادات — حدّث الصفحة");
+        setLoadError(t("settings.loadFailed"));
         return;
       }
       setOverview((await res.json()) as Overview);
     } catch {
-      setLoadError("تعذر الاتصال بالخادم — تحقق من الشبكة ثم أعد المحاولة");
+      setLoadError(t("errors.serverNetwork"));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -147,14 +150,14 @@ export default function SettingsBoard() {
           body: JSON.stringify(patch),
         });
         const data = (await res.json()) as { error?: string };
-        if (!res.ok) return data.error ?? "تعذر الحفظ، حاول مرة أخرى";
+        if (!res.ok) return data.error ?? t("common.saveFailedRetry");
         await load();
         return null;
       } catch {
-        return "تعذر الاتصال بالخادم، حاول مرة أخرى";
+        return t("errors.serverRetry");
       }
     },
-    [load],
+    [load, t],
   );
 
   if (loadError) {
@@ -166,7 +169,7 @@ export default function SettingsBoard() {
         <p className="text-sm font-medium text-danger-700">{loadError}</p>
         <Button variant="secondary" className="mt-4" onClick={() => void load()}>
           <RefreshCw size={16} aria-hidden />
-          إعادة المحاولة
+          {t("common.retry")}
         </Button>
       </div>
     );
@@ -174,7 +177,7 @@ export default function SettingsBoard() {
 
   if (!overview) {
     return (
-      <div className="animate-pulse space-y-4" aria-label="جارٍ التحميل">
+      <div className="animate-pulse space-y-4" aria-label={t("common.loadingShort")}>
         <div className="h-20 rounded-panel bg-warm-100" />
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="h-64 rounded-panel bg-warm-100" />
@@ -215,13 +218,13 @@ export default function SettingsBoard() {
 
       <section aria-labelledby="security-heading" className="space-y-4">
         <h2 id="security-heading" className="text-lg font-semibold text-ink-900">
-          الحساب والأمان
+          {t("settings.accountSecurity")}
         </h2>
         <SingleFieldCard
           icon={<Stethoscope size={18} className="text-primary-700" aria-hidden />}
-          title="بيانات الطبيب"
-          description="اسمك يظهر في الترحيب وعلى خطط العلاج والوصفات."
-          fieldLabel="اسم الطبيب"
+          title={t("staff.doctorData")}
+          description={t("setup.nameHint")}
+          fieldLabel={t("staff.doctorName")}
           inputId="set-name"
           value={overview.name}
           onSaved={saveSettings}

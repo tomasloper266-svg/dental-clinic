@@ -1,3 +1,4 @@
+import { getServerT, tMaybe } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import {
@@ -9,6 +10,7 @@ import {
 // «موثقاً» إلا بعد إدخال الرمز الصحيح.
 
 export async function POST(req: NextRequest) {
+  const t = await getServerT();
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
@@ -17,7 +19,7 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
+    return NextResponse.json({ error: t("api.invalidRequest") }, { status: 400 });
   }
   const raw = body as Record<string, unknown>;
   const email = typeof raw.email === "string" ? raw.email : "";
@@ -27,20 +29,20 @@ export async function POST(req: NextRequest) {
   if (raw.action === "verify") {
     if (!/^\d{6}$/.test(code)) {
       return NextResponse.json(
-        { error: "أدخل رمز التحقق من 6 أرقام" },
+        { error: t("api.codeRequired6Short") },
         { status: 400 },
       );
     }
     const result = await verifyEmail(ctx, email, code);
     if (!result.ok) {
-      return NextResponse.json({ error: result.error.message }, { status: 400 });
+      return NextResponse.json({ error: tMaybe(t, result.error.message) }, { status: 400 });
     }
     return NextResponse.json(result.value, { status: 200 });
   }
 
   const result = await requestEmailVerification(ctx, email);
   if (!result.ok) {
-    return NextResponse.json({ error: result.error.message }, { status: 400 });
+    return NextResponse.json({ error: tMaybe(t, result.error.message) }, { status: 400 });
   }
   return NextResponse.json(
     {

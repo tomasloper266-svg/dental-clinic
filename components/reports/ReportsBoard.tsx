@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -94,6 +95,7 @@ export default function ReportsBoard({
   todayLabel: string;
   usdRate: number;
 }) {
+  const { t } = useI18n();
   // الفترة تبدأ بلا حدود — أول جلب بلا معاملات يعيد فترة «الكل» مع
   // أقدم يوم حركة (rangeStart) أساس الخيارات الجاهزة.
   const [range, setRange] = useState<DayRange | null>(null);
@@ -152,7 +154,7 @@ export default function ReportsBoard({
 
   function exportCsv() {
     if (!summary) return;
-    downloadCsv("تقرير الفترة.csv", buildPeriodCsv(summary, usdRate));
+    downloadCsv(t("reports.periodCsvName"), buildPeriodCsv(summary, usdRate));
   }
 
   // المبالغ المعروضة تمر عبر سياق العملة — USD/SYP من الإعدادات يغيّرها كلها.
@@ -169,23 +171,23 @@ export default function ReportsBoard({
 
   return (
     <>
-      <PageHeader title="التقارير" description={todayLabel} />
+      <PageHeader title={t("common.reports")} description={todayLabel} />
 
       {/* شريط الأدوات — المدى المخصص والحِبّات يميناً وزر التصدير يساراً */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-wrap items-end gap-2">
           <RangeField
-            label="من"
+            label={t("common.from")}
             value={range?.from ?? todayValue}
             onChange={(value) => editRange("from", value)}
           />
           <RangeField
-            label="إلى"
+            label={t("common.to")}
             value={range?.to ?? todayValue}
             onChange={(value) => editRange("to", value)}
           />
           <FilterPills
-            ariaLabel="فترة التقرير"
+            ariaLabel={t("reports.period")}
             accent="warning"
             value={selection}
             onChange={selectPreset}
@@ -199,12 +201,12 @@ export default function ReportsBoard({
           onClick={exportCsv}
           disabled={!summary}
         >
-          تصدير التقرير CSV
+          {t("reports.exportCsv")}
         </Button>
       </div>
       {rangeInvalid && (
         <p role="alert" className="mt-2 text-xs text-danger-600">
-          تاريخ «من» يجب أن يكون قبل تاريخ «إلى» أو مساوياً له.
+          {t("reports.fromBeforeTo")}
         </p>
       )}
 
@@ -215,11 +217,11 @@ export default function ReportsBoard({
           className="mt-4 flex flex-col items-start gap-2 rounded-panel border border-danger-300 bg-danger-50 px-4 py-4"
         >
           <p className="text-xs font-medium text-danger-700">
-            تعذر تحميل التقرير — تحقق من الاتصال ثم أعد المحاولة.
+            {t("reports.loadFailed")}
           </p>
           <Button variant="secondary" size="sm" onClick={() => void refresh()}>
             <RotateCw size={14} aria-hidden />
-            إعادة المحاولة
+            {t("common.retry")}
           </Button>
         </div>
       ) : summary === null ? (
@@ -235,13 +237,13 @@ export default function ReportsBoard({
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <StatCard
             value={usd(summary.totalChargesUsd)}
-            label="إجمالي الفواتير"
+            label={t("invoices.totalInvoices")}
             icon={DollarSign}
             valueClassName="text-warning-600"
           />
           <StatCard
             value={String(summary.invoiceCount)}
-            label="فاتورة صادرة"
+            label={t("invoices.issued")}
             subLabel={`متوسط ${usd(avgInvoiceUsd)}`}
             icon={ReceiptText}
             iconClassName="bg-warning-500/10 text-warning-600"
@@ -249,19 +251,19 @@ export default function ReportsBoard({
           />
           <StatCard
             value={usd(summary.totalPaymentsUsd)}
-            label="محصّل الفترة"
+            label={t("reports.periodCollected")}
             subLabel={`متوسط ${usd(avgPaymentUsd)} · ${summary.paymentCount} دفعة`}
             icon={Wallet}
           />
           <StatCard
             value={String(summary.paymentCount)}
-            label="دفعة مستلمة"
+            label={t("finance.paymentReceived")}
             icon={DollarSign}
             iconClassName="bg-ink-600/10 text-ink-700"
           />
           <StatCard
             value={usd(summary.outstandingUsd)}
-            label="مستحقات حالية"
+            label={t("dues.currentDues")}
             icon={TriangleAlert}
             tone="danger"
           />
@@ -273,12 +275,12 @@ export default function ReportsBoard({
         <div className="mt-4 grid gap-4 lg:grid-cols-5">
           <Card className="lg:col-span-3">
             <CardHeader>
-              <ChartTitle icon={BarChart3}>الإيرادات الشهرية خلال الفترة</ChartTitle>
+              <ChartTitle icon={BarChart3}>{t("reports.monthlyRevenueInPeriod")}</ChartTitle>
             </CardHeader>
             <CardBody>
               {summary.monthlyRevenue.some((month) => month.chargesUsd > 0) ? (
                 <VerticalBarsChart
-                  ariaLabel="الإيرادات الشهرية خلال الفترة"
+                  ariaLabel={t("reports.monthlyRevenueInPeriod")}
                   points={summary.monthlyRevenue.map((month) => ({
                     label: monthLabel(month.month),
                     value: Math.round(month.chargesUsd * 100) / 100,
@@ -289,14 +291,14 @@ export default function ReportsBoard({
                   }))}
                 />
               ) : (
-                <EmptyState icon={BarChart3} title="لا إيرادات في الفترة" />
+                <EmptyState icon={BarChart3} title={t("reports.noRevenue")} />
               )}
             </CardBody>
           </Card>
 
           <Card className="lg:col-span-2">
             <CardHeader>
-              <ChartTitle icon={Calendar}>نتائج المواعيد</ChartTitle>
+              <ChartTitle icon={Calendar}>{t("reports.appointmentOutcomes")}</ChartTitle>
             </CardHeader>
             <CardBody>
               <AppointmentOutcomesDonut outcomes={summary.appointmentOutcomes} />
@@ -305,7 +307,7 @@ export default function ReportsBoard({
 
           <Card className="lg:col-span-3">
             <CardHeader>
-              <ChartTitle icon={User}>الإيراد حسب الطبيب (حسب الفواتير)</ChartTitle>
+              <ChartTitle icon={User}>{t("reports.revenueByDoctorInvoices")}</ChartTitle>
             </CardHeader>
             <CardBody>
               {summary.revenueByDoctor.length > 0 ? (
@@ -317,14 +319,14 @@ export default function ReportsBoard({
                   amountText={usd}
                 />
               ) : (
-                <EmptyState icon={User} title="لا فواتير في الفترة" />
+                <EmptyState icon={User} title={t("invoices.noneInPeriod")} />
               )}
             </CardBody>
           </Card>
 
           <Card className="lg:col-span-2">
             <CardHeader>
-              <ChartTitle icon={BarChart3}>الإيراد حسب نوع العلاج</ChartTitle>
+              <ChartTitle icon={BarChart3}>{t("reports.revenueByTreatment")}</ChartTitle>
             </CardHeader>
             <CardBody>
               {summary.revenueByProcedure.length > 0 ? (
@@ -336,19 +338,19 @@ export default function ReportsBoard({
                   amountText={usd}
                 />
               ) : (
-                <EmptyState icon={BarChart3} title="لا فواتير في الفترة" />
+                <EmptyState icon={BarChart3} title={t("invoices.noneInPeriod")} />
               )}
             </CardBody>
           </Card>
 
           <Card className="lg:col-span-3">
             <CardHeader>
-              <ChartTitle icon={UserPlus}>نمو سجل المرضى (شهرياً)</ChartTitle>
+              <ChartTitle icon={UserPlus}>{t("reports.patientGrowth")}</ChartTitle>
             </CardHeader>
             <CardBody>
               {summary.patientGrowth.some((month) => month.count > 0) ? (
                 <VerticalBarsChart
-                  ariaLabel="نمو سجل المرضى شهرياً — الأحدث إلى اليسار"
+                  ariaLabel={t("reports.patientGrowthLatestLeft")}
                   points={[...summary.patientGrowth]
                     .reverse()
                     .map((month) => ({
@@ -359,20 +361,20 @@ export default function ReportsBoard({
                     }))}
                 />
               ) : (
-                <EmptyState icon={UserPlus} title="لا تسجيل مرضى في الشهور الأخيرة" />
+                <EmptyState icon={UserPlus} title={t("reports.noRegistrations")} />
               )}
             </CardBody>
           </Card>
 
           <Card className="lg:col-span-2">
             <CardHeader>
-              <ChartTitle icon={Info}>أعلى المرضى (فواتير الفترة)</ChartTitle>
+              <ChartTitle icon={Info}>{t("reports.topPatients")}</ChartTitle>
             </CardHeader>
             <Table>
               <THead>
                 <TRow>
-                  <TH>المريض</TH>
-                  <TH className="text-start text-warning-700">الإجمالي</TH>
+                  <TH>{t("common.patient")}</TH>
+                  <TH className="text-start text-warning-700">{t("common.total")}</TH>
                 </TRow>
               </THead>
               <tbody>
@@ -388,7 +390,7 @@ export default function ReportsBoard({
                 ) : (
                   <TRow>
                     <TD colSpan={2}>
-                      <EmptyState icon={Info} title="لا فواتير في الفترة" />
+                      <EmptyState icon={Info} title={t("invoices.noneInPeriod")} />
                     </TD>
                   </TRow>
                 )}

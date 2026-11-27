@@ -1,3 +1,4 @@
+import { getServerT, tMaybe } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import { requireRole } from "@/lib/tenant/context";
@@ -23,25 +24,26 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const t = await getServerT();
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
   // إدارة الطاقم عملية إدارية — الطبيب حصراً.
   const roleError = requireRole(ctx, "DENTIST");
   if (roleError) {
-    return NextResponse.json({ error: roleError }, { status: 403 });
+    return NextResponse.json({ error: tMaybe(t, roleError) }, { status: 403 });
   }
 
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
+    return NextResponse.json({ error: t("api.invalidRequest") }, { status: 400 });
   }
 
   const parsed = parseStaffInput(body);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return NextResponse.json({ error: tMaybe(t, parsed.error) }, { status: 400 });
   }
 
   try {
@@ -49,6 +51,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ member }, { status: 201 });
   } catch (err) {
     console.error("[staff:create] failed:", err);
-    return NextResponse.json({ error: "تعذر إضافة العضو" }, { status: 500 });
+    return NextResponse.json({ error: t("api.staffAddFailed") }, { status: 500 });
   }
 }

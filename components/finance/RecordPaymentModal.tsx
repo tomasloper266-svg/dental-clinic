@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -22,6 +23,15 @@ import { Field, Input, Select, Textarea } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { emitLedgerChanged } from "@/lib/ledger-events";
+import type { TranslationKey } from "@/lib/i18n/core";
+
+// طريقة الدفع قيمة بيانات كانونية تُرسل كما هي في بيان القيد — التسمية وحدها تُترجم عند العرض
+const PAYMENT_METHOD_LABEL_KEYS: Record<PaymentMethod, TranslationKey> = {
+  "نقدا": "finance.cash",
+  "شيك": "finance.methodCheck",
+  "تحويل": "finance.methodTransfer",
+  "بطاقة": "finance.methodCard",
+};
 
 // نموذج «تسديد دفعة» — يسجل قيد دفعة (PAYMENT) عبر مسار الدفتر القائم
 // (POST /api/patients/:id/ledger). «على الفاتورة» خياران: دفعة على حساب
@@ -54,6 +64,7 @@ export default function RecordPaymentModal({
   initialChargeId,
   initialDueUsd,
 }: Props) {
+  const { t } = useI18n();
   const router = useRouter();
   const { toast } = useToast();
   // وحدة الحقل تتبع العملة المعروضة — بالدولار يُحوَّل إلى الليرة عند
@@ -128,24 +139,24 @@ export default function RecordPaymentModal({
       notes.trim(),
       selectedInvoice
         ? `سداد الفاتورة ${selectedInvoice.number}`
-        : "على الحساب (بدون فوترة)",
+        : t("finance.onAccount"),
     ];
     return parts.filter(Boolean).join(" — ");
   }
 
   function validate(): string | null {
-    if (!patientId) return "اختر المريض";
+    if (!patientId) return t("patients.choose");
     if (!Number.isFinite(amount) || amount <= 0)
-      return "المبلغ يجب أن يكون رقماً موجباً";
-    if (!dateIso || Number.isNaN(dateIso.getTime())) return "التاريخ غير صالح";
-    if (futureDate) return "لا يمكن تسجيل الدفعة بتاريخ مستقبلي";
+      return t("api.amountPositive");
+    if (!dateIso || Number.isNaN(dateIso.getTime())) return t("api.invalidDate");
+    if (futureDate) return t("api.payment.futureDate");
     return null;
   }
 
   async function submit() {
     const validationError = validate();
     if (validationError || !dateIso) {
-      setError(validationError ?? "التاريخ غير صالح");
+      setError(validationError ?? t("api.invalidDate"));
       return;
     }
     setSaving(true);
@@ -168,15 +179,15 @@ export default function RecordPaymentModal({
       );
       const data = (await res.json()) as { entry?: object; error?: string };
       if (!res.ok || !data.entry) {
-        setError(data.error ?? "تعذر تسجيل الدفعة، أعد المحاولة");
+        setError(data.error ?? t("finance.paymentFailed"));
         return;
       }
-      toast("سُجّلت الدفعة في الدفتر");
+      toast(t("finance.paymentRecorded"));
       emitLedgerChanged();
       onSaved();
       router.refresh();
     } catch {
-      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+      setError(t("errors.serverRetry"));
     } finally {
       setSaving(false);
     }
@@ -186,16 +197,16 @@ export default function RecordPaymentModal({
     <Modal
       open
       onClose={onClose}
-      title="تسديد دفعة"
+      title={t("finance.settlePayment")}
       titleClassName="font-display text-lg text-warning-600"
       className="max-w-lg"
       footer={
         <>
           <Button variant="gold" loading={saving} onClick={() => void submit()}>
-            تسجيل الدفعة
+            {t("finance.recordPayment")}
           </Button>
           <Button variant="secondary" disabled={saving} onClick={onClose}>
-            إلغاء
+            {t("common.cancel")}
           </Button>
         </>
       }
@@ -203,7 +214,7 @@ export default function RecordPaymentModal({
       {/* عمودان — على شكل المرجع: المريض/المبلغ/التاريخ يميناً،
           على الفاتورة/طريقة الدفع/ملاحظات يساراً */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="المريض *" htmlFor="pay-patient">
+        <Field label={t("common.patientRequired")} htmlFor="pay-patient">
           <Select
             id="pay-patient"
             value={patientId}
@@ -221,11 +232,11 @@ export default function RecordPaymentModal({
         </Field>
 
         <Field
-          label="على الفاتورة"
+          label={t("finance.onInvoice")}
           htmlFor="pay-invoice"
           hint={
             patients.length > 0 && outstanding.length === 0
-              ? "لا فواتير معلقة — الدفعة تُقيَّد على الحساب"
+              ? t("finance.noPendingInvoices")
               : undefined
           }
         >
@@ -234,17 +245,17 @@ export default function RecordPaymentModal({
             value={chargeId}
             onChange={(e) => setChargeId(e.target.value)}
           >
-            <option value="">فواتير على الحساب (بدون فوترة)</option>
+            <option value="">{t("invoices.onAccount")}</option>
             {outstanding.map((row) => (
               <option key={row.chargeId} value={row.chargeId}>
-                {row.number} — متبقى {money(row.remainingUsd)}
+                {row.number} {t("dues.remainingSuffix2")} {money(row.remainingUsd)}
               </option>
             ))}
           </Select>
         </Field>
 
         <Field
-          label="المبلغ *"
+          label={t("common.amountRequired")}
           htmlFor="pay-amount"
           hint={
             selectedInvoice
@@ -254,7 +265,7 @@ export default function RecordPaymentModal({
         >
           <div className="relative">
             <span className="text-steel-500 pointer-events-none absolute inset-y-0 end-3 flex items-center text-sm">
-              {isUsdInput ? "$" : "ل.س"}
+              {isUsdInput ? "$" : t("common.sypSymbol")}
             </span>
             <Input
               id="pay-amount"
@@ -269,7 +280,7 @@ export default function RecordPaymentModal({
           </div>
         </Field>
 
-        <Field label="طريقة الدفع" htmlFor="pay-method">
+        <Field label={t("finance.paymentMethod")} htmlFor="pay-method">
           <Select
             id="pay-method"
             value={method}
@@ -277,13 +288,13 @@ export default function RecordPaymentModal({
           >
             {PAYMENT_METHOD_OPTIONS.map((option) => (
               <option key={option} value={option}>
-                {option}
+                {t(PAYMENT_METHOD_LABEL_KEYS[option])}
               </option>
             ))}
           </Select>
         </Field>
 
-        <Field label="التاريخ" htmlFor="pay-date" error={futureDate ? "لا يمكن تسجيل الدفعة بتاريخ مستقبلي" : undefined}>
+        <Field label={t("common.date")} htmlFor="pay-date" error={futureDate ? t("api.payment.futureDate") : undefined}>
           <Input
             id="pay-date"
             type="date"
@@ -294,12 +305,12 @@ export default function RecordPaymentModal({
           />
         </Field>
 
-        <Field label="ملاحظات" htmlFor="pay-notes">
+        <Field label={t("common.notes")} htmlFor="pay-notes">
           <Textarea
             id="pay-notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="ملاحظة اختيارية…"
+            placeholder={t("common.noteOptionalPlaceholder")}
             className="min-h-10"
           />
         </Field>

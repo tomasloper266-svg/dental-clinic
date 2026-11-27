@@ -1,5 +1,6 @@
 // بيانات عرض المخزون — نقية بلا I/O. الحالات ومستوى الرصيد وتصدير CSV
 // تُشتق حصراً من حقول المادة القائمة (الكمية وحد التنبيه والسعر).
+import { createT, type Locale } from "@/lib/i18n/core";
 
 /** حالة مخزون المادة — حرجة عند النفاد، منخفضة عند بلوغ حد التنبيه */
 export type MaterialStockStatus = "available" | "low" | "critical";
@@ -64,6 +65,7 @@ function csvCell(value: string): string {
  * الخلايا كلها بين علامتي اقتباس والاقتباس الداخلي مضاعف.
  */
 export function materialsToCsv(
+  locale: Locale,
   materials: readonly {
     name: string;
     unit: string;
@@ -74,14 +76,15 @@ export function materialsToCsv(
     costUsd: number | null;
   }[],
 ): string {
+  const t = createT(locale);
   const header = [
-    "الاسم",
-    "الفئة",
-    "الوحدة",
-    "الرصيد",
-    "حد التنبيه",
-    "المورد",
-    "سعر الوحدة ($)",
+    t("export.column.name"),
+    t("export.column.category"),
+    t("export.column.unit"),
+    t("export.column.onHand"),
+    t("export.column.alertMin"),
+    t("export.column.supplier"),
+    t("export.column.unitCost"),
   ];
   const rows = materials.map((m) =>
     [

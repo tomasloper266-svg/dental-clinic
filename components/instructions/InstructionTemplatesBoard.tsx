@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ClipboardList, Pencil, Plus, RotateCw, Trash2 } from "lucide-react";
@@ -30,6 +31,7 @@ type TemplateJson = {
 };
 
 export default function InstructionTemplatesBoard() {
+  const { t } = useI18n();
   const { toast } = useToast();
   const [templates, setTemplates] = useState<TemplateJson[] | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -74,14 +76,14 @@ export default function InstructionTemplatesBoard() {
         error?: string;
       };
       if (!res.ok || !data.template) {
-        toast(data.error ?? "تعذر إضافة القالب، أعد المحاولة", "danger");
+        toast(data.error ?? t("instructions.addFailed"), "danger");
         return false;
       }
-      toast("أُضيف القالب");
+      toast(t("instructions.templateAdded"));
       await refresh();
       return true;
     } catch {
-      toast("تعذر الاتصال بالخادم، حاول مرة أخرى", "danger");
+      toast(t("errors.serverRetry"), "danger");
       return false;
     } finally {
       setBusy(false);
@@ -108,14 +110,14 @@ export default function InstructionTemplatesBoard() {
         error?: string;
       };
       if (!res.ok || !data.template) {
-        toast(data.error ?? "تعذر تعديل القالب، أعد المحاولة", "danger");
+        toast(data.error ?? t("instructions.updateFailed"), "danger");
         return false;
       }
-      toast("حُفظ تعديل القالب");
+      toast(t("instructions.templateUpdated"));
       await refresh();
       return true;
     } catch {
-      toast("تعذر الاتصال بالخادم، حاول مرة أخرى", "danger");
+      toast(t("errors.serverRetry"), "danger");
       return false;
     } finally {
       setBusy(false);
@@ -131,11 +133,11 @@ export default function InstructionTemplatesBoard() {
         { method: "DELETE" },
       );
       if (!res.ok && res.status !== 204) throw new Error();
-      toast("حُذف القالب");
+      toast(t("instructions.templateDeleted"));
       await refresh();
       return true;
     } catch {
-      toast("تعذر حذف القالب، أعد المحاولة", "danger");
+      toast(t("instructions.deleteFailed"), "danger");
       return false;
     } finally {
       setBusy(false);
@@ -156,12 +158,12 @@ export default function InstructionTemplatesBoard() {
   return (
     <>
       <PageHeader
-        title="تعليمات ما بعد العلاج"
-        description="قوالب التعليمات التي تُرسل للمريض بعد اكتمال العلاج — كل قالب معروض بمعاينة الرسالة كما ستصل، وبنفس النص الذي يُرمَّز في رابط واتساب عند الإرسال."
+        title={t("instructions.afterTreatment")}
+        description={t("instructions.templatesFullHint")}
         actions={
           <Button onClick={() => setAdding(true)}>
             <Plus size={16} aria-hidden />
-            قالب جديد
+            {t("instructions.newTemplate")}
           </Button>
         }
       />
@@ -172,11 +174,11 @@ export default function InstructionTemplatesBoard() {
           className="mt-5 flex flex-col items-start gap-2 rounded-panel border border-danger-300 bg-danger-50 px-4 py-4"
         >
           <p className="text-xs font-medium text-danger-700">
-            تعذر تحميل القوالب — تحقق من الاتصال ثم أعد المحاولة.
+            {t("instructions.loadFailed")}
           </p>
           <Button variant="secondary" size="sm" onClick={() => void refresh()}>
             <RotateCw size={14} aria-hidden />
-            إعادة المحاولة
+            {t("common.retry")}
           </Button>
         </div>
       ) : templates === null ? (
@@ -192,12 +194,12 @@ export default function InstructionTemplatesBoard() {
         <div className="mt-5">
           <EmptyState
             icon={ClipboardList}
-            title="لا قوالب بعد"
-            description="أضف قالباً لكل إجراء — خلع، حشو، زرعة… — لتُفتح تعليماته تلقائياً عند اكتمال العلاج."
+            title={t("instructions.empty")}
+            description={t("instructions.addPerProcedure")}
             action={
               <Button size="sm" onClick={() => setAdding(true)}>
                 <Plus size={14} aria-hidden />
-                قالب جديد
+                {t("instructions.newTemplate")}
               </Button>
             }
           />
@@ -207,32 +209,32 @@ export default function InstructionTemplatesBoard() {
           {/* بطاقة المحتوى — شريط أدوات بحث + شبكة بطاقات القوالب */}
           <Card>
             <CardHeader>
-              <CardTitle>قوالب التعليمات</CardTitle>
+              <CardTitle>{t("common.instructionTemplates")}</CardTitle>
             </CardHeader>
             <PanelToolbar className="border-b border-warm-200">
               <SearchInput
                 value={search}
                 onChange={setSearch}
-                placeholder="ابحث في القوالب…"
-                aria-label="بحث في قوالب التعليمات"
+                placeholder={t("instructions.searchPlaceholder")}
+                aria-label={t("instructions.search")}
               />
               <span className="numeric text-xs text-warm-500">
-                {filtered?.length ?? 0} قالب
+                {filtered?.length ?? 0} {t("instructions.template")}
               </span>
             </PanelToolbar>
             <CardBody className="pt-0">
               {filtered?.length === 0 ? (
                 <EmptyState
                   icon={ClipboardList}
-                  title="لا قوالب مطابقة"
-                  description="عدّل كلمات البحث لتوسيع القائمة."
+                  title={t("instructions.noMatches")}
+                  description={t("patients.widenList")}
                   action={
                     <Button
                       variant="secondary"
                       size="sm"
                       onClick={() => setSearch("")}
                     >
-                      مسح البحث
+                      {t("patients.clearSearch")}
                     </Button>
                   }
                 />
@@ -273,7 +275,7 @@ export default function InstructionTemplatesBoard() {
       <TemplateModal
         key="add-template"
         open={adding}
-        title="قالب جديد"
+        title={t("instructions.newTemplate")}
         busy={busy}
         onClose={() => setAdding(false)}
         onSubmit={async (payload) => {
@@ -303,13 +305,13 @@ export default function InstructionTemplatesBoard() {
       <ConfirmDialog
         open={removing !== null}
         onClose={() => setRemoving(null)}
-        title="حذف القالب"
+        title={t("instructions.deleteTemplateAction")}
         description={
           removing
             ? `سيُحذف قالب «${removing.procedure}» نهائياً ولن تُرسل تعليماته تلقائياً بعد اكتمال العلاج. هل تريد المتابعة؟`
             : ""
         }
-        confirmLabel="احذف القالب"
+        confirmLabel={t("instructions.deleteTemplate")}
         loading={busy}
         onConfirm={async () => {
           if (removing && (await removeTemplate(removing.id))) {
@@ -337,6 +339,7 @@ function TemplateCard({
   onEdit: () => void;
   onRemove: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div
       className={cn(
@@ -352,7 +355,7 @@ function TemplateCard({
       />
       <div className="mt-auto flex items-center gap-1.5">
         <PillAction variant={selected ? "solid" : "outline"} onClick={onSelect}>
-          عرض
+          {t("common.view")}
         </PillAction>
         <IconAction
           icon={Pencil}
@@ -389,6 +392,7 @@ function TemplateModal({
   onClose: () => void;
   onSubmit: (payload: { procedure: string; body: string }) => Promise<boolean>;
 }) {
+  const { t } = useI18n();
   const [procedure, setProcedure] = useState(initialProcedure);
   const [body, setBody] = useState(initialBody);
   const [error, setError] = useState<string | null>(null);
@@ -397,7 +401,7 @@ function TemplateModal({
 
   function buildPayload(): { procedure: string; body: string } | null {
     if (!canSave) {
-      setError("الإجراء حرفان على الأقل ونص التعليمات خمسة أحرف على الأقل");
+      setError(t("instructions.minLengths"));
       return null;
     }
     setError(null);
@@ -421,30 +425,30 @@ function TemplateModal({
               }
             }}
           >
-            احفظ القالب
+            {t("instructions.saveTemplate")}
           </Button>
           <Button variant="secondary" onClick={onClose} disabled={busy}>
-            إلغاء
+            {t("common.cancel")}
           </Button>
         </>
       }
     >
       <div className="flex flex-col gap-4">
-        <Field label="الإجراء" htmlFor="template-procedure">
+        <Field label={t("common.procedure")} htmlFor="template-procedure">
           <Input
             id="template-procedure"
             value={procedure}
             onChange={(e) => setProcedure(e.target.value)}
-            placeholder="مثال: خلع ضرس العقل"
+            placeholder={t("dental.exampleWisdom")}
           />
         </Field>
-        <Field label="نص التعليمات" htmlFor="template-body">
+        <Field label={t("instructions.body")} htmlFor="template-body">
           <Textarea
             id="template-body"
             rows={4}
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="التعليمات التي تصل للمريض بعد هذا الإجراء…"
+            placeholder={t("instructions.reachPatientHint")}
           />
         </Field>
         {error && (
@@ -453,7 +457,7 @@ function TemplateModal({
           </p>
         )}
         <MessagePreview
-          body={body.trim() || "ستظهر معاينة الرسالة هنا أثناء الكتابة…"}
+          body={body.trim() || t("instructions.previewPlaceholder")}
         />
       </div>
     </Modal>

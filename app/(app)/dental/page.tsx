@@ -1,3 +1,4 @@
+import { getServerT } from "@/lib/i18n";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
@@ -27,6 +28,7 @@ export default async function DentalPage({
 }: {
   searchParams: Promise<{ patient?: string }>;
 }) {
+  const t = await getServerT();
   const session = await getSessionUser(
     (await cookies()).get(SESSION_COOKIE)?.value,
   );
@@ -54,7 +56,7 @@ export default async function DentalPage({
     <div className={pageWrapClass("full")}>
       {/* ترويسة موحّدة كبقية الصفحات — شريط اختيار المريض تحتها */}
       <PageHeader
-        title="مخطط الأسنان وخطط العلاج"
+        title={t("dental.chartAndPlans")}
         description={formatWeekdayDateCell(new Date())}
       />
       <DentalPatientSearch selectedPatientId={patient?.id} />
@@ -83,8 +85,8 @@ export default async function DentalPage({
       ) : (
         <div className="border-warm-300 bg-surface-raised/60 rounded-panel grid min-h-80 place-items-center border border-dashed">
           <EmptyState
-            title="اختر مريضاً للبدء"
-            description="اختر مريضاً من القائمة أعلاه لعرض مخطط أسنانه وخطط العلاج والملخص المالي — البيانات حقيقية من سجلات العيادة."
+            title={t("dental.pickToStart")}
+            description={t("dental.pickHint")}
           />
         </div>
       )}

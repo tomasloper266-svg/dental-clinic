@@ -6,7 +6,7 @@ import { Plus } from "lucide-react";
 import type { LedgerEntryType } from "@/lib/services/ledger";
 import type { PlanItemDto } from "@/lib/services/treatment-plan";
 import { isUsdAmount } from "@/lib/currency";
-import { toothNameAr } from "@/lib/odontogram/fdi";
+import { toothName } from "@/lib/odontogram/fdi";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
@@ -42,7 +42,7 @@ export default function NewLedgerEntryModal({
 }: Props) {
   const router = useRouter();
   const { toast } = useToast();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [type, setType] = useState<LedgerEntryType>(initialType);
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -93,7 +93,7 @@ export default function NewLedgerEntryModal({
       router.refresh();
       onClose();
     } catch {
-      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+      setError(t("errors.serverRetry"));
     } finally {
       setSaving(false);
     }
@@ -145,7 +145,7 @@ export default function NewLedgerEntryModal({
               <option key={item.id} value={item.id}>
                 {t("ledger.option.tooth", {
                   tooth: item.toothFdi,
-                  name: toothNameAr(item.toothFdi) ?? "",
+                  name: toothName(locale, item.toothFdi) ?? "",
                   procedure: item.procedure,
                 })}
               </option>

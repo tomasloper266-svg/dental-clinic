@@ -1,3 +1,4 @@
+import { getServerT } from "@/lib/i18n";
 import { cookies } from "next/headers";
 import { pageWrapClass } from "@/lib/page-width";
 import Link from "next/link";
@@ -18,6 +19,7 @@ export default async function OdontogramPage({
 }: {
   params: Promise<{ patientId: string }>;
 }) {
+  const t = await getServerT();
   const session = await getSessionUser(
     (await cookies()).get(SESSION_COOKIE)?.value,
   );
@@ -38,13 +40,13 @@ export default async function OdontogramPage({
     <div className={pageWrapClass("full")}>
       <PageHeader
         title={`أودوغرام — ${patient.name}`}
-        description="المشاهدات المسجلة تُحفظ كسجل زمني ولا تُستبدل بخطة العلاج. اختيار السن على المخطط يعبّئ بند الخطة الجديد."
+        description={t("odontogram.findingsTimelineHint")}
         actions={
           <Link
             href={`/patients/${patientId}`}
             className="border-warm-300 bg-surface-raised text-ink-900 hover:bg-surface-hover active:bg-surface-sunken rounded-field focus-visible:outline-primary-500 inline-flex h-10 items-center border px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
           >
-            ملف المريض
+            {t("patients.file")}
           </Link>
         }
       />

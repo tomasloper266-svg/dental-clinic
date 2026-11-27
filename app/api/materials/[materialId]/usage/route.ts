@@ -1,3 +1,4 @@
+import { getServerT, tMaybe } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import { parseUsageInput, recordMaterialUsage } from "@/lib/services/inventory";
@@ -8,6 +9,7 @@ type Params = { params: Promise<{ materialId: string }> };
 // الخصم الذي يُرجع الرصيد سالباً يُرفض (409) دون أي تغيير.
 
 export async function POST(req: NextRequest, { params }: Params) {
+  const t = await getServerT();
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
@@ -17,12 +19,12 @@ export async function POST(req: NextRequest, { params }: Params) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
+    return NextResponse.json({ error: t("api.invalidRequest") }, { status: 400 });
   }
 
   const parsed = parseUsageInput(body);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return NextResponse.json({ error: tMaybe(t, parsed.error) }, { status: 400 });
   }
 
   try {
@@ -35,18 +37,18 @@ export async function POST(req: NextRequest, { params }: Params) {
       switch (result.reason) {
         case "NOT_FOUND":
           return NextResponse.json(
-            { error: "المادة غير موجودة" },
+            { error: t("api.materialNotFound") },
             { status: 404 },
           );
         case "PATIENT_NOT_FOUND":
           return NextResponse.json(
-            { error: "المريض غير موجود" },
+            { error: t("api.patientNotFound") },
             { status: 404 },
           );
         case "INSUFFICIENT_STOCK":
           return NextResponse.json(
             {
-              error: `الكمية غير كافية — المتوفر ${result.available}`,
+              error: t("api.insufficientStock", { available: result.available }),
               available: result.available,
             },
             { status: 409 },
@@ -61,7 +63,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   } catch (err) {
     console.error("[materials:usage] failed:", err);
     return NextResponse.json(
-      { error: "تعذر تسجيل الاستعمال" },
+      { error: t("api.usageRecordFailed") },
       { status: 500 },
     );
   }

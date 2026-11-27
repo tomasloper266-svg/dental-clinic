@@ -25,6 +25,24 @@ const POSITION_NAMES_AR = [
   "ضرس العقل",
 ] as const;
 
+const POSITION_NAMES_EN = [
+  "central incisor",
+  "lateral incisor",
+  "canine",
+  "first premolar",
+  "second premolar",
+  "first molar",
+  "second molar",
+  "wisdom tooth",
+] as const;
+
+const QUADRANT_NAMES_EN: Record<Quadrant, string> = {
+  1: "upper right",
+  2: "upper left",
+  3: "lower left",
+  4: "lower right",
+} as const;
+
 const QUADRANT_NAMES_AR: Record<Quadrant, string> = {
   1: "علوي يمين",
   2: "علوي يسار",
@@ -33,6 +51,21 @@ const QUADRANT_NAMES_AR: Record<Quadrant, string> = {
 } as const;
 
 export const QUADRANT_LABEL_AR = QUADRANT_NAMES_AR;
+
+/** وسم ربع لغةً محددة — عناوين المخططات والتسميات التوضيحية */
+export function quadrantLabel(locale: "ar" | "en", quadrant: Quadrant): string {
+  return locale === "en" ? QUADRANT_NAMES_EN[quadrant] : QUADRANT_NAMES_AR[quadrant];
+}
+
+/** اسم السن الكامل بلغة محددة — «18 — ضرس العقل» أو «18 — upper right wisdom tooth» */
+export function toothName(locale: "ar" | "en", fdi: number): string | null {
+  if (!isValidToothFdi(fdi)) return null;
+  const quadrant = toothQuadrant(fdi) as Quadrant;
+  const position = fdi % 10;
+  const kind = locale === "en" ? POSITION_NAMES_EN[position - 1] : POSITION_NAMES_AR[position - 1];
+  const side = locale === "en" ? QUADRANT_NAMES_EN[quadrant] : QUADRANT_NAMES_AR[quadrant];
+  return `${kind} — ${side}`;
+}
 
 export function isValidToothFdi(fdi: number): boolean {
   if (!Number.isInteger(fdi)) return false;
@@ -73,15 +106,40 @@ const DISPLAY_NAMES_AR = [
   "ضرس العقل",
 ] as const;
 
+const DISPLAY_NAMES_EN = [
+  "Central incisor",
+  "Lateral incisor",
+  "Canine",
+  "First premolar",
+  "Second premolar",
+  "First molar",
+  "Second molar",
+  "Wisdom tooth",
+] as const;
+
 /** اسم العرض المختصر للسن — بلا اسم الربع، كما في المخطط المرجعي */
 export function toothDisplayNameAr(fdi: number): string | null {
   if (!isValidToothFdi(fdi)) return null;
   return DISPLAY_NAMES_AR[(fdi % 10) - 1];
 }
 
+/** اسم العرض المختصر بلغة محددة — تحت السن في المخططات */
+export function toothDisplayName(locale: "ar" | "en", fdi: number): string | null {
+  if (!isValidToothFdi(fdi)) return null;
+  return locale === "en"
+    ? DISPLAY_NAMES_EN[(fdi % 10) - 1]
+    : DISPLAY_NAMES_AR[(fdi % 10) - 1];
+}
+
 /** تسمية السن في القوائم والمنسدلات — «18 — ضرس العقل» */
 export function toothLabelAr(fdi: number): string {
   const name = toothNameAr(fdi);
+  return name ? `${fdi} — ${name}` : String(fdi);
+}
+
+/** تسمية السن بلغة محددة — «18 — ضرس العقل» أو «18 — upper right wisdom tooth» */
+export function toothLabel(locale: "ar" | "en", fdi: number): string {
+  const name = toothName(locale, fdi);
   return name ? `${fdi} — ${name}` : String(fdi);
 }
 

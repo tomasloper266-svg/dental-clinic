@@ -72,7 +72,7 @@ describe("healthyCount — المواد بحالة جيدة", () => {
 
 describe("materialsToCsv — تصدير المواد", () => {
   it("رأس عربي وصفوف بقيم مقتبسة وBOM وترميز CRLF", () => {
-    const csv = materialsToCsv([
+    const csv = materialsToCsv("ar", [
       {
         name: "أقنعة N95",
         unit: "علبة",
@@ -93,7 +93,7 @@ describe("materialsToCsv — تصدير المواد", () => {
     );
   });
   it("الاقتباس الداخلي مضاعف والسعر الفارغ خلية فارغة", () => {
-    const csv = materialsToCsv([
+    const csv = materialsToCsv("ar", [
       {
         name: 'مادة "خاصة"',
         unit: "عبوة",
@@ -109,7 +109,7 @@ describe("materialsToCsv — تصدير المواد", () => {
   });
 
   it("الفئة والمورد الفارغان خليتان فارغتان", () => {
-    const csv = materialsToCsv([
+    const csv = materialsToCsv("ar", [
       {
         name: "ألياف ضوئية",
         unit: "عبوة",

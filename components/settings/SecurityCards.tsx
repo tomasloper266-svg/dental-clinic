@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useState } from "react";
 import { KeyRound, MailCheck, RadioTower, ShieldCheck } from "lucide-react";
@@ -25,6 +26,7 @@ export type SecurityOverview = {
 // ─── تغيير كلمة السر ────────────────────────────────────────────────────────
 
 export function PasswordCard() {
+  const { t } = useI18n();
   const { toast } = useToast();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -33,13 +35,13 @@ export function PasswordCard() {
   const [saving, setSaving] = useState(false);
 
   const mismatch =
-    confirm.length > 0 && newPassword !== confirm ? "التأكيد لا يطابق كلمة السر الجديدة" : undefined;
+    confirm.length > 0 && newPassword !== confirm ? t("api.auth.confirmationMismatch") : undefined;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     if (newPassword !== confirm) {
-      setError("التأكيد لا يطابق كلمة السر الجديدة");
+      setError(t("api.auth.confirmationMismatch"));
       return;
     }
     setSaving(true);
@@ -51,7 +53,7 @@ export function PasswordCard() {
       });
       const data = (await res.json()) as { error?: string; otherSessionsRevoked?: number };
       if (!res.ok) {
-        setError(data.error ?? "تعذر تغيير كلمة السر، حاول مرة أخرى");
+        setError(data.error ?? t("api.auth.passwordChangeFailed"));
         return;
       }
       setCurrentPassword("");
@@ -61,10 +63,10 @@ export function PasswordCard() {
       toast(
         revoked > 0
           ? `تم تغيير كلمة السر — وتم إبطال ${revoked} جلسة على أجهزة أخرى`
-          : "تم تغيير كلمة السر",
+          : t("api.auth.passwordChanged"),
       );
     } catch {
-      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+      setError(t("errors.serverRetry"));
     } finally {
       setSaving(false);
     }
@@ -74,14 +76,14 @@ export function PasswordCard() {
     <form
       onSubmit={onSubmit}
       className="rounded-panel bg-surface-raised p-6 ring-1 ring-warm-200"
-      aria-label="تغيير كلمة السر"
+      aria-label={t("settings.changePassword")}
     >
       <h3 className="flex items-center gap-2 text-base font-semibold text-ink-900">
         <KeyRound size={18} className="text-primary-700" aria-hidden />
-        تغيير كلمة السر
+        {t("settings.changePassword")}
       </h3>
       <div className="mt-5 grid gap-5 sm:grid-cols-2">
-        <Field label="كلمة السر الحالية" htmlFor="sec-current">
+        <Field label={t("settings.currentPassword")} htmlFor="sec-current">
           <PasswordInput
             id="sec-current"
             required
@@ -91,9 +93,9 @@ export function PasswordCard() {
           />
         </Field>
         <Field
-          label="كلمة السر الجديدة"
+          label={t("settings.newPassword")}
           htmlFor="sec-new"
-          hint="8 أحرف على الأقل"
+          hint={t("auth.min8")}
           error={mismatch}
         >
           <PasswordInput
@@ -106,7 +108,7 @@ export function PasswordCard() {
             aria-invalid={mismatch ? true : undefined}
           />
         </Field>
-        <Field label="تأكيد كلمة السر الجديدة" htmlFor="sec-confirm" error={undefined}>
+        <Field label={t("settings.newPasswordConfirm")} htmlFor="sec-confirm" error={undefined}>
           <PasswordInput
             id="sec-confirm"
             required
@@ -130,10 +132,10 @@ export function PasswordCard() {
 
       <div className="mt-5 flex items-center gap-3">
         <Button type="submit" loading={saving} disabled={Boolean(mismatch)}>
-          تحديث كلمة السر
+          {t("settings.updatePassword")}
         </Button>
         <span className="text-xs text-warm-500">
-          ستُبطل جلسات الأجهزة الأخرى ويبقى هذا الجهاز مسجلاً
+          {t("settings.otherSessionsRevoked")}
         </span>
       </div>
     </form>
@@ -151,6 +153,7 @@ export function EmailCard({
   overview: SecurityOverview;
   onVerified: () => void;
 }) {
+  const { t } = useI18n();
   const [editing, setEditing] = useState(false);
   const [email, setEmail] = useState(overview.email ?? "");
   const [code, setCode] = useState("");
@@ -181,7 +184,7 @@ export function EmailCard({
     try {
       const { res, data } = await post({ action: "request", email });
       if (!res.ok) {
-        setError(data.error ?? "تعذر إرسال الرمز، حاول مرة أخرى");
+        setError(data.error ?? t("api.otp.sendFailed"));
         return;
       }
       setFallbackCode(
@@ -189,7 +192,7 @@ export function EmailCard({
       );
       setStep("code");
     } catch {
-      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+      setError(t("errors.serverRetry"));
     } finally {
       setSaving(false);
     }
@@ -202,7 +205,7 @@ export function EmailCard({
     try {
       const { res, data } = await post({ action: "verify", email, code });
       if (!res.ok) {
-        setError(data.error ?? "تعذر التحقق من الرمز");
+        setError(data.error ?? t("api.otp.verifyFailed"));
         return;
       }
       setStep("idle");
@@ -210,7 +213,7 @@ export function EmailCard({
       setEditing(false);
       onVerified();
     } catch {
-      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+      setError(t("errors.serverRetry"));
     } finally {
       setSaving(false);
     }
@@ -221,45 +224,44 @@ export function EmailCard({
   return (
     <section
       className="rounded-panel bg-surface-raised p-6 ring-1 ring-warm-200"
-      aria-label="البريد الإلكتروني الموثق"
+      aria-label={t("auth.verifiedEmail")}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="flex items-center gap-2 text-base font-semibold text-ink-900">
           <MailCheck size={18} className="text-primary-700" aria-hidden />
-          البريد الإلكتروني الموثق
+          {t("auth.verifiedEmail")}
         </h3>
         {verified ? (
-          <Badge tone="success">موثق</Badge>
+          <Badge tone="success">{t("settings.verified")}</Badge>
         ) : (
-          <Badge tone="warning">غير موثق بعد</Badge>
+          <Badge tone="warning">{t("settings.notVerifiedYet")}</Badge>
         )}
       </div>
       <p className="mt-2 text-sm text-warm-600">
-        البريد الموثق يتيح استعادة الحساب إذا ضاع رقم الهاتف، ويُستخدم لاستعادة
-        كلمة السر.
+        {t("settings.emailRecoveryHint")}
       </p>
 
       {verified && !showForm ? (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-field bg-primary-50 px-3 py-2.5 text-sm text-primary-800">
           <span className="flex items-center gap-2">
             <ShieldCheck size={16} aria-hidden />
-            مرتبط وموثق: <span dir="ltr">{overview.email}</span>
+            {t("settings.linkedAndVerified")} <span dir="ltr">{overview.email}</span>
           </span>
           <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
-            تغيير البريد
+            {t("settings.changeEmail")}
           </Button>
         </div>
       ) : step === "code" ? (
-        <form onSubmit={onVerify} className="mt-4 space-y-4" aria-label="تأكيد رمز البريد">
+        <form onSubmit={onVerify} className="mt-4 space-y-4" aria-label={t("settings.verifyEmailCode")}>
           {fallbackCode && (
             <p className="rounded-field border border-warm-300 bg-warm-100 px-3 py-2.5 text-sm text-warm-800">
-              لا توجد خدمة بريد مربوطة بعد — الرمز للعرض المباشر:{" "}
+              {t("settings.noEmailService")}{" "}
               <strong dir="ltr" className="numeric tracking-widest">
                 {fallbackCode}
               </strong>
             </p>
           )}
-          <Field label="رمز التحقق" htmlFor="sec-code" hint={`أُرسل إلى ${email}`}>
+          <Field label={t("common.verificationCode")} htmlFor="sec-code" hint={`أُرسل إلى ${email}`}>
             <Input
               id="sec-code"
               inputMode="numeric"
@@ -284,7 +286,7 @@ export function EmailCard({
           )}
           <div className="flex items-center gap-3">
             <Button type="submit" loading={saving}>
-              تأكيد البريد
+              {t("settings.verifyEmail")}
             </Button>
             <Button
               variant="ghost"
@@ -293,16 +295,16 @@ export function EmailCard({
                 setCode("");
               }}
             >
-              إلغاء
+              {t("common.cancel")}
             </Button>
           </div>
         </form>
       ) : (
-        <form onSubmit={onRequest} className="mt-4 space-y-4" aria-label="ربط بريد موثق">
+        <form onSubmit={onRequest} className="mt-4 space-y-4" aria-label={t("settings.linkVerifiedEmail")}>
           <Field
-            label="البريد الإلكتروني"
+            label={t("common.email")}
             htmlFor="sec-email"
-            hint={verified ? "أدخل البريد الجديد ثم أكّد ملكيته برمز تحقق" : undefined}
+            hint={verified ? t("settings.newEmailHint") : undefined}
           >
             <Input
               id="sec-email"
@@ -325,11 +327,11 @@ export function EmailCard({
           )}
           <div className="flex items-center gap-3">
             <Button type="submit" loading={saving}>
-              إرسال رمز التحقق
+              {t("settings.sendCode")}
             </Button>
             {verified && (
               <Button variant="ghost" onClick={() => setEditing(false)}>
-                إلغاء
+                {t("common.cancel")}
               </Button>
             )}
           </div>
@@ -350,6 +352,7 @@ function ChannelRow({
   configured: boolean;
   envKeys: string[];
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-field border border-warm-200 px-3 py-2.5">
       <span className="flex items-center gap-2 text-sm text-ink-900">
@@ -358,9 +361,9 @@ function ChannelRow({
       </span>
       <span className="flex items-center gap-2">
         {configured ? (
-          <StatusPill tone="success">مربوطة — الرسائل تُرسل تلقائياً</StatusPill>
+          <StatusPill tone="success">{t("settings.channelsLinkedAuto")}</StatusPill>
         ) : (
-          <StatusPill tone="warning">غير مربوطة — الرموز للعرض المباشر</StatusPill>
+          <StatusPill tone="warning">{t("settings.channelsUnlinked")}</StatusPill>
         )}
         <code dir="ltr" className="hidden text-xs text-warm-500 sm:inline">
           {envKeys.join(" + ")}
@@ -371,27 +374,27 @@ function ChannelRow({
 }
 
 export function ChannelsCard({ channels }: { channels: ChannelDetail }) {
+  const { t } = useI18n();
   return (
     <section
       className="rounded-panel bg-surface-raised p-6 ring-1 ring-warm-200"
-      aria-label="حالة قنوات الإرسال"
+      aria-label={t("settings.channelsStatus")}
     >
       <h3 className="flex items-center gap-2 text-base font-semibold text-ink-900">
         <RadioTower size={18} className="text-primary-700" aria-hidden />
-        قنوات إرسال الرسائل
+        {t("settings.channels")}
       </h3>
       <p className="mt-2 text-sm text-warm-600">
-        حالة الربط الفعلية الآن — تُضبط عبر متغيرات البيئة على الخادم فقط، ولا
-        يمكن تغييرها من الواجهة.
+        {t("settings.linkingServerOnly")}
       </p>
       <div className="mt-4 space-y-2">
         <ChannelRow
-          label="الرسائل النصية (SMS)"
+          label={t("settings.sms")}
           configured={channels.smsConfigured}
           envKeys={channels.requiredEnvKeys.SMS}
         />
         <ChannelRow
-          label="البريد الإلكتروني"
+          label={t("common.email")}
           configured={channels.emailConfigured}
           envKeys={channels.requiredEnvKeys.EMAIL}
         />

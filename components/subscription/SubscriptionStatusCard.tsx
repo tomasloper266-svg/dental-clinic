@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { SubscriptionPanel } from "./SubscriptionPanel";
 import { StatusPill } from "@/components/ui/Badge";
@@ -32,22 +33,23 @@ export function SubscriptionStatusCard({
   shamCashAccount,
   hasPendingRequest,
 }: SubscriptionStatusCardProps) {
+  const { t } = useI18n();
   const daysLabel =
-    daysLeft <= 0 ? "تنتهي اليوم" : `تبقى ${daysLeft} أيام من ${totalDays}`;
+    daysLeft <= 0 ? t("subscription.endsToday") : `تبقى ${daysLeft} أيام من ${totalDays}`;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>الاشتراك</CardTitle>
+        <CardTitle>{t("subscription.title")}</CardTitle>
       </CardHeader>
       <CardBody>
         <p className="text-sm text-steel-600">
-          خطة، تجديد وحالة الوصول — تقدر تدفع وتجدد بأي وقت
+          {t("subscription.panelHint")}
         </p>
 
         <div className="mt-4 flex items-center justify-between gap-3">
           <StatusPill tone={isTrial ? "warning" : "success"}>
-            {isTrial ? "تجربة نشطة" : "اشتراك قائم"}
+            {isTrial ? t("subscription.trialActive") : t("subscription.activeSub")}
           </StatusPill>
           <p className="text-sm font-medium text-ink-900">{daysLabel}</p>
         </div>
@@ -57,7 +59,7 @@ export function SubscriptionStatusCard({
           aria-valuenow={pct}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label="تقدم فترة الاشتراك"
+          aria-label={t("subscription.progress")}
           className="mt-2 h-2 w-full overflow-hidden rounded-full bg-warm-200"
         >
           <div

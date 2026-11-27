@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useMemo } from "react";
 import { toothAnatomy, type ToothAnatomy } from "@/lib/odontogram/anatomy";
@@ -6,10 +7,7 @@ import {
   archPositions,
   type ArchToothPosition,
 } from "@/lib/odontogram/arch-positions";
-import {
-  lowerRowLeftToRight,
-  upperRowLeftToRight,
-} from "@/lib/odontogram/fdi";
+import { lowerRowLeftToRight, upperRowLeftToRight, toothName } from "@/lib/odontogram/fdi";
 import {
   TOOTH_CHART_FILL,
   isChartFaded,
@@ -63,6 +61,7 @@ function PanoramicTooth({
   selected: boolean;
   onSelect: (fdi: number) => void;
 }) {
+  const { t, locale } = useI18n();
   const fill =
     status && status !== "HEALTHY" && status !== "WATCH"
       ? TOOTH_CHART_FILL[status]
@@ -82,8 +81,8 @@ function PanoramicTooth({
       role="button"
       tabIndex={0}
       aria-pressed={selected}
-      aria-label={`سن ${position.fdi} — ${anatomy.nameAr}${
-        status && status !== "HEALTHY" ? " — له حالة مسجلة" : ""
+      aria-label={`${t("dental.toothAria", { fdi: position.fdi })} — ${toothName(locale, position.fdi) ?? ""}${
+        status && status !== "HEALTHY" ? t("dental.hasRecordedStatus") : ""
       }`}
       onClick={() => onSelect(position.fdi)}
       onKeyDown={onKeyDown}
@@ -125,6 +124,7 @@ export default function PanoramicChart({
   selectedTooth,
   onSelect,
 }: Props) {
+  const { t } = useI18n();
   // مواضع القوسين ثابتة (تُحسب مرة واحدة) — التشريح والحالة يأتيان من المذكرات نفسها.
   const positions = useMemo(
     () => ({
@@ -172,7 +172,7 @@ export default function PanoramicChart({
     <svg
       viewBox="0 0 580 560"
       role="img"
-      aria-label="المخطط البانورامي — قوسا الفكين العلوي والسفلي"
+      aria-label={t("dental.panoramicHint")}
       className="mx-auto h-auto w-full max-w-2xl"
     >
       <defs>

@@ -1,3 +1,6 @@
+"use client";
+
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { MessageCircle } from "lucide-react";
 import { cn } from "@/components/ui/cn";
 
@@ -15,6 +18,7 @@ export function MessagePreview({
   phone?: string | null;
   className?: string;
 }) {
+  const { t } = useI18n();
   return (
     <figure
       className={cn(
@@ -24,7 +28,7 @@ export function MessagePreview({
     >
       <figcaption className="flex items-center gap-1.5 border-b border-warm-200 bg-surface-raised px-3 py-1.5 text-[11px] text-warm-600">
         <MessageCircle size={12} aria-hidden className="text-success-600" />
-        رسالة واتساب كما ستُرسل
+        {t("instructions.whatsappPreview")}
         {phone && (
           <span className="numeric ms-auto" dir="ltr">
             +{phone}

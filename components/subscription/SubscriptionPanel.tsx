@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -31,6 +32,7 @@ export function SubscriptionPanel({
   showShamCash = true,
   hasPendingRequest,
 }: SubscriptionPanelProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const [plan, setPlan] = useState<SubscriptionPlanName>("MONTHLY");
   const [transferRef, setTransferRef] = useState("");
@@ -60,13 +62,13 @@ export function SubscriptionPanel({
       });
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
       if (!res.ok) {
-        setError(data?.error ?? "تعذر رفع الطلب — أعد المحاولة");
+        setError(data?.error ?? t("api.billing.requestFailed"));
         return;
       }
       setDone(true);
       router.refresh();
     } catch {
-      setError("لا يوجد اتصال — تحقق من الشبكة وأعد المحاولة");
+      setError(t("errors.offline"));
     } finally {
       setSubmitting(false);
     }
@@ -75,12 +77,12 @@ export function SubscriptionPanel({
   return (
     <div className="mx-auto w-full max-w-md rounded-card border border-warm-200 bg-surface-raised p-6 shadow-sm">
       <h2 className="font-display text-xl font-normal text-ink-900">
-        {expired ? "انتهت التجربة — بياناتك محفوظة كاملة" : "جدّد اشتراكك"}
+        {expired ? t("subscription.trialEndedDataSafe") : t("subscription.renew")}
       </h2>
       <p className="mt-2 text-sm leading-relaxed text-steel-600">
         {expired
-          ? "بيانات عيادتك كلها محفوظة ولن تُحذف — جدّد الاشتراك لاستعادة الوصول فوراً بعد التأكيد."
-          : "قبل انتهاء صلاحيتك يمكنك التجديد مباشرة — التمديد يُضاف إلى نهاية اشتراكك الحالي."}
+          ? t("subscription.dataPreserved")
+          : t("subscription.renewBeforeExpiry")}
       </p>
 
       <ul className="mt-4 grid grid-cols-2 gap-3">
@@ -99,13 +101,13 @@ export function SubscriptionPanel({
                 }`}
               >
                 <span className="block text-sm font-semibold text-ink-900">
-                  باقة {spec.label}
+                  {t("subscription.planUnit")} {spec.label}
                 </span>
                 <span className="mt-1 block text-2xl font-bold text-primary-700">
                   {spec.priceUsd}$
                 </span>
                 <span className="mt-1 block text-xs text-steel-500">
-                  {spec.durationDays} يوماً
+                  {spec.durationDays} {t("common.daysAccusative")}
                 </span>
               </button>
             </li>
@@ -118,7 +120,7 @@ export function SubscriptionPanel({
           {shamCashAccount && (
             <>
               <p className="text-sm font-semibold text-ink-900">
-                حوّل عبر شام كاش إلى الحساب
+                {t("subscription.transferViaShamcash")}
               </p>
               <p
                 dir="ltr"
@@ -132,21 +134,21 @@ export function SubscriptionPanel({
             {/* الباركود الرسمي — أصل ثابت في التطبيق، قابل للمسح بتطبيق شام كاش */}
             <Image
               src="/shamcash-qr.png"
-              alt="باركود شام كاش — امسحه لتعبئة رقم المستلم تلقائياً"
+              alt={t("subscription.shamcashBarcode")}
               width={180}
               height={180}
               unoptimized
               className="rounded-field border border-warm-200 bg-white p-1"
             />
             <p className="text-center text-xs text-steel-500">
-              امسح الرمز بتطبيق شام كاش أو حوّل يدوياً إلى الحساب الموضح
+              {t("subscription.scanOrTransfer")}
             </p>
             <a
               href="/shamcash-qr.png"
               download="shamcash-qr.png"
               className="focus-ring rounded-field border border-warm-300 bg-surface-raised px-3 py-1.5 text-xs font-semibold text-ink-900 transition-colors hover:bg-surface-hover"
             >
-              تحميل الباركود للجوال
+              {t("subscription.downloadBarcode")}
             </a>
           </div>
         </div>
@@ -157,24 +159,23 @@ export function SubscriptionPanel({
           role="status"
           className="mt-5 rounded-field border border-primary-200 bg-primary-50 p-4 text-center text-sm font-medium text-primary-800"
         >
-          بانتظار التأكيد — وصلنا طلبك وسيُفعَّل اشتراكك بعد اعتماد الحوالة من
-          إدارة المنصة.
+          {t("subscription.pendingApproval")}
         </div>
       ) : (
         <form onSubmit={onSubmit} className="mt-5 space-y-4">
-          <Field label="رقم حوالة شام كاش" htmlFor="transfer-ref">
+          <Field label={t("subscription.shamcashRef")} htmlFor="transfer-ref">
             <Input
               id="transfer-ref"
               value={transferRef}
               onChange={(e) => setTransferRef(e.target.value)}
-              placeholder="مثال: 842157393"
+              placeholder={t("subscription.exampleRef")}
               required
             />
           </Field>
           <Field
-            label="المبلغ المُحوَّل (دولار)"
+            label={t("subscription.transferredAmount")}
             htmlFor="amount"
-            hint="يجب أن يطابق سعر الباقة المختارة"
+            hint={t("api.billing.mustMatchPlan")}
           >
             <Input
               id="amount"
@@ -198,7 +199,7 @@ export function SubscriptionPanel({
             disabled={submitting || !transferRef.trim()}
             className="w-full"
           >
-            {submitting ? "جارٍ الرفع…" : "رفع طلب التفعيل"}
+            {submitting ? t("subscription.submitting") : t("subscription.submitActivation")}
           </Button>
         </form>
       )}

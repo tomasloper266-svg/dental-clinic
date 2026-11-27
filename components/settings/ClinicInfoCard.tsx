@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useI18n } from "@/components/i18n/I18nProvider";
+import type { TranslationKey } from "@/lib/i18n/core";
 import { Building2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
@@ -34,12 +36,13 @@ const WORK_TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => {
   return `${String(hour12).padStart(2, "0")}:${index % 2 === 0 ? "00" : "30"} ${suffix}`;
 });
 
-const CURRENCY_OPTIONS: { value: DisplayCurrency; label: string }[] = [
-  { value: "USD", label: "دولار (USD)" },
-  { value: "SYP", label: "ليرة سورية (SYP)" },
+const CURRENCY_OPTIONS: { value: DisplayCurrency; labelKey: TranslationKey }[] = [
+  { value: "USD", labelKey: "settings.usd" },
+  { value: "SYP", labelKey: "settings.syp" },
 ];
 
 export function ClinicInfoCard({ initial, onSaved }: ClinicInfoCardProps) {
+  const { t } = useI18n();
   const [draft, setDraft] = useState(initial);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -63,15 +66,15 @@ export function ClinicInfoCard({ initial, onSaved }: ClinicInfoCardProps) {
   }
 
   return (
-    <form onSubmit={onSubmit} aria-label="معلومات العيادة">
+    <form onSubmit={onSubmit} aria-label={t("settings.clinicInfo")}>
       <Card>
         <CardBody className="flex flex-col gap-4">
           <h2 className="flex items-center gap-2 text-base font-semibold text-ink-900">
             <Building2 size={18} className="text-primary-700" aria-hidden />
-            معلومات العيادة
+            {t("settings.clinicInfo")}
           </h2>
 
-          <Field label="اسم العيادة" htmlFor="set-clinic-name">
+          <Field label={t("settings.clinicName")} htmlFor="set-clinic-name">
             <Input
               id="set-clinic-name"
               required
@@ -83,9 +86,9 @@ export function ClinicInfoCard({ initial, onSaved }: ClinicInfoCardProps) {
           </Field>
 
           <Field
-            label="رمز العيادة/المدير"
+            label={t("subscription.clinicCode")}
             htmlFor="set-logo-letter"
-            hint="حرف أو حرفان يظهران في شعار العيادة"
+            hint={t("settings.logoLetterHint")}
           >
             <Input
               id="set-logo-letter"
@@ -96,9 +99,9 @@ export function ClinicInfoCard({ initial, onSaved }: ClinicInfoCardProps) {
           </Field>
 
           <Field
-            label="رمز العملة"
+            label={t("settings.currencyCode")}
             htmlFor="set-currency"
-            hint="العملة المعروضة في كل شاشات التطبيق"
+            hint={t("settings.currencyHint")}
           >
             <Select
               id="set-currency"
@@ -109,16 +112,16 @@ export function ClinicInfoCard({ initial, onSaved }: ClinicInfoCardProps) {
             >
               {CURRENCY_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {t(option.labelKey)}
                 </option>
               ))}
             </Select>
           </Field>
 
           <Field
-            label="سعر صرف الدولار بالليرة السورية"
+            label={t("settings.usdRate")}
             htmlFor="set-usd-rate"
-            hint="يُستخدم لعرض ما يعادل المبالغ بالعملة الأخرى"
+            hint={t("settings.usdRateHint")}
           >
             <Input
               id="set-usd-rate"
@@ -134,7 +137,7 @@ export function ClinicInfoCard({ initial, onSaved }: ClinicInfoCardProps) {
             />
           </Field>
 
-          <Field label="الرصيد الافتتاحي" htmlFor="set-opening-balance">
+          <Field label={t("settings.openingBalance")} htmlFor="set-opening-balance">
             <Input
               id="set-opening-balance"
               type="number"
@@ -149,7 +152,7 @@ export function ClinicInfoCard({ initial, onSaved }: ClinicInfoCardProps) {
           </Field>
 
           <div className="grid grid-cols-2 gap-3">
-            <Field label="من الساعة" htmlFor="set-work-start">
+            <Field label={t("appointments.fromHour")} htmlFor="set-work-start">
               <Select
                 id="set-work-start"
                 value={draft.workStart}
@@ -162,7 +165,7 @@ export function ClinicInfoCard({ initial, onSaved }: ClinicInfoCardProps) {
                 ))}
               </Select>
             </Field>
-            <Field label="إلى الساعة" htmlFor="set-work-end">
+            <Field label={t("appointments.toHour")} htmlFor="set-work-end">
               <Select
                 id="set-work-end"
                 value={draft.workEnd}
@@ -187,10 +190,10 @@ export function ClinicInfoCard({ initial, onSaved }: ClinicInfoCardProps) {
           )}
           <div className="flex items-center gap-3">
             <Button type="submit" variant="gold" loading={saving} disabled={!dirty}>
-              حفظ التعديلات
+              {t("common.saveEdits")}
             </Button>
             {!dirty && !saving && (
-              <span className="text-xs text-warm-500">لا تغييرات لحفظها</span>
+              <span className="text-xs text-warm-500">{t("common.noChanges")}</span>
             )}
           </div>
         </CardBody>

@@ -1,19 +1,21 @@
+import { getServerT, tMaybe } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { parseSignup } from "@/lib/auth/signup";
 import { createClinicWithOwner } from "@/lib/auth/create-clinic";
 import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/session";
 
 export async function POST(req: NextRequest) {
+  const t = await getServerT();
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
+    return NextResponse.json({ error: t("api.invalidRequest") }, { status: 400 });
   }
 
   const parsed = parseSignup(body);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return NextResponse.json({ error: tMaybe(t, parsed.error) }, { status: 400 });
   }
 
   try {
@@ -42,14 +44,14 @@ export async function POST(req: NextRequest) {
       (err as { code?: string }).code === "P2002"
     ) {
       return NextResponse.json(
-        { error: "اسم المستخدم محجوز، اختر اسماً آخر" },
+        { error: t("api.signup.usernameTaken") },
         { status: 409 },
       );
     }
     // خطأ غير متوقع (اتصال قاعدة بيانات، قيد، ...) — يُسجل ولا يُكتم.
     console.error("[signup] failed to create clinic:", err);
     return NextResponse.json(
-      { error: "تعذر إنشاء العيادة، حاول مرة أخرى" },
+      { error: t("api.clinicCreateFailed") },
       { status: 500 },
     );
   }

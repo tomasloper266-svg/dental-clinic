@@ -1,15 +1,16 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useState } from "react";
 import { Printer, CircleDollarSign } from "lucide-react";
-import { toothLabelAr } from "@/lib/odontogram/fdi";
-import { formatSurfaceAr } from "@/lib/odontogram/surfaces";
+import { toothLabel } from "@/lib/odontogram/fdi";
+import { formatSurface } from "@/lib/odontogram/surfaces";
 import type { LedgerEntryDto } from "@/lib/services/ledger";
 import type { PlanItemDto } from "@/lib/services/treatment-plan";
-import { planStatusMeta } from "@/lib/treatment-plan-view";
+import { planStatusMeta, planStatusLabel } from "@/lib/treatment-plan-view";
 import { formatWeekdayDateCell } from "@/lib/dates";
 import {
-  INVOICE_STATUS_LABELS,
+  INVOICE_STATUS_LABEL_KEYS,
   type DetailedInvoiceView,
 } from "@/lib/patient-finance";
 import { INVOICE_STATUS_TONE } from "@/lib/invoices-view";
@@ -53,6 +54,7 @@ export default function InvoiceModal({
   onSettle,
   companionLine,
 }: Props) {
+  const { t, locale } = useI18n();
   // المبالغ المعروضة تمر عبر سياق العملة — USD/SYP من الإعدادات يغيّرها كلها.
   const money = useMoney();
   const [settleOpen, setSettleOpen] = useState(false);
@@ -73,15 +75,15 @@ export default function InvoiceModal({
     // بند الفاتورة المهيكل يحمل السن مباشرة (يدوي أو مشتق) — والبند المرتبط
     // بخطة يحمل السن في البند نفسه للقيود القديمة بلا بنود مهيكلة.
     const firstItem = charge.items[0];
-    if (firstItem?.toothFdi) return toothLabelAr(firstItem.toothFdi);
+    if (firstItem?.toothFdi) return toothLabel(locale, firstItem.toothFdi);
     const item = itemFor(charge);
-    return item && item.toothFdi > 0 ? toothLabelAr(item.toothFdi) : "—";
+    return item && item.toothFdi > 0 ? toothLabel(locale, item.toothFdi) : "—";
   };
 
   // السطح يُعرض صراحة تحت السن — «المضغية» أو «المضغية+القريبة»
   const surfaceText = (charge: LedgerEntryDto): string | null => {
     const code = charge.items[0]?.surface ?? itemFor(charge)?.surface ?? null;
-    return code ? formatSurfaceAr(code) : null;
+    return code ? formatSurface(locale, code) : null;
   };
 
   const itemText = (charge: LedgerEntryDto) => {
@@ -102,13 +104,13 @@ export default function InvoiceModal({
           <div className="min-w-0">
             <p className="text-ink-900 truncate text-sm font-bold">{patientName}</p>
             <p className="numeric text-steel-500 mt-0.5 text-xs">
-              فاتورة عيادة أسنان — {formatWeekdayDateCell(invoice.date)}
+              {t("invoices.clinicInvoicePrefix")} {formatWeekdayDateCell(invoice.date)}
             </p>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1.5">
             <div className="flex items-center gap-2">
               <StatusPill tone={INVOICE_STATUS_TONE[invoice.status]}>
-                {INVOICE_STATUS_LABELS[invoice.status]}
+                {t(INVOICE_STATUS_LABEL_KEYS[invoice.status])}
               </StatusPill>
               <span className="numeric text-warning-600 text-sm font-bold">
                 {invoice.number}
@@ -124,9 +126,9 @@ export default function InvoiceModal({
           <table className="w-full text-start text-sm">
             <thead>
               <tr className="border-warm-200 text-steel-500 border-b text-xs">
-                <th className="px-3 py-2 text-start font-medium">البند</th>
-                <th className="px-3 py-2 text-start font-medium">السن</th>
-                <th className="px-3 py-2 text-start font-medium">المبلغ</th>
+                <th className="px-3 py-2 text-start font-medium">{t("common.item")}</th>
+                <th className="px-3 py-2 text-start font-medium">{t("common.tooth")}</th>
+                <th className="px-3 py-2 text-start font-medium">{t("common.amount")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-warm-100">
@@ -142,7 +144,7 @@ export default function InvoiceModal({
                             className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${status.toneClass}`}
                           >
                             <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                            {status.labelAr}
+                            {planStatusLabel(locale, status.status)}
                           </span>
                         )}
                       </span>
@@ -166,26 +168,26 @@ export default function InvoiceModal({
 
           <div className="border-warm-200 divide-y divide-warm-100 border-t px-3">
             <SummaryRow
-              label="المجموع"
+              label={t("common.sum")}
               value={money(invoice.totalUsd)}
             />
             <SummaryRow
-              label="الخصم"
+              label={t("common.theDiscount")}
               value={money(invoice.discountUsd)}
             />
             <SummaryRow
-              label="الإجمالي"
+              label={t("common.total")}
               value={money(invoice.totalUsd - invoice.discountUsd)}
               tone="gold"
               emphasis
             />
             <SummaryRow
-              label="المسدد"
+              label={t("common.paid")}
               value={money(invoice.paidUsd)}
               tone="success"
             />
             <SummaryRow
-              label="المتبقي"
+              label={t("common.remaining")}
               value={money(invoice.remainingUsd)}
               tone="danger"
               emphasis
@@ -197,12 +199,12 @@ export default function InvoiceModal({
         <section className="mt-4">
           <h3 className="text-ink-900 inline-flex items-center gap-1.5 text-sm font-semibold">
             <CircleDollarSign size={16} className="text-warning-500" aria-hidden />
-            الدفعات المسجلة
+            {t("finance.recordedPayments")}
           </h3>
           {invoice.payments.length === 0 ? (
             <div className="flex flex-col items-center py-6">
               <ToothIcon className="text-warning-500 h-8 w-8" aria-hidden />
-              <p className="text-steel-500 mt-2 text-sm">لا دفعات بعد</p>
+              <p className="text-steel-500 mt-2 text-sm">{t("finance.noPaymentsYet")}</p>
             </div>
           ) : (
             <ul className="mt-2 divide-y divide-warm-100">
@@ -211,7 +213,7 @@ export default function InvoiceModal({
                   key={`${payment.date}-${index}`}
                   className="flex items-center justify-between py-2 text-sm"
                 >
-                  <span className="text-steel-600">{payment.note || "دفعة"}</span>
+                  <span className="text-steel-600">{payment.note || t("finance.payment")}</span>
                   <span className="numeric font-medium">
                     {money(payment.amountUsd)}
                   </span>
@@ -224,7 +226,7 @@ export default function InvoiceModal({
         <footer className="border-warm-200 mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-3">
           <Button variant="secondary" onClick={() => window.print()}>
             <Printer size={15} aria-hidden />
-            طباعة الإيصال
+            {t("invoices.printReceipt")}
           </Button>
           <div className="flex items-center gap-2">
             <Button
@@ -233,10 +235,10 @@ export default function InvoiceModal({
               disabled={invoice.remainingUsd <= 0}
             >
               <CircleDollarSign size={15} aria-hidden />
-              تسديد دفعة
+              {t("finance.settlePayment")}
             </Button>
             <Button variant="secondary" onClick={onClose}>
-              إغلاق
+              {t("common.close")}
             </Button>
           </div>
         </footer>

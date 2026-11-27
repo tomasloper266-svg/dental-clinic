@@ -6,16 +6,19 @@ import {
   mobileBarNav,
   navGroups,
   navItemByHref,
-  segmentLabel,
+  segmentLabelKey,
 } from "@/components/shell/nav-items";
+import { createT } from "@/lib/i18n/core";
+
+const t = createT("ar");
 
 describe("تجميع الأقسام", () => {
   it("المجموعات الأربع بأسمائها وترتيبها", () => {
-    expect(navGroups.map((g) => [g.key, g.label])).toEqual([
-      ["clinical", "علاجي"],
-      ["operations", "تشغيلي"],
-      ["financial", "مالي"],
-      ["admin", "إداري"],
+    expect(navGroups.map((g) => [g.key, g.labelKey])).toEqual([
+      ["clinical", "nav.group.clinical"],
+      ["operations", "nav.group.operations"],
+      ["financial", "nav.group.financial"],
+      ["admin", "nav.group.admin"],
     ]);
   });
 
@@ -25,9 +28,9 @@ describe("تجميع الأقسام", () => {
       "/patients",
       "/dental",
     ]);
-    expect(clinical?.items.map((i) => i.label)).toEqual([
-      "المرضى",
-      "مخطط الأسنان وخطط العلاج",
+    expect(clinical?.items.map((i) => i.labelKey)).toEqual([
+      "nav.patients",
+      "nav.dentalChart",
     ]);
   });
 
@@ -38,10 +41,10 @@ describe("تجميع الأقسام", () => {
       "/dues",
       "/reports",
     ]);
-    expect(financial?.items.map((i) => i.label)).toEqual([
-      "الفواتير والمدفوعات",
-      "المستحقات",
-      "التقارير",
+    expect(financial?.items.map((i) => i.labelKey)).toEqual([
+      "nav.invoices",
+      "nav.dues",
+      "nav.reports",
     ]);
   });
 
@@ -58,9 +61,9 @@ describe("سلامة العناصر", () => {
     expect(new Set(hrefs).size).toBe(hrefs.length);
   });
 
-  it("كل عنصر يحمل تسمية عربية وأيقونة", () => {
+  it("كل عنصر يحمل مفتاح تسمية مترجماً وأيقونة", () => {
     for (const item of allNavItems) {
-      expect(item.label.length).toBeGreaterThan(0);
+      expect(t(item.labelKey).length).toBeGreaterThan(0);
       expect(item.icon).toBeDefined();
     }
   });
@@ -86,23 +89,23 @@ describe("سلامة العناصر", () => {
 
   it("بوابة التطبيق هي /dashboard وتُضمَّن في القائمة المسطحة", () => {
     expect(homeNav.href).toBe("/dashboard");
-    expect(navItemByHref("/dashboard")?.label).toBe("الرئيسية");
+    expect(navItemByHref("/dashboard")?.labelKey).toBe("nav.home");
   });
 });
 
 describe("التسميات وbreadcrumbs", () => {
-  it("تسمية عربية للمسار المدموج ولا شيء لـ plans", () => {
-    expect(segmentLabel("dental")).toBe("مخطط الأسنان وخطط العلاج");
-    expect(segmentLabel("plans")).toBe("plans");
+  it("مفتاح تسمية للمسار المدموج ولا شيء لـ plans", () => {
+    expect(segmentLabelKey("dental")).toBe("nav.dentalChart");
+    expect(segmentLabelKey("plans")).toBeUndefined();
   });
 
   it("breadcrumb لمسار /dental يبني الرابط الصحيح", () => {
     expect(breadcrumbsFromPath("/dental")).toEqual([
-      { href: "/dental", label: "مخطط الأسنان وخطط العلاج" },
+      { href: "/dental", label: "dental" },
     ]);
   });
 
   it("معرّف المريض الطويل يُسمّى ملف مريض", () => {
-    expect(segmentLabel("cmabc123def456ghi789jk")).toBe("ملف المريض");
+    expect(segmentLabelKey("cmabc123def456ghi789jk")).toBe("nav.patientFile");
   });
 });

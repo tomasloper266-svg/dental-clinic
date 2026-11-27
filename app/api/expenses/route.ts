@@ -1,3 +1,4 @@
+import { getServerT, tMaybe } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import {
@@ -9,6 +10,7 @@ import {
 // سجل مصاريف العيادة — إنشاء وعرض. الفئات ثابتة: إيجار/رواتب/مواد/أخرى.
 
 export async function GET(req: NextRequest) {
+  const t = await getServerT();
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
@@ -21,7 +23,7 @@ export async function GET(req: NextRequest) {
     const to = new Date(toParam ?? "");
     if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
       return NextResponse.json(
-        { error: "نطاق التاريخ غير صالح" },
+        { error: t("api.invalidDateRange") },
         { status: 400 },
       );
     }
@@ -34,6 +36,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const t = await getServerT();
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
@@ -42,12 +45,12 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
+    return NextResponse.json({ error: t("api.invalidRequest") }, { status: 400 });
   }
 
   const parsed = parseCreateExpense(body);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return NextResponse.json({ error: tMaybe(t, parsed.error) }, { status: 400 });
   }
 
   try {
@@ -55,6 +58,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ expense }, { status: 201 });
   } catch (err) {
     console.error("[expenses:create] failed:", err);
-    return NextResponse.json({ error: "تعذر إنشاء المصروف" }, { status: 500 });
+    return NextResponse.json({ error: t("api.expenseCreateFailed") }, { status: 500 });
   }
 }

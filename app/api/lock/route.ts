@@ -1,3 +1,4 @@
+import { getServerT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
 import { tenantContextFromSession } from "@/lib/tenant/context";
@@ -9,27 +10,28 @@ import { verifyLockPin } from "@/lib/services/account";
 // والجلسة نفسها لا تُمس — الفتح هويّة متصفح فقط لا تصريح إضافي.
 
 export async function POST(req: NextRequest) {
+  const t = await getServerT();
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   const session = await getSessionUser(token);
   if (!session) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+    return NextResponse.json({ error: t("api.unauthorized") }, { status: 401 });
   }
 
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
+    return NextResponse.json({ error: t("api.invalidRequest") }, { status: 400 });
   }
   const raw = body as { pin?: unknown };
   if (typeof raw.pin !== "string") {
-    return NextResponse.json({ error: "أدخل الرمز الرقمي" }, { status: 400 });
+    return NextResponse.json({ error: t("api.lock.pinRequired") }, { status: 400 });
   }
 
   const ctx = tenantContextFromSession(session);
   const unlocked = await verifyLockPin(ctx, raw.pin);
   if (!unlocked) {
-    return NextResponse.json({ error: "رمز غير صحيح" }, { status: 401 });
+    return NextResponse.json({ error: t("api.lock.wrongPin") }, { status: 401 });
   }
 
   const res = NextResponse.json({ ok: true }, { status: 200 });
@@ -43,9 +45,10 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const t = await getServerT();
   const session = await getSessionUser(req.cookies.get(SESSION_COOKIE)?.value);
   if (!session) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+    return NextResponse.json({ error: t("api.unauthorized") }, { status: 401 });
   }
   const res = NextResponse.json({ ok: true }, { status: 200 });
   res.cookies.delete(UNLOCK_COOKIE);

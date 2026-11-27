@@ -1,3 +1,4 @@
+import { getServerT, tMaybe } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import {
@@ -12,6 +13,7 @@ type Params = { params: Promise<{ materialId: string }> };
 // الخدمة، التي تسجّل الفرق سطر حركة تسوية في الدفتر.
 
 export async function PATCH(req: NextRequest, { params }: Params) {
+  const t = await getServerT();
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
@@ -21,23 +23,23 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
+    return NextResponse.json({ error: t("api.invalidRequest") }, { status: 400 });
   }
 
   const parsed = parseUpdateMaterial(body);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return NextResponse.json({ error: tMaybe(t, parsed.error) }, { status: 400 });
   }
 
   try {
     const material = await updateMaterial(ctx, materialId, parsed.value);
     if (!material) {
-      return NextResponse.json({ error: "المادة غير موجودة" }, { status: 404 });
+      return NextResponse.json({ error: t("api.materialNotFound") }, { status: 404 });
     }
     return NextResponse.json({ material }, { status: 200 });
   } catch (err) {
     console.error("[materials:update] failed:", err);
-    return NextResponse.json({ error: "تعذر تعديل المادة" }, { status: 500 });
+    return NextResponse.json({ error: t("api.materialUpdateFailed") }, { status: 500 });
   }
 }
 
@@ -46,6 +48,7 @@ export async function DELETE(
   req: NextRequest,
   { params }: Params,
 ) {
+  const t = await getServerT();
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
@@ -54,11 +57,11 @@ export async function DELETE(
   try {
     const deleted = await deleteMaterial(ctx, materialId);
     if (!deleted) {
-      return NextResponse.json({ error: "المادة غير موجودة" }, { status: 404 });
+      return NextResponse.json({ error: t("api.materialNotFound") }, { status: 404 });
     }
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err) {
     console.error("[materials:delete] failed:", err);
-    return NextResponse.json({ error: "تعذر حذف المادة" }, { status: 500 });
+    return NextResponse.json({ error: t("api.materialDeleteFailed") }, { status: 500 });
   }
 }

@@ -1,3 +1,4 @@
+import {getServerT, tMaybe } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import { deleteUnallocatedCharge } from "@/lib/services/ledger";
@@ -9,6 +10,7 @@ type Params = { params: Promise<{ patientId: string; entryId: string }> };
 // يعيد توزيع الدفعات بأثر رجعي.
 
 export async function DELETE(req: NextRequest, { params }: Params) {
+  const t = await getServerT();
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
@@ -17,11 +19,11 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   try {
     const result = await deleteUnallocatedCharge(ctx, patientId, entryId);
     if (!result.ok) {
-      return NextResponse.json({ error: result.error }, { status: result.status });
+      return NextResponse.json({ error: tMaybe(t, result.error) }, { status: result.status });
     }
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err) {
     console.error("[ledger:deleteCharge] failed:", err);
-    return NextResponse.json({ error: "تعذر حذف الفاتورة" }, { status: 500 });
+    return NextResponse.json({ error: t("api.invoiceDeleteFailed") }, { status: 500 });
   }
 }

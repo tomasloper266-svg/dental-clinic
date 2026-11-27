@@ -1,14 +1,11 @@
 "use client";
+import { formatDate } from "@/lib/i18n/format";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useState } from "react";
-import {
-  TOOTH_STATUS_KEYS,
-  TOOTH_STATUS_META,
-  findingKindLabel,
-  toothStatusMeta,
-} from "@/lib/odontogram/statuses";
+import { TOOTH_STATUS_KEYS, TOOTH_STATUS_META, findingKindLabel, toothStatusMeta, toothStatusIcon, toothStatusLabel } from "@/lib/odontogram/statuses";
 import { toothAnatomy, type SurfaceKey } from "@/lib/odontogram/anatomy";
-import { formatSurfaceAr } from "@/lib/odontogram/surfaces";
+import { formatSurface } from "@/lib/odontogram/surfaces";
 import type { FindingDto } from "@/lib/services/findings";
 import type { PeriodontalReadingDto } from "@/lib/services/periodontal";
 import { Badge } from "@/components/ui/Badge";
@@ -42,13 +39,6 @@ type Props = {
   onReadingSaved?: (reading: PeriodontalReadingDto) => void;
 };
 
-function formatDateAr(iso: string): string {
-  return new Intl.DateTimeFormat("ar-SY-u-nu-latn", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(iso));
-}
-
 export default function ToothRecordForm({
   patientId,
   fdi,
@@ -56,11 +46,13 @@ export default function ToothRecordForm({
   onSaved,
   preselectLatest = false,
   saveVariant = "primary",
-  kindHeading = "نوع القيد",
+  kindHeading,
   noteInputId,
   readings,
   onReadingSaved,
 }: Props) {
+  const { t, locale } = useI18n();
+  const kindHeadingText = kindHeading ?? t("finance.entryType");
   const latest = history.length ? history[history.length - 1] : null;
   const latestMeta = latest ? toothStatusMeta(latest.status) : null;
 
@@ -106,13 +98,13 @@ export default function ToothRecordForm({
         error?: string;
       };
       if (!res.ok || !data.finding) {
-        setError(data.error ?? "تعذر تسجيل المشاهدة");
+        setError(data.error ?? t("api.findingSaveFailed"));
         return;
       }
       onSaved(data.finding as FindingDto);
       setNote("");
     } catch {
-      setError("تعذر الاتصال بالخادم");
+      setError(t("errors.server"));
     } finally {
       setSaving(false);
     }
@@ -124,12 +116,12 @@ export default function ToothRecordForm({
         <div
           className="border-warm-200 flex gap-2 border-b pb-2"
           role="tablist"
-          aria-label="لوحة السن"
+          aria-label={t("dental.toothPanel")}
         >
           {(
             [
-              ["status", "الحالة"],
-              ["periodontal", "الدواعم"],
+              ["status", t("common.status")],
+              ["periodontal", t("periodontal.title")],
             ] as const
           ).map(([key, labelAr]) => (
             <button
@@ -155,10 +147,10 @@ export default function ToothRecordForm({
       <div hidden={tab !== "status"} className="space-y-5">
         {latestMeta && latest && (
           <div className="flex items-center gap-2">
-            <span className="text-warm-600 text-xs">الحالة المسجلة حالياً:</span>
+            <span className="text-warm-600 text-xs">{t("dental.currentRecordedStatus")}</span>
             <Badge className={cn("border", latestMeta.chipClass)}>
-              <span className="font-bold">{latestMeta.icon}</span>
-              {latestMeta.labelAr}
+              <span className="font-bold">{toothStatusIcon(locale, latestMeta.value)}</span>
+              {toothStatusLabel(locale, latestMeta.value)}
             </Badge>
             <span className="text-warm-500 text-xs">
               {findingKindLabel(latest.kind)}
@@ -168,9 +160,9 @@ export default function ToothRecordForm({
 
         <div>
           <p className="text-warm-600 mb-1.5 text-xs font-semibold">
-            {kindHeading}
+            {kindHeadingText}
           </p>
-          <div className="flex gap-2" role="group" aria-label="نوع القيد">
+          <div className="flex gap-2" role="group" aria-label={t("finance.entryType")}>
             {(["EXISTING", "DIAGNOSIS"] as const).map((kind) => (
               <button
                 key={kind}
@@ -193,12 +185,12 @@ export default function ToothRecordForm({
 
         <div>
           <p className="text-warm-600 mb-1.5 text-xs font-semibold">
-            الحالة الجديدة
+            {t("appointments.newStatus")}
           </p>
           <div
             className="flex flex-wrap gap-1.5"
             role="group"
-            aria-label="حالة السن"
+            aria-label={t("dental.toothStatus")}
           >
             {TOOTH_STATUS_KEYS.map((key) => {
               const meta = TOOTH_STATUS_META[key];
@@ -218,8 +210,8 @@ export default function ToothRecordForm({
                       : "opacity-80 hover:opacity-100",
                   )}
                 >
-                  <span className="font-bold">{meta.icon}</span>
-                  {meta.labelAr}
+                  <span className="font-bold">{toothStatusIcon(locale, meta.value)}</span>
+                  {toothStatusLabel(locale, meta.value)}
                 </button>
               );
             })}
@@ -229,12 +221,12 @@ export default function ToothRecordForm({
         {surfaceOptions.length > 0 && (
           <div>
             <p className="text-warm-600 mb-1.5 text-xs font-semibold">
-              سطح السن (اختياري — يمكن اختيار أكثر من سطح)
+              {t("dental.toothSurfaceMulti")}
             </p>
             <div
               className="flex flex-wrap gap-1.5"
               role="group"
-              aria-label="سطح السن"
+              aria-label={t("dental.toothSurface")}
             >
               {surfaceOptions.map((surface) => {
                 const active = surfaces.includes(surface);
@@ -266,14 +258,14 @@ export default function ToothRecordForm({
           </div>
         )}
 
-        <Field label="ملاحظة (اختياري)" htmlFor={resolvedNoteId}>
+        <Field label={t("common.noteOptional")} htmlFor={resolvedNoteId}>
           <div className="flex items-center gap-1.5">
             <Input
               id={resolvedNoteId}
               value={note}
               onChange={(e) => setNote(e.target.value)}
               maxLength={500}
-              placeholder="مثال: تسوس سطح مضغي"
+              placeholder={t("dental.exampleDecay")}
             />
             <MicButton
               targetId={resolvedNoteId}
@@ -300,17 +292,17 @@ export default function ToothRecordForm({
             disabled={!chosenStatus}
             className="w-full sm:w-auto"
           >
-            {saving ? "جارٍ الحفظ…" : "تسجيل المشاهدة"}
+            {saving ? t("common.saving") : t("dental.recordFinding")}
           </Button>
           <p className="text-warm-400 mt-1.5 text-[11px]">
-            التسجيل يضيف قيداً جديداً — القيود السابقة لا تُمحى ولا تُستبدل.
+            {t("dental.appendOnlyNote")}
           </p>
         </div>
 
         {history.length > 0 && (
           <div className="border-warm-200 border-t pt-4">
             <p className="text-warm-600 mb-2 text-xs font-semibold">
-              سجل هذا السن (<span className="numeric">{history.length}</span>)
+              {t("dental.toothRecordPrefix")}<span className="numeric">{history.length}</span>)
             </p>
             <ul className="space-y-1.5">
               {history
@@ -329,17 +321,17 @@ export default function ToothRecordForm({
                           meta?.chipClass ?? "",
                         )}
                       >
-                        {meta?.icon} {meta?.labelAr ?? f.status}
+                        {meta ? toothStatusIcon(locale, meta.value) : ""} {meta ? toothStatusLabel(locale, meta.value) : f.status}
                       </span>
                       <span className="text-warm-500">
                         {findingKindLabel(f.kind)}
                       </span>
                       <span className="text-warm-400 numeric">
-                        {formatDateAr(f.recordedAt)}
+                        {formatDate(f.recordedAt, locale, { dateStyle: "medium", timeStyle: "short" })}
                       </span>
                       {f.surface && (
                         <span className="text-steel-600">
-                          السطح: {formatSurfaceAr(f.surface)}
+                          {t("dental.surfaceLabel")} {formatSurface(locale, f.surface)}
                         </span>
                       )}
                       {f.note && <span className="w-full">{f.note}</span>}

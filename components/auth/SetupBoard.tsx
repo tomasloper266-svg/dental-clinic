@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -23,6 +24,7 @@ type Overview = {
 };
 
 export default function SetupBoard() {
+  const { t } = useI18n();
   const [overview, setOverview] = useState<Overview | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -35,14 +37,14 @@ export default function SetupBoard() {
         return;
       }
       if (!res.ok) {
-        setLoadError("تعذر تحميل بيانات الحساب — حدّث الصفحة");
+        setLoadError(t("settings.accountLoadFailed"));
         return;
       }
       setOverview((await res.json()) as Overview);
     } catch {
-      setLoadError("تعذر الاتصال بالخادم — حدّث الصفحة");
+      setLoadError(t("errors.serverRefresh"));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -57,7 +59,7 @@ export default function SetupBoard() {
   }
   if (!overview) {
     return (
-      <div className="animate-pulse space-y-4" aria-label="جارٍ التحميل">
+      <div className="animate-pulse space-y-4" aria-label={t("common.loadingShort")}>
         <div className="h-24 rounded-panel bg-warm-100" />
         <div className="h-40 rounded-panel bg-warm-100" />
       </div>
@@ -67,10 +69,9 @@ export default function SetupBoard() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="font-display text-[25px] font-normal leading-[1.45] text-ink-900">إعداد العيادة</h1>
+        <h1 className="font-display text-[25px] font-normal leading-[1.45] text-ink-900">{t("setup.clinicSetup")}</h1>
         <p className="mt-2 text-sm text-warm-600">
-          أكملت التسجيل — خطوتان أخيرتان: استكمال البيانات وربط بريد موثق
-          يساعدك في استعادة الحساب لاحقاً.
+          {t("setup.twoStepsLeft")}
         </p>
       </header>
 
@@ -83,7 +84,7 @@ export default function SetupBoard() {
           href="/dashboard"
           className="rounded-field bg-primary-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-700"
         >
-          الانتقال إلى لوحة القيادة
+          {t("notFound.goToDashboard")}
         </Link>
       </div>
     </div>
@@ -99,6 +100,7 @@ function ProfileCard({
   overview: Overview;
   onSaved: () => void;
 }) {
+  const { t } = useI18n();
   const [name, setName] = useState(overview.name);
   const [clinicName, setClinicName] = useState(overview.clinicName);
   const [error, setError] = useState<string | null>(null);
@@ -118,13 +120,13 @@ function ProfileCard({
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
-        setError(data.error ?? "تعذر الحفظ، حاول مرة أخرى");
+        setError(data.error ?? t("common.saveFailedRetry"));
         return;
       }
       setSaved(true);
       onSaved();
     } catch {
-      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+      setError(t("errors.serverRetry"));
     } finally {
       setSaving(false);
     }
@@ -134,14 +136,14 @@ function ProfileCard({
     <form
       onSubmit={onSubmit}
       className="rounded-panel bg-surface-raised p-6 ring-1 ring-warm-200"
-      aria-label="بيانات الطبيب والعيادة"
+      aria-label={t("setup.doctorClinicData")}
     >
       <h2 className="flex items-center gap-2 text-base font-semibold text-ink-900">
         <Stethoscope size={18} className="text-primary-700" aria-hidden />
-        بيانات الطبيب والعيادة
+        {t("setup.doctorClinicData")}
       </h2>
       <div className="mt-5 grid gap-5 sm:grid-cols-2">
-        <Field label="اسم الطبيب" htmlFor="su-name">
+        <Field label={t("staff.doctorName")} htmlFor="su-name">
           <Input
             id="su-name"
             required
@@ -150,9 +152,9 @@ function ProfileCard({
           />
         </Field>
         <Field
-          label="اسم العيادة"
+          label={t("settings.clinicName")}
           htmlFor="su-clinic"
-          hint="يظهر على المرضى والتقارير"
+          hint={t("setup.nameShownOnDocs")}
         >
           <Input
             id="su-clinic"
@@ -173,16 +175,16 @@ function ProfileCard({
       )}
       {saved && !error && (
         <p role="status" className="mt-4 text-sm text-primary-700">
-          تم الحفظ
+          {t("common.savedToast")}
         </p>
       )}
 
       <div className="mt-5 flex items-center gap-3">
         <Button type="submit" loading={saving}>
-          حفظ البيانات
+          {t("settings.saveData")}
         </Button>
         <span className="text-xs text-warm-500">
-          رقم الهاتف لا يتغير من هنا — تغييره يتطلب إثبات ملكية
+          {t("api.account.phoneImmutable")}
         </span>
       </div>
     </form>
@@ -198,6 +200,7 @@ function EmailCard({
   overview: Overview;
   onVerified: () => void;
 }) {
+  const { t } = useI18n();
   const [email, setEmail] = useState(overview.email ?? "");
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"idle" | "code">("idle");
@@ -227,7 +230,7 @@ function EmailCard({
     try {
       const { res, data } = await post({ action: "request", email });
       if (!res.ok) {
-        setError(data.error ?? "تعذر إرسال الرمز، حاول مرة أخرى");
+        setError(data.error ?? t("api.otp.sendFailed"));
         return;
       }
       setFallbackCode(
@@ -235,7 +238,7 @@ function EmailCard({
       );
       setStep("code");
     } catch {
-      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+      setError(t("errors.serverRetry"));
     } finally {
       setSaving(false);
     }
@@ -248,14 +251,14 @@ function EmailCard({
     try {
       const { res, data } = await post({ action: "verify", email, code });
       if (!res.ok) {
-        setError(data.error ?? "تعذر التحقق من الرمز");
+        setError(data.error ?? t("api.otp.verifyFailed"));
         return;
       }
       setStep("idle");
       setCode("");
       onVerified();
     } catch {
-      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+      setError(t("errors.serverRetry"));
     } finally {
       setSaving(false);
     }
@@ -264,32 +267,32 @@ function EmailCard({
   return (
     <section
       className="rounded-panel bg-surface-raised p-6 ring-1 ring-warm-200"
-      aria-label="البريد الإلكتروني الموثق"
+      aria-label={t("auth.verifiedEmail")}
     >
       <h2 className="flex items-center gap-2 text-base font-semibold text-ink-900">
         <MailCheck size={18} className="text-primary-700" aria-hidden />
-        البريد الإلكتروني الموثق
+        {t("auth.verifiedEmail")}
       </h2>
       <p className="mt-2 text-sm text-warm-600">
-        البريد الموثق يتيح لك استعادة الحساب إذا ضاع رقم الهاتف.
+        {t("settings.emailRecoveryShort")}
       </p>
 
       {verified ? (
         <p className="mt-4 flex items-center gap-2 rounded-field bg-primary-50 px-3 py-2.5 text-sm text-primary-800">
           <BadgeCheck size={16} aria-hidden />
-          مرتبط وموثق: <span dir="ltr">{overview.email}</span>
+          {t("settings.linkedAndVerified")} <span dir="ltr">{overview.email}</span>
         </p>
       ) : step === "code" ? (
-        <form onSubmit={onVerify} className="mt-4 space-y-4" aria-label="تأكيد رمز البريد">
+        <form onSubmit={onVerify} className="mt-4 space-y-4" aria-label={t("settings.verifyEmailCode")}>
           {fallbackCode && (
             <p className="rounded-field border border-warm-300 bg-warm-100 px-3 py-2.5 text-sm text-warm-800">
-              لا توجد خدمة بريد مربوطة بعد — الرمز للعرض المباشر:{" "}
+              {t("settings.noEmailService")}{" "}
               <strong dir="ltr" className="numeric tracking-widest">
                 {fallbackCode}
               </strong>
             </p>
           )}
-          <Field label="رمز التحقق" htmlFor="su-code">
+          <Field label={t("common.verificationCode")} htmlFor="su-code">
             <Input
               id="su-code"
               inputMode="numeric"
@@ -313,12 +316,12 @@ function EmailCard({
             </p>
           )}
           <Button type="submit" loading={saving}>
-            تأكيد البريد
+            {t("settings.verifyEmail")}
           </Button>
         </form>
       ) : (
-        <form onSubmit={onRequest} className="mt-4 space-y-4" aria-label="ربط بريد موثق">
-          <Field label="البريد الإلكتروني" htmlFor="su-email">
+        <form onSubmit={onRequest} className="mt-4 space-y-4" aria-label={t("settings.linkVerifiedEmail")}>
+          <Field label={t("common.email")} htmlFor="su-email">
             <Input
               id="su-email"
               type="email"
@@ -339,7 +342,7 @@ function EmailCard({
             </p>
           )}
           <Button type="submit" loading={saving}>
-            إرسال رمز التحقق
+            {t("settings.sendCode")}
           </Button>
         </form>
       )}
@@ -354,15 +357,14 @@ function ChannelNotice({
 }: {
   channels: { smsConfigured: boolean; emailConfigured: boolean };
 }) {
-  const label = (ok: boolean) => (ok ? "مربوطة" : "غير مربوطة بعد");
+  const { t } = useI18n();
+  const label = (ok: boolean) => (ok ? t("settings.channelsLinked") : t("settings.channelsNotLinked"));
   return (
     <p className="flex items-start gap-2 rounded-field border border-warm-300 bg-warm-100 px-3 py-2.5 text-sm text-warm-800">
       <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden />
       <span>
-        إرسال الرموز: الرسائل النصية {label(channels.smsConfigured)} — البريد{" "}
-        {label(channels.emailConfigured)}. اربط موفّر خدمة عبر متغيرات البيئة
-        (SMS_API_URL و SMS_API_TOKEN للرسائل، EMAIL_API_URL و EMAIL_API_TOKEN
-        للبريد) لتُرسل الرموز تلقائياً.
+        {t("settings.codesViaSms")} {label(channels.smsConfigured)} {t("setup.emailSuffix")}{" "}
+        {label(channels.emailConfigured)}{t("settings.providerEnvHint")}
       </span>
     </p>
   );

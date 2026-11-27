@@ -15,6 +15,7 @@ export function LanguageSwitcher({
 }: {
   tone?: "default" | "auth";
 }) {
+  const { t } = useI18n();
   const { locale, setLocale } = useI18n();
 
   const shellCls =
@@ -31,7 +32,7 @@ export function LanguageSwitcher({
   return (
     <div
       role="group"
-      aria-label="اللغة / Language"
+      aria-label={t("settings.language")}
       className={`flex items-center gap-0.5 rounded-full border p-0.5 ${shellCls}`}
     >
       {(["ar", "en"] as const).map((option) => {
@@ -48,7 +49,7 @@ export function LanguageSwitcher({
               active ? activeCls : idleCls
             }`}
           >
-            {option === "ar" ? "عربي" : "English"}
+            {option === "ar" ? t("settings.arabic") : "English"}
           </button>
         );
       })}

@@ -81,14 +81,14 @@ export function AppShell({
         })
         .catch((err) => {
           // فشل التجديد لا يُخفى — تبقى آخر قيمة معروفة والخطأ في السجل
-          console.error("تعذر تحديث ملخص المستحقات", err);
+          console.error(t("dues.summaryUpdateFailed"), err);
         });
     });
     return () => {
       cancelled = true;
       unsubscribe();
     };
-  }, []);
+  }, [t]);
 
   // استرجاع الحالة المحفوظة بعد التركيب فقط — تجنّباً لعدم تطابق الترطيب.
   useEffect(() => {

@@ -1,4 +1,5 @@
 import type { LedgerEntryDto } from "@/lib/services/ledger";
+import { createT, type Locale, type TranslationKey } from "@/lib/i18n/core";
 // المعادلة القانونية الوحيدة للرصيد — تُعرَّف مرة واحدة في finance-view.
 import { summarizeLedger as summarizeLedgerCanonical } from "@/lib/finance-view";
 
@@ -14,6 +15,17 @@ export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
   PARTIAL: "جزئية",
   UNPAID: "غير مسددة",
 };
+
+export const INVOICE_STATUS_LABEL_KEYS: Record<InvoiceStatus, TranslationKey> = {
+  PAID: "invoices.statusPaid",
+  PARTIAL: "invoices.statusPartial",
+  UNPAID: "invoices.statusUnpaid",
+};
+
+/** تسمية حالة الفاتورة حسب اللغة — للعرض والتصدير */
+export function invoiceStatusLabel(locale: Locale, status: InvoiceStatus): string {
+  return createT(locale)(INVOICE_STATUS_LABEL_KEYS[status]);
+}
 
 export const INVOICE_STATUS_CHIP: Record<InvoiceStatus, string> = {
   PAID: "border-primary-200 bg-primary-50 text-primary-800",

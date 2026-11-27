@@ -1,23 +1,22 @@
 "use client";
+import { formatDate } from "@/lib/i18n/format";
+import type { Locale } from "@/lib/i18n/core";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2, Pencil, CheckCircle2, Check, X } from "lucide-react";
 import { useMoney } from "@/components/ui/CurrencyContext";
-import { allTeeth, toothLabelAr } from "@/lib/odontogram/fdi";
+import { allTeeth, toothLabel } from "@/lib/odontogram/fdi";
 import { toothAnatomy, type SurfaceKey } from "@/lib/odontogram/anatomy";
-import { formatSurfaceAr } from "@/lib/odontogram/surfaces";
-import {
-  TOOTH_STATUS_KEYS,
-  TOOTH_STATUS_META,
-  type ToothStatusKey,
-} from "@/lib/odontogram/statuses";
+import { formatSurface } from "@/lib/odontogram/surfaces";
+import { TOOTH_STATUS_KEYS, type ToothStatusKey, toothStatusLabel } from "@/lib/odontogram/statuses";
 import type {
   PlanDto,
   PlanItemDto,
   PlanItemStatus,
 } from "@/lib/services/treatment-plan";
-import { planStatusMeta } from "@/lib/treatment-plan-view";
+import { planStatusMeta, planStatusLabel } from "@/lib/treatment-plan-view";
 import type { StaffMemberDto } from "@/lib/services/staff";
 import type { LedgerEntryDto } from "@/lib/services/ledger";
 import {
@@ -70,6 +69,7 @@ export default function DentalPlanSection({
   ledger,
   usdRate,
 }: Props) {
+  const { t, locale } = useI18n();
   const router = useRouter();
   const { toast } = useToast();
   // المبالغ المعروضة تمر عبر سياق العملة — USD/SYP من الإعدادات يغيّرها كلها.
@@ -119,7 +119,7 @@ export default function DentalPlanSection({
       },
     );
     if (!res.ok) {
-      setRowError("تعذر تعديل البند — قد يكون منفذاً بالفعل");
+      setRowError(t("api.planItem.updateMaybeDone"));
       return;
     }
     router.refresh();
@@ -132,7 +132,7 @@ export default function DentalPlanSection({
       { method: "DELETE" },
     );
     if (!res.ok) {
-      setRowError("تعذر حذف البند — البند المنفذ نهائي");
+      setRowError(t("api.planItem.deleteDone"));
       return;
     }
     router.refresh();
@@ -155,7 +155,7 @@ export default function DentalPlanSection({
       },
     );
     if (!res.ok) {
-      setRowError("تعذر إضافة البند — تحقق من الوصف والسعر");
+      setRowError(t("plans.addFailed"));
       return;
     }
     router.refresh();
@@ -172,10 +172,10 @@ export default function DentalPlanSection({
       },
     );
     if (!res.ok) {
-      setRowError("تعذر إتمام البند — تحقق من اختيار سن صالح");
+      setRowError(t("plans.completeFailedTooth"));
       return;
     }
-    toast("نُفذ البند وسُجل على السن في المخطط");
+    toast(t("plans.itemExecuted"));
     router.refresh();
   }
 
@@ -185,10 +185,10 @@ export default function DentalPlanSection({
       { method: "PATCH" },
     );
     if (!res.ok) {
-      toast("تعذر إنهاء الخطة — قد تكون منتهية مسبقاً", "danger");
+      toast(t("api.plan.endFailed"), "danger");
       return;
     }
-    toast("انتهت الخطة وبقيت بنودها كما هي");
+    toast(t("api.plan.endedItemsKept"));
     router.refresh();
   }
 
@@ -198,10 +198,10 @@ export default function DentalPlanSection({
       { method: "DELETE" },
     );
     if (!res.ok) {
-      toast("تعذر حذف الخطة", "danger");
+      toast(t("api.plan.deleteFailed"), "danger");
       return;
     }
-    toast("حُذفت الخطة وبقيت بنودها بلا خطة");
+    toast(t("api.plan.deletedItemsUnplanned"));
     router.refresh();
   }
 
@@ -216,32 +216,32 @@ export default function DentalPlanSection({
           <header className="flex items-center justify-between gap-3">
             <h2 className="text-ink-900 inline-flex items-center gap-2 text-base font-semibold">
               <Pencil size={15} className="text-warning-500" aria-hidden />
-              خطة العلاج ({plans.length})
+              {t("plans.treatmentPlanCount")}{plans.length})
             </h2>
             <Button variant="gold" size="sm" onClick={() => setPlanModalOpen(true)}>
-              + خطة جديدة
+              {t("plans.newPlanAction")}
             </Button>
           </header>
 
           {plans.length === 0 && unassignedItems.length === 0 && (
             <p className="text-steel-500 mt-4 text-sm">
-              لا خطة علاج لهذا المريض بعد — أضف بنوداً من الجدول أدناه أو أنشئ خطة جديدة.
+              {t("plans.emptyForPatient")}
             </p>
           )}
 
           {plans.map((plan) => {
             const pill = plan.endedAt
-              ? { label: "منتهية", toneClass: "bg-warm-100 text-steel-600" }
-              : { label: "نشط", toneClass: "bg-success-50 text-success-700" };
+              ? { label: t("subscription.expired"), toneClass: "bg-warm-100 text-steel-600" }
+              : { label: t("subscription.active"), toneClass: "bg-success-50 text-success-700" };
             const doneCount = plan.items.filter((item) => item.status === "DONE").length;
             return (
               <PlanOperationsCard
                 key={plan.id}
-                title={plan.name || "خطة علاج"}
+                title={plan.name || t("plans.treatmentPlan")}
                 pill={pill.label}
                 pillClass={pill.toneClass}
-                createdLabel={new Date(plan.planDate).toLocaleDateString("ar")}
-                metaLine={`${plan.items.length} بند · ${doneCount} مكتمل · إجمالي ${money(planTotalUsd(plan.items))}`}
+                createdLabel={formatDate(plan.planDate, locale, { dateStyle: "long" })}
+                metaLine={t("dental.planMeta", { count: plan.items.length, done: doneCount, total: money(planTotalUsd(plan.items)) })}
                 items={plan.items}
                 issueDisabled={doneCount === 0}
                 onIssue={() => setIssuePlan(plan)}
@@ -261,16 +261,16 @@ export default function DentalPlanSection({
           {/* بنود بلا خطة محفوظة — الجدول نفسه بلا أزرار الخطة */}
           {unassignedItems.length > 0 && (
             <PlanOperationsCard
-              title="بدون خطة محفوظة حالياً"
-              pill="بلا خطة"
+              title={t("plans.unplannedNow")}
+              pill={t("plans.noPlan")}
               pillClass="bg-warm-100 text-steel-600"
-              metaLine={`${unassignedItems.length} بند · إجمالي ${money(planTotalUsd(unassignedItems))}`}
+              metaLine={t("dental.planMetaNoDone", { count: unassignedItems.length, total: money(planTotalUsd(unassignedItems)) })}
               items={unassignedItems}
               issueDisabled={unassignedItems.every((item) => item.status !== "DONE")}
               onIssue={() =>
                 setIssuePlan({
                   id: "",
-                  name: "بدون خطة محفوظة",
+                  name: t("plans.unplanned"),
                   planDate: new Date(),
                   doctorName: null,
                   notes: null,
@@ -323,7 +323,7 @@ export default function DentalPlanSection({
           onClose={() => setIssuePlan(null)}
           patientId={patientId}
           patientName={patientName}
-          planName={issuePlan.name || "بدون خطة محفوظة"}
+          planName={issuePlan.name || t("plans.unplanned")}
           items={issuePlan.items}
           doctors={doctors}
           onIssued={(chargeIds) => {
@@ -394,6 +394,7 @@ function PlanOperationsCard({
   onComplete,
   onAddRow,
 }: OperationsProps) {
+  const { t } = useI18n();
   const money = useMoney();
   const totalUsd = planTotalUsd(items);
   const doneUsd = items
@@ -419,7 +420,7 @@ function PlanOperationsCard({
           </p>
           <p className="text-steel-500 numeric mt-0.5 text-xs">
             {metaLine}
-            {createdLabel ? ` · أُنشئت ${createdLabel}` : ""}
+            {createdLabel ? t("dental.createdSuffix", { date: createdLabel }) : ""}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -429,17 +430,17 @@ function PlanOperationsCard({
                 variant="danger"
                 size="sm"
                 onClick={onDeletePlan}
-                title="حذف الخطة"
+                title={t("plans.deletePlan")}
               >
                 <Trash2 size={14} aria-hidden />
               </Button>
               <Button variant="secondary" size="sm" onClick={onEndPlan}>
-                إلغاء الخطة
+                {t("plans.cancelPlan")}
               </Button>
             </>
           )}
           <Button variant="gold" size="sm" onClick={onIssue} disabled={issueDisabled}>
-            إصدار فاتورة من البنود المكتملة
+            {t("invoices.issueFromDone")}
           </Button>
         </div>
       </header>
@@ -447,18 +448,18 @@ function PlanOperationsCard({
       <table className="mt-3 w-full text-sm">
         <thead>
           <tr className="border-warm-200 text-steel-500 border-b text-xs">
-            <th className="px-2 py-2 text-start font-medium">الإجراء</th>
-            <th className="px-2 py-2 text-start font-medium">السن</th>
-            <th className="px-2 py-2 text-start font-medium">السعر</th>
-            <th className="px-2 py-2 text-start font-medium">الحالة</th>
-            <th className="px-2 py-2 text-start font-medium">إتمام</th>
+            <th className="px-2 py-2 text-start font-medium">{t("common.procedure")}</th>
+            <th className="px-2 py-2 text-start font-medium">{t("common.tooth")}</th>
+            <th className="px-2 py-2 text-start font-medium">{t("common.price")}</th>
+            <th className="px-2 py-2 text-start font-medium">{t("common.status")}</th>
+            <th className="px-2 py-2 text-start font-medium">{t("plans.complete")}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-warm-100">
           {items.length === 0 && (
             <tr>
               <td colSpan={5} className="text-steel-500 px-2 py-4 text-center text-sm">
-                لا بنود في هذه الخطة بعد.
+                {t("plans.noItemsInPlan")}
               </td>
             </tr>
           )}
@@ -479,18 +480,18 @@ function PlanOperationsCard({
 
       <footer className="border-warm-200 mt-2 flex items-center justify-start gap-6 border-t pt-2 text-sm">
         <span className="text-steel-600">
-          إجمالي الخطة{" "}
+          {t("plans.total")}{" "}
           <span className="numeric text-ink-900 font-semibold">{money(totalUsd)}</span>
         </span>
         <span className="text-steel-600">
-          المكتمل منها{" "}
+          {t("plans.completedOfIt")}{" "}
           <span className="numeric font-semibold text-success-600">
             {money(doneUsd)}
           </span>
         </span>
         {remainingUsd > 0 && (
           <span className="text-steel-600">
-            المتبقي منها{" "}
+            {t("dues.remainingOfIt")}{" "}
             <span className="numeric font-semibold text-danger-600">
               {money(remainingUsd)}
             </span>
@@ -512,6 +513,7 @@ function AddRow({
     surface?: string,
   ) => void;
 }) {
+  const { t, locale } = useI18n();
   const [procedure, setProcedure] = useState("");
   const [toothFdi, setToothFdi] = useState(0);
   const [surfaces, setSurfaces] = useState<SurfaceKey[]>([]);
@@ -544,8 +546,8 @@ function AddRow({
       <input
         value={procedure}
         onChange={(event) => setProcedure(event.target.value)}
-        placeholder="وصف الإجراء"
-        aria-label="وصف الإجراء"
+        placeholder={t("plans.procedureDescription")}
+        aria-label={t("plans.procedureDescription")}
         className="focus-ring w-44 flex-1 rounded-field border border-warm-300 bg-surface px-2 py-1.5 text-sm text-ink-900"
       />
       <select
@@ -555,31 +557,31 @@ function AddRow({
           // السن تغيّر — أسطح السن القديم قد لا تكون تشريحية للجديد
           setSurfaces([]);
         }}
-        aria-label="سن الإجراء"
+        aria-label={t("plans.procedureTooth")}
         className="focus-ring w-28 rounded-field border border-warm-300 bg-surface px-2 py-1.5 text-xs text-ink-900"
       >
         <option value={0}>—</option>
-        {toothOptions}
+        {toothOptions(locale)}
       </select>
       <input
         type="number"
         min={0}
         value={priceStr}
         onChange={(event) => setPriceStr(event.target.value)}
-        aria-label="سعر الإجراء"
+        aria-label={t("plans.procedurePrice")}
         className="focus-ring numeric w-24 rounded-field border border-warm-300 bg-surface px-2 py-1.5 text-sm text-ink-900"
       />
       <Button variant="gold" size="sm" onClick={submit} disabled={procedure.trim().length < 2}>
-        + إضافة
+        {t("common.addAction")}
       </Button>
       {surfaceOptions.length > 0 && (
         <div
           className="flex w-full flex-wrap items-center gap-1.5"
           role="group"
-          aria-label="سطح السن للإجراء الجديد"
+          aria-label={t("dental.newProcedureSurface")}
         >
           <span className="text-steel-500 text-xs font-medium">
-            سطح السن (اختياري):
+            {t("dental.toothSurfaceOptionalLabel")}
           </span>
           {surfaceOptions.map((surface) => {
             const active = surfaces.includes(surface);
@@ -626,6 +628,7 @@ function PlanRow({
   onDelete: (itemId: string) => void;
   onComplete: (itemId: string, resultStatus: ToothStatusKey) => void;
 }) {
+  const { t, locale } = useI18n();
   const money = useMoney();
   const meta = planStatusMeta(item.status);
   const locked = item.status === "DONE";
@@ -635,7 +638,7 @@ function PlanRow({
         {item.procedure}
         {item.surface && (
           <span className="border-steel-200 bg-steel-50 text-steel-700 rounded-field ms-2 inline-block border px-1.5 py-0.5 text-[11px]">
-            {formatSurfaceAr(item.surface)}
+            {formatSurface(locale, item.surface)}
           </span>
         )}
       </td>
@@ -644,11 +647,11 @@ function PlanRow({
           value={item.toothFdi}
           disabled={locked}
           onChange={(event) => onToothChange(item.id, Number(event.target.value))}
-          aria-label={`سن البند ${item.procedure}`}
+          aria-label={t("dental.itemToothAria", { procedure: item.procedure })}
           className="focus-ring w-28 rounded-field border border-warm-300 bg-surface px-2 py-1 text-xs text-ink-900 disabled:opacity-60"
         >
           <option value={0}>—</option>
-          {toothOptions}
+          {toothOptions(locale)}
         </select>
       </td>
       <td className="numeric px-2 py-2 font-semibold">{money(item.priceUsd)}</td>
@@ -659,7 +662,7 @@ function PlanRow({
           onChange={(event) =>
             onStatusChange(item.id, event.target.value as PlanItemStatus)
           }
-          aria-label={`حالة البند ${item.procedure}`}
+          aria-label={t("dental.itemStatusAria", { procedure: item.procedure })}
           className={cn(
             "focus-ring inline-flex rounded-full px-2 py-1 text-[11px] font-medium disabled:opacity-80",
             meta.toneClass,
@@ -667,14 +670,14 @@ function PlanRow({
         >
           {STATUS_OPTIONS.map((status) => (
             <option key={status} value={status}>
-              {planStatusMeta(status).labelAr}
+              {planStatusLabel(locale, status)}
             </option>
           ))}
         </select>
       </td>
       <td className="px-2 py-2">
         {locked ? (
-          <CheckCircle2 size={17} className="text-success-600" aria-label="منفذ" />
+          <CheckCircle2 size={17} className="text-success-600" aria-label={t("plans.done")} />
         ) : (
           <CompletionCell itemId={item.id} toothFdi={item.toothFdi} onComplete={onComplete} onDelete={() => onDelete(item.id)} />
         )}
@@ -695,6 +698,7 @@ function CompletionCell({
   onComplete: (itemId: string, resultStatus: ToothStatusKey) => void;
   onDelete: () => void;
 }) {
+  const { t, locale } = useI18n();
   const [asking, setAsking] = useState(false);
   const [result, setResult] = useState<ToothStatusKey>("FILLED");
 
@@ -705,13 +709,13 @@ function CompletionCell({
           type="checkbox"
           onChange={() => setAsking(true)}
           checked={false}
-          aria-label={`إتمام البند ${itemId}`}
+          aria-label={t("dental.itemCompleteAria", { itemId })}
           className="accent-warning-500 h-4 w-4"
         />
         <button
           type="button"
           onClick={onDelete}
-          title="حذف البند"
+          title={t("plans.deleteItem")}
           className="rounded-field text-danger-600 hover:bg-danger-50 p-1"
         >
           <Trash2 size={14} aria-hidden />
@@ -725,12 +729,12 @@ function CompletionCell({
       <select
         value={result}
         onChange={(event) => setResult(event.target.value as ToothStatusKey)}
-        aria-label="الحالة الناتجة على السن"
+        aria-label={t("odontogram.resultingStatus")}
         className="focus-ring rounded-field border border-warm-300 bg-surface px-1.5 py-1 text-[11px] text-ink-900"
       >
         {RESULT_STATUS_OPTIONS.filter((key) => key !== "HEALTHY").map((key) => (
           <option key={key} value={key}>
-            {TOOTH_STATUS_META[key].labelAr}
+            {toothStatusLabel(locale, key)}
           </option>
         ))}
       </select>
@@ -741,7 +745,7 @@ function CompletionCell({
           onComplete(itemId, result);
         }}
         disabled={toothFdi === 0}
-        title={toothFdi === 0 ? "اختر سناً أولاً" : "تأكيد التنفيذ"}
+        title={toothFdi === 0 ? t("dental.pickToothFirst") : t("plans.confirmExecution")}
         className="rounded-field text-success-700 hover:bg-success-50 p-1 disabled:opacity-40"
       >
         <Check size={15} aria-hidden />
@@ -749,7 +753,7 @@ function CompletionCell({
       <button
         type="button"
         onClick={() => setAsking(false)}
-        title="إلغاء"
+        title={t("common.cancel")}
         className="rounded-field text-steel-500 hover:bg-surface-hover p-1"
       >
         <X size={14} aria-hidden />
@@ -759,8 +763,9 @@ function CompletionCell({
 }
 
 // خيارات الأسنان — 32 سناً بترقيم FDI
-const toothOptions = allTeeth().map((tooth) => (
-  <option key={tooth.fdi} value={tooth.fdi}>
-    {toothLabelAr(tooth.fdi)}
-  </option>
-));
+const toothOptions = (locale: Locale) =>
+  allTeeth().map((tooth) => (
+    <option key={tooth.fdi} value={tooth.fdi}>
+      {toothLabel(locale, tooth.fdi)}
+    </option>
+  ));

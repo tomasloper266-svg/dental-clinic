@@ -1,3 +1,4 @@
+import { getServerT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import { markReminderSent } from "@/lib/services/reminders";
@@ -8,6 +9,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ appointmentId: string }> },
 ) {
+  const t = await getServerT();
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
@@ -16,7 +18,7 @@ export async function POST(
   const result = await markReminderSent(ctx, appointmentId);
   if (!result.ok) {
     return NextResponse.json(
-      { error: "الموعد غير موجود" },
+      { error: t("api.appointmentNotFound") },
       { status: 404 },
     );
   }

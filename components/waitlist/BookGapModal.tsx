@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useEffect, useState } from "react";
 import { CalendarCheck } from "lucide-react";
@@ -45,6 +46,7 @@ export default function BookGapModal({
   onClose,
   onBooked,
 }: BookGapModalProps) {
+  const { t } = useI18n();
   const { toast } = useToast();
   const [entryId, setEntryId] = useState<string | null>(waiting[0]?.id ?? null);
   const [duration, setDuration] = useState<number>(
@@ -66,7 +68,7 @@ export default function BookGapModal({
 
   async function submit() {
     if (!entryId) {
-      setError("اختر مريضاً من القائمة");
+      setError(t("dental.pickFromList"));
       return;
     }
     setSaving(true);
@@ -83,17 +85,17 @@ export default function BookGapModal({
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
-        setError(data.error ?? "تعذر الحجز");
+        setError(data.error ?? t("api.waitlist.bookFailed"));
         return;
       }
       const entry = waiting.find((e) => e.id === entryId);
       toast(
-        `تم حجز ${entry?.patientName ?? "المريض"} في فجوة ${formatTime(gap.start)}`,
+        `تم حجز ${entry?.patientName ?? t("common.patient")} في فجوة ${formatTime(gap.start)}`,
       );
       onBooked();
       onClose();
     } catch {
-      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+      setError(t("errors.serverRetry"));
     } finally {
       setSaving(false);
     }
@@ -107,17 +109,16 @@ export default function BookGapModal({
     >
       <div className="flex flex-col gap-4">
         <p className="rounded-field border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-800">
-          مدة الفجوة الشاغرة <span className="numeric font-semibold">{gap.durationMin}</span> دقيقة —
-          اختر المريض والمدة المناسبة.
+          {t("waitlist.gapDurationLabel")} <span className="numeric font-semibold">{gap.durationMin}</span> {t("appointments.minutesHint")}
         </p>
 
         <fieldset className="flex flex-col gap-1.5">
           <legend className="text-sm font-medium text-ink-900">
-            المريض المنتظر
+            {t("waitlist.waitingPatient")}
           </legend>
           {waiting.length === 0 ? (
             <p className="rounded-field border border-warm-200 bg-surface-sunken px-3 py-2 text-xs text-warm-600">
-              لا مرضى في قائمة الانتظار — أضف مريضاً أولاً.
+              {t("waitlist.emptyHint")}
             </p>
           ) : (
             waiting.map((e) => (
@@ -145,7 +146,7 @@ export default function BookGapModal({
           )}
         </fieldset>
 
-        <Field label="المدة (دقيقة)" htmlFor="gap-duration">
+        <Field label={t("appointments.durationMin")} htmlFor="gap-duration">
           <Select
             id="gap-duration"
             value={duration}
@@ -171,10 +172,10 @@ export default function BookGapModal({
         <div className="flex gap-2">
           <Button onClick={submit} loading={saving} disabled={waiting.length === 0}>
             <CalendarCheck size={16} aria-hidden />
-            {saving ? "جارٍ الحجز…" : "تأكيد الحجز"}
+            {saving ? t("appointments.booking") : t("appointments.confirmBooking")}
           </Button>
           <Button variant="secondary" onClick={onClose} disabled={saving}>
-            إلغاء
+            {t("common.cancel")}
           </Button>
         </div>
       </div>

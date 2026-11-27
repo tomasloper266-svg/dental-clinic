@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useCallback, useState } from "react";
 import {
@@ -64,6 +65,7 @@ async function recordReminderSent(appointmentId: string): Promise<boolean> {
 }
 
 export default function RemindersBoard() {
+  const { t } = useI18n();
   const [state, setState] = useState<LoadState>({ kind: "idle" });
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [recordFailedId, setRecordFailedId] = useState<string | null>(null);
@@ -119,8 +121,8 @@ export default function RemindersBoard() {
   return (
     <>
       <PageHeader
-        title="تذكير الغد"
-        description="لوحة عمليات: أرسل التذكير لكل مريض بواتساب أو انسخ نصّه — الرسالة عربية جاهزة برابط مباشر."
+        title={t("common.tomorrowReminders")}
+        description={t("reminders.boardHint")}
         actions={
           <Button
             shape="pill"
@@ -128,7 +130,7 @@ export default function RemindersBoard() {
             loading={state.kind === "loading"}
           >
             <CalendarClock size={16} aria-hidden />
-            تجهيز تذكيرات الغد
+            {t("reminders.prepare")}
           </Button>
         }
       />
@@ -140,10 +142,10 @@ export default function RemindersBoard() {
             className="flex flex-col items-center gap-3 rounded-panel border border-danger-300 bg-danger-50 px-6 py-10 text-center"
           >
             <p className="text-sm font-medium text-danger-700">
-              تعذر تجهيز قائمة التذكير — تحقق من الاتصال ثم أعد المحاولة.
+              {t("reminders.prepareFailed")}
             </p>
             <Button variant="secondary" size="sm" onClick={() => void prepare()}>
-              إعادة المحاولة
+              {t("common.retry")}
             </Button>
           </div>
         ) : state.kind !== "loaded" ? (
@@ -151,16 +153,16 @@ export default function RemindersBoard() {
             icon={CalendarPlus}
             title={
               state.kind === "loading"
-                ? "جارٍ تجهيز تذكيرات الغد…"
-                : "لم تُجهّز تذكيرات الغد بعد"
+                ? t("reminders.preparing")
+                : t("reminders.notPrepared")
             }
-            description="اضغط «تجهيز تذكيرات الغد» لجمع مواعيد الغد وتوليد رسالة عربية جاهزة لكل مريض مع رابط واتساب مباشر."
+            description={t("reminders.prepareHint")}
           />
         ) : state.reminders.length === 0 ? (
           <EmptyState
             icon={CalendarPlus}
-            title="لا مواعيد غداً"
-            description="القائمة فارغة — احجز مواعيد الغد أولاً ثم أعد التجهيز."
+            title={t("reminders.noTomorrow")}
+            description={t("reminders.emptyHint")}
           />
         ) : (
           <>
@@ -168,17 +170,17 @@ export default function RemindersBoard() {
             <div className="grid gap-3 sm:grid-cols-3">
               <StatCard
                 value={String(counters!.ready)}
-                label="جاهز"
+                label={t("instructions.ready")}
                 icon={CalendarClock}
               />
               <StatCard
                 value={String(counters!.sent)}
-                label="أُرسل"
+                label={t("instructions.sent")}
                 icon={CheckCircle2}
               />
               <StatCard
                 value={String(counters!.remaining)}
-                label="متبقي"
+                label={t("dues.remainingShort")}
                 icon={Hourglass}
                 tone="danger"
               />
@@ -188,11 +190,11 @@ export default function RemindersBoard() {
             <Table className="mt-4 hidden md:table">
               <THead>
                 <TRow>
-                  <TH>المريض</TH>
-                  <TH>الرسالة</TH>
-                  <TH>حالة الموعد</TH>
-                  <TH>الإرسال</TH>
-                  <TH className="w-32">إجراءات</TH>
+                  <TH>{t("common.patient")}</TH>
+                  <TH>{t("instructions.theMessage")}</TH>
+                  <TH>{t("appointments.status")}</TH>
+                  <TH>{t("instructions.send")}</TH>
+                  <TH className="w-32">{t("common.actions")}</TH>
                 </TRow>
               </THead>
               <tbody>
@@ -242,10 +244,11 @@ type ReminderRowProps = {
 
 /** شارة حالة الإرسال — أُرسل ناجحة، جاهز محايدة. */
 function SendBadge({ sent }: { sent: boolean }) {
+  const { t } = useI18n();
   return sent ? (
-    <StatusPill tone="success">أُرسل</StatusPill>
+    <StatusPill tone="success">{t("instructions.sent")}</StatusPill>
   ) : (
-    <Badge tone="neutral">جاهز</Badge>
+    <Badge tone="neutral">{t("instructions.ready")}</Badge>
   );
 }
 
@@ -257,6 +260,7 @@ function ReminderRow({
   onSend,
   onCopy,
 }: ReminderRowProps) {
+  const { t } = useI18n();
   const subtitle = `${formatTime(reminder.startsAt)}${reminder.reason ? ` · ${reminder.reason}` : ""}`;
 
   const sendControls = reminder.whatsappUrl ? (
@@ -269,25 +273,25 @@ function ReminderRow({
           target="_blank"
           rel="noopener noreferrer"
         >
-          إرسال واتساب
+          {t("instructions.sendWhatsapp")}
         </PillAction>
       )}
       {reminder.sent && (
         <IconAction
           icon={MessageCircle}
-          label="فتح واتساب مجدداً"
+          label={t("instructions.reopenWhatsapp")}
           href={reminder.whatsappUrl}
         />
       )}
       <IconAction
         icon={Copy}
-        label={copied ? "تم نسخ النص" : "نسخ النص"}
+        label={copied ? t("instructions.copied") : t("instructions.copyText")}
         onClick={onCopy}
       />
     </span>
   ) : (
     <span className="text-xs text-warning-700">
-      لا يوجد رقم هاتف — أضف الرقم في ملف المريض
+      {t("instructions.noPhoneAdd")}
     </span>
   );
 
@@ -297,7 +301,7 @@ function ReminderRow({
       onClick={onSend}
       className="text-warning-700 text-xs underline"
     >
-      تعذر تسجيل الإرسال — سجّله يدوياً
+      {t("instructions.sendRecordFailed")}
     </button>
   ) : null;
 

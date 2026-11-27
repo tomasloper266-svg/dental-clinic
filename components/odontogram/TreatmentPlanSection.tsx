@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/components/i18n/I18nProvider";
+import type { TranslationKey } from "@/lib/i18n/core";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMoney } from "@/components/ui/CurrencyContext";
@@ -8,11 +10,9 @@ import type {
   PlanItemDto,
   PlanItemStatus,
 } from "@/lib/services/treatment-plan";
-import { toothStatusMeta } from "@/lib/odontogram/statuses";
+import { toothStatusMeta, toothStatusIcon, toothStatusLabel } from "@/lib/odontogram/statuses";
 import { toothAnatomy, type SurfaceKey } from "@/lib/odontogram/anatomy";
-import {
-  formatSurfaceAr,
-} from "@/lib/odontogram/surfaces";
+import { formatSurface } from "@/lib/odontogram/surfaces";
 import { isValidToothFdi } from "@/lib/odontogram/fdi";
 import { isUsdAmount } from "@/lib/currency";
 import { planTotals, planByTooth } from "@/lib/treatment-plan-view";
@@ -38,18 +38,18 @@ type Props = {
 // مُصدَّر لإعادة الاستخدام (خلاصة الخطة في لوح البانورامي الجانبي)
 export const STATUS_META: Record<
   PlanItemStatus,
-  { labelAr: string; chipClass: string }
+  { labelKey: TranslationKey; chipClass: string }
 > = {
   PROPOSED: {
-    labelAr: "مخطط",
+    labelKey: "plans.chip.proposed",
     chipClass: "border-warm-300 bg-warm-100 text-warm-700",
   },
   ACCEPTED: {
-    labelAr: "مقبول",
+    labelKey: "plans.chip.accepted",
     chipClass: "border-ink-200 bg-ink-100 text-ink-800",
   },
   DONE: {
-    labelAr: "منفذ",
+    labelKey: "plans.chip.done",
     chipClass: "border-primary-600 bg-primary-600 text-white",
   },
 };
@@ -68,6 +68,7 @@ export default function TreatmentPlanSection({
   preselectedTooth,
   onFocusTooth,
 }: Props) {
+  const { t, locale } = useI18n();
   const router = useRouter();
   const money = useMoney();
   const [items, setItems] = useState<PlanItemDto[]>(initialItems);
@@ -121,7 +122,7 @@ export default function TreatmentPlanSection({
       });
       const data = (await res.json()) as { item?: PlanItemDto; error?: string };
       if (!res.ok || !data.item) {
-        setError(data.error ?? "تعذر إضافة بند الخطة");
+        setError(data.error ?? t("api.planItemAddFailed"));
         return;
       }
       setItems((prev) => [...prev, data.item as PlanItemDto]);
@@ -129,7 +130,7 @@ export default function TreatmentPlanSection({
       setPrice("");
       setSurfaces([]);
     } catch {
-      setError("تعذر الاتصال بالخادم");
+      setError(t("errors.server"));
     } finally {
       setBusy(false);
     }
@@ -155,7 +156,7 @@ export default function TreatmentPlanSection({
       });
       const data = (await res.json()) as { item?: PlanItemDto; error?: string };
       if (!res.ok || !data.item) {
-        setError(data.error ?? "تعذر تعديل البند");
+        setError(data.error ?? t("api.planItemUpdateFailed"));
         return;
       }
       setItems((prev) =>
@@ -163,7 +164,7 @@ export default function TreatmentPlanSection({
       );
       setEditingId(null);
     } catch {
-      setError("تعذر الاتصال بالخادم");
+      setError(t("errors.server"));
     } finally {
       setBusy(false);
     }
@@ -180,14 +181,14 @@ export default function TreatmentPlanSection({
       });
       const data = (await res.json()) as { item?: PlanItemDto; error?: string };
       if (!res.ok || !data.item) {
-        setError(data.error ?? "تعذر تحديث حالة البند");
+        setError(data.error ?? t("plans.statusUpdateFailed"));
         return;
       }
       setItems((prev) =>
         prev.map((it) => (it.id === id ? (data.item as PlanItemDto) : it)),
       );
     } catch {
-      setError("تعذر الاتصال بالخادم");
+      setError(t("errors.server"));
     } finally {
       setBusy(false);
     }
@@ -204,7 +205,7 @@ export default function TreatmentPlanSection({
       });
       const data = (await res.json()) as { item?: PlanItemDto; error?: string };
       if (!res.ok || !data.item) {
-        setError(data.error ?? "تعذر بدء تنفيذ البند");
+        setError(data.error ?? t("api.planItemStartFailed"));
         return;
       }
       setItems((prev) =>
@@ -215,7 +216,7 @@ export default function TreatmentPlanSection({
       // إعادة القراءة من الخادم ليظهر قيد «علاج منفذ» على الأودوغرام فوراً.
       router.refresh();
     } catch {
-      setError("تعذر الاتصال بالخادم");
+      setError(t("errors.server"));
     } finally {
       setBusy(false);
     }
@@ -228,9 +229,9 @@ export default function TreatmentPlanSection({
     isUsdAmount(Number(price));
 
   const groups: { status: PlanItemStatus; labelAr: string }[] = [
-    { status: "PROPOSED", labelAr: "مخطط — بانتظار موافقة المريض" },
-    { status: "ACCEPTED", labelAr: "مقبول — جاهز للتنفيذ" },
-    { status: "DONE", labelAr: "منفَّذ" },
+    { status: "PROPOSED", labelAr: t("plans.awaitingApproval") },
+    { status: "ACCEPTED", labelAr: t("plans.approvedReady") },
+    { status: "DONE", labelAr: t("plans.done") },
   ];
 
   const inputClass =
@@ -239,9 +240,9 @@ export default function TreatmentPlanSection({
   return (
     <section className="rounded-panel border-warm-200 bg-surface-raised border p-4 sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-ink-900 text-base font-semibold">خطة العلاج</h2>
+        <h2 className="text-ink-900 text-base font-semibold">{t("plans.thePlan")}</h2>
         <p className="text-warm-500 text-xs">
-          البند المنفَّذ نهائي ولا يُعدَّل — الأسعار بالليرة السورية.
+          {t("plans.doneImmutablePrices")}
         </p>
       </div>
 
@@ -253,9 +254,9 @@ export default function TreatmentPlanSection({
             const summary = totals.byStatus[status];
             return (
               <div key={status}>
-                <p className="text-warm-500 text-[11px]">{meta.labelAr}</p>
+                <p className="text-warm-500 text-[11px]">{t(meta.labelKey)}</p>
                 <p className="text-ink-900 numeric text-sm font-semibold">
-                  <span className="numeric">{summary.count}</span> بند ·{" "}
+                  <span className="numeric">{summary.count}</span> {t("finance.itemDot")}{" "}
                   {money(summary.total)}
                 </p>
               </div>
@@ -263,7 +264,7 @@ export default function TreatmentPlanSection({
           })}
           <div className="border-warm-200 border-e pe-3">
             <p className="text-ink-700 text-[11px] font-semibold">
-              الإجمالي الكلي
+              {t("common.grandTotal")}
             </p>
             <p className="text-ink-900 numeric text-sm font-bold">
               {money(totals.grandTotal)}
@@ -274,7 +275,7 @@ export default function TreatmentPlanSection({
 
       <div className="mt-4 grid gap-2 sm:grid-cols-[5rem_1fr_8rem_auto]">
         <label className="sr-only" htmlFor="plan-tooth">
-          رقم السن (FDI)
+          {t("dental.toothFdiNumber")}
         </label>
         <Input
           id="plan-tooth"
@@ -284,18 +285,18 @@ export default function TreatmentPlanSection({
           max={48}
           value={tooth}
           onChange={(e) => handleToothChange(e.target.value)}
-          placeholder="سن"
+          placeholder={t("common.toothUnit")}
           className={cn(inputClass, "numeric")}
         />
         <label className="sr-only" htmlFor="plan-procedure">
-          الإجراء
+          {t("common.procedure")}
         </label>
         <div className="flex items-center gap-1.5">
           <Input
             id="plan-procedure"
             value={procedure}
             onChange={(e) => setProcedure(e.target.value)}
-            placeholder="الإجراء — حشو، خلع…"
+            placeholder={t("plans.procedurePlaceholder")}
             className={inputClass}
           />
           <MicButton
@@ -305,7 +306,7 @@ export default function TreatmentPlanSection({
           />
         </div>
         <label className="sr-only" htmlFor="plan-price">
-          السعر بالدولار
+          {t("finance.priceUsdLabel")}
         </label>
         <Input
           id="plan-price"
@@ -315,11 +316,11 @@ export default function TreatmentPlanSection({
           min={0}
           value={price}
           onChange={(e) => setPrice(e.target.value)}
-          placeholder="السعر $"
+          placeholder={t("finance.priceUsdShort")}
           className={cn(inputClass, "numeric")}
         />
         <Button onClick={addItem} loading={busy} disabled={busy || !canAdd}>
-          إضافة بند
+          {t("plans.addItem")}
         </Button>
       </div>
 
@@ -331,7 +332,7 @@ export default function TreatmentPlanSection({
               className="text-warm-600 mb-1.5 text-xs font-semibold"
               id="plan-surfaces-label"
             >
-              سطح السن (اختياري)
+              {t("dental.toothSurfaceOptional")}
             </p>
             <div
               className="flex flex-wrap gap-1.5"
@@ -380,10 +381,10 @@ export default function TreatmentPlanSection({
       {items.length === 0 ? (
         <div className="border-warm-200 mt-5 rounded-field border border-dashed px-4 py-8 text-center">
           <p className="text-warm-600 text-sm font-medium">
-            لا توجد بنود في خطة العلاج بعد
+            {t("plans.noItems")}
           </p>
           <p className="text-warm-400 mt-1 text-xs">
-            أضف أول بند أعلاه — أو انقر سناً على الأودوغرام لتعبئة رقمه مباشرة.
+            {t("plans.addFirstItem")}
           </p>
         </div>
       ) : (
@@ -399,7 +400,7 @@ export default function TreatmentPlanSection({
               <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-1">
                 <p className="text-ink-700 text-xs font-semibold">{labelAr}</p>
                 <p className="text-warm-500 numeric text-xs">
-                  <span className="numeric">{group.length}</span> بنود ·{" "}
+                  <span className="numeric">{group.length}</span> {t("finance.itemsDot")}{" "}
                   {money(groupTotal)}
                 </p>
               </div>
@@ -413,7 +414,7 @@ export default function TreatmentPlanSection({
                             id={`plan-procedure-edit-${item.id}`}
                             value={editProcedure}
                             onChange={(e) => setEditProcedure(e.target.value)}
-                            aria-label="الإجراء"
+                            aria-label={t("common.procedure")}
                             className={inputClass}
                           />
                           <MicButton
@@ -429,7 +430,7 @@ export default function TreatmentPlanSection({
                           inputMode="decimal"
                           value={editPrice}
                           onChange={(e) => setEditPrice(e.target.value)}
-                          aria-label="السعر ($)"
+                          aria-label={t("finance.priceUsd")}
                           className={cn(inputClass, "numeric")}
                         />
                         <Button
@@ -437,14 +438,14 @@ export default function TreatmentPlanSection({
                           loading={busy}
                           className="h-9"
                         >
-                          حفظ التعديل
+                          {t("common.saveEdit")}
                         </Button>
                         <Button
                           variant="ghost"
                           onClick={() => setEditingId(null)}
                           className="h-9"
                         >
-                          إلغاء
+                          {t("common.cancel")}
                         </Button>
                       </div>
                     ) : (
@@ -453,7 +454,7 @@ export default function TreatmentPlanSection({
                           <button
                             type="button"
                             onClick={() => onFocusTooth(item.toothFdi)}
-                            title="عرض السن على الأودوغرام"
+                            title={t("dental.showToothOnChart")}
                             className="border-ink-200 bg-ink-50 text-ink-800 numeric hover:border-primary-300 hover:bg-primary-50 hover:text-primary-800 rounded-field border px-2 py-0.5 text-xs font-bold transition-colors focus-visible:outline-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2"
                           >
                             {item.toothFdi}
@@ -468,7 +469,7 @@ export default function TreatmentPlanSection({
                         </span>
                         {item.surface && (
                           <span className="border-steel-200 bg-steel-50 text-steel-700 rounded-field border px-2 py-0.5 text-[11px]">
-                            {formatSurfaceAr(item.surface)}
+                            {formatSurface(locale, item.surface)}
                           </span>
                         )}
                         <span className="text-warm-700 numeric text-xs font-semibold">
@@ -480,7 +481,7 @@ export default function TreatmentPlanSection({
                             STATUS_META[item.status].chipClass,
                           )}
                         >
-                          {STATUS_META[item.status].labelAr}
+                          {t(STATUS_META[item.status].labelKey)}
                         </span>
                         {item.status !== "DONE" && (
                           <div className="flex w-full gap-1.5 sm:ms-auto sm:w-auto">
@@ -490,7 +491,7 @@ export default function TreatmentPlanSection({
                               disabled={busy}
                               className="h-8 px-2.5 text-xs"
                             >
-                              تعديل
+                              {t("common.edit")}
                             </Button>
                             {item.status === "PROPOSED" && (
                               <Button
@@ -499,7 +500,7 @@ export default function TreatmentPlanSection({
                                 disabled={busy}
                                 className="h-8 px-2.5 text-xs"
                               >
-                                قبول
+                                {t("admin.accept")}
                               </Button>
                             )}
                             <Button
@@ -511,7 +512,7 @@ export default function TreatmentPlanSection({
                               disabled={busy}
                               className="h-8 px-2.5 text-xs"
                             >
-                              بدء التنفيذ
+                              {t("plans.startExecution")}
                             </Button>
                           </div>
                         )}
@@ -521,7 +522,7 @@ export default function TreatmentPlanSection({
                     {startingId === item.id && (
                       <div className="border-primary-200 bg-primary-50 mt-2 rounded-field border p-2">
                         <p className="text-primary-800 mb-1 text-xs font-semibold">
-                          الحالة الناتجة على السن {item.toothFdi}:
+                          {t("odontogram.resultingStatus")} {item.toothFdi}:
                         </p>
                         <div className="flex flex-wrap gap-1.5">
                           {RESULT_STATUSES.map((key) => {
@@ -539,15 +540,14 @@ export default function TreatmentPlanSection({
                                   meta?.chipClass,
                                 )}
                               >
-                                <span className="font-bold">{meta?.icon}</span>
-                                {meta?.labelAr}
+                                <span className="font-bold">{meta ? toothStatusIcon(locale, meta.value) : null}</span>
+                                {meta ? toothStatusLabel(locale, meta.value) : null}
                               </button>
                             );
                           })}
                         </div>
                         <p className="text-warm-500 mt-1 text-[11px]">
-                          سيُضاف قيد «علاج منفذ» لسجل السن — القيود السابقة تبقى
-                          محفوظة.
+                          {t("plans.executionEntryNote")}
                         </p>
                       </div>
                     )}
@@ -569,15 +569,15 @@ export default function TreatmentPlanSection({
 
       {items.length > 0 && (
         <p className="text-warm-400 mt-3 text-[11px]">
-          الإجمالي الكلي{" "}
+          {t("common.grandTotal")}{" "}
           <span className="numeric font-semibold">
             {money(totals.grandTotal)}
           </span>{" "}
-          — منه{" "}
+          {t("dues.ofItSuffix")}{" "}
           <span className="numeric font-semibold">
             {money(totals.acceptedTotal)}
           </span>{" "}
-          على بنود مقبولة بانتظار التنفيذ.
+          {t("plans.readyNote")}
         </p>
       )}
     </section>

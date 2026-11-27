@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -76,6 +77,7 @@ function invoiceHasAllocation(row: ClinicInvoiceRow): boolean {
 }
 
 export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
+  const { t } = useI18n();
   const money = useMoney();
   const { toast } = useToast();
   const [entries, setEntries] = useState<ClinicEntryJson[] | null>(null);
@@ -158,7 +160,7 @@ export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
   function exportCsv() {
     if (!filtered) return;
     const csv = toCsv(
-      ["الرقم", "المريض", "التاريخ", "الإجمالي", "المدفوع", "المتبقي", "الحالة"],
+      [t("common.number"), t("common.patient"), t("common.date"), t("common.total"), t("common.paidAmount"), t("common.remaining"), t("common.status")],
       filtered.map((row) => [
         row.number,
         row.patientName,
@@ -169,8 +171,8 @@ export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
         INVOICE_FILTER_LABELS[row.status],
       ]),
     );
-    downloadCsv("الفواتير.csv", csv);
-    toast("صُدّر ملف الفواتير");
+    downloadCsv(t("invoices.csvName"), csv);
+    toast(t("settings.invoicesCsvExported"));
   }
 
   // بنود المخطط العلاجي للمريض في نافذة التفاصيل — لعرض حالة البند
@@ -218,14 +220,14 @@ export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
       );
       const data = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) {
-        toast(data.error ?? "تعذر حذف الفاتورة", "danger");
+        toast(data.error ?? t("api.invoiceDeleteFailed"), "danger");
         return;
       }
-      toast("حُذفت الفاتورة من الدفتر");
+      toast(t("invoices.deleted"));
       if (detail?.row.chargeId === row.chargeId) setDetail(null);
       await refresh();
     } catch {
-      toast("تعذر الاتصال بالخادم، حاول مرة أخرى", "danger");
+      toast(t("errors.serverRetry"), "danger");
     } finally {
       setDeletingChargeId(null);
     }
@@ -237,7 +239,7 @@ export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
-        title="الفواتير والمدفوعات"
+        title={t("common.invoicesPayments")}
         description={formatWeekdayDateCell(new Date())}
         actions={
           <Button
@@ -246,7 +248,7 @@ export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
             disabled={patients !== null && patients.length === 0}
           >
             <Plus size={16} aria-hidden />
-            فاتورة جديدة
+            {t("invoices.newInvoice")}
           </Button>
         }
       />
@@ -256,13 +258,13 @@ export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
           <SearchInput
             value={search}
             onChange={setSearch}
-            placeholder="ابحث برقم الفاتورة أو اسم المريض"
-            aria-label="ابحث في الفواتير"
+            placeholder={t("invoices.searchPlaceholder")}
+            aria-label={t("invoices.search")}
           />
           <div className="flex flex-wrap items-center justify-end gap-2">
             <FilterPills
               accent="warning"
-              ariaLabel="تصفية الفواتير بالحالة"
+              ariaLabel={t("invoices.filterByStatus")}
               value={filter}
               onChange={setFilter}
               options={INVOICE_FILTER_ORDER.map((value) => ({
@@ -275,7 +277,7 @@ export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
             {filtersDirty && (
               <IconAction
                 icon={Trash2}
-                label="مسح التصفية"
+                label={t("common.clearFilter")}
                 onClick={resetFilters}
               />
             )}
@@ -286,20 +288,20 @@ export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
         <div className="grid gap-3 px-5 pt-1 sm:grid-cols-3">
           <StatCard
             value={String(summary.count)}
-            label="فاتورة (بعد الفلاتر)"
+            label={t("invoices.afterFilters")}
             icon={FileText}
             iconClassName="bg-warning-500/10 text-warning-600"
           />
           <StatCard
             value={money(summary.totalUsd)}
-            label="إجمالي الإصدار"
+            label={t("invoices.issuedTotal")}
             icon={CircleDollarSign}
             valueClassName="text-warning-600"
             iconClassName="bg-primary-500/10 text-primary-700"
           />
           <StatCard
             value={money(summary.remainingUsd)}
-            label="المتبقي عليها"
+            label={t("dues.remainingOnHer")}
             icon={AlertTriangle}
             tone="danger"
           />
@@ -308,12 +310,12 @@ export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
         {loadError ? (
           <EmptyState
             icon={RotateCw}
-            title="تعذر تحميل الفواتير"
-            description="تحقق من الاتصال ثم أعد المحاولة"
+            title={t("invoices.loadFailed")}
+            description={t("errors.checkConnection")}
             action={
               <Button variant="secondary" onClick={() => void refresh()}>
                 <RotateCw size={15} aria-hidden />
-                إعادة المحاولة
+                {t("common.retry")}
               </Button>
             }
           />
@@ -330,33 +332,33 @@ export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
           filtersDirty ? (
             <EmptyState
               icon={Search}
-              title="لا فواتير مطابقة للتصفية"
-              description="عدّل كلمة البحث أو الحالة المختارة"
+              title={t("invoices.noMatches")}
+              description={t("patients.widenOrFilter")}
               action={
                 <Button variant="secondary" onClick={resetFilters}>
-                  مسح التصفية
+                  {t("common.clearFilter")}
                 </Button>
               }
             />
           ) : (
             <EmptyState
               icon={FileText}
-              title="لا فواتير بعد"
-              description="أصدر أول فاتورة من زر «فاتورة جديدة»"
+              title={t("invoices.empty")}
+              description={t("invoices.emptyAction")}
             />
           )
         ) : (
           <Table>
             <THead>
               <TRow>
-                <TH>الرقم</TH>
-                <TH>المريض</TH>
-                <TH>التاريخ</TH>
-                <TH>الإجمالي</TH>
-                <TH>المدفوع</TH>
-                <TH>المتبقي</TH>
-                <TH>الحالة</TH>
-                <TH>إجراءات</TH>
+                <TH>{t("common.number")}</TH>
+                <TH>{t("common.patient")}</TH>
+                <TH>{t("common.date")}</TH>
+                <TH>{t("common.total")}</TH>
+                <TH>{t("common.paidAmount")}</TH>
+                <TH>{t("common.remaining")}</TH>
+                <TH>{t("common.status")}</TH>
+                <TH>{t("common.actions")}</TH>
               </TRow>
             </THead>
             <tbody>
@@ -408,7 +410,7 @@ export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
                           onClick={() => setDetail({ row })}
                         >
                           <Eye size={13} aria-hidden />
-                          عرض
+                          {t("common.view")}
                         </PillAction>
                         <PillAction
                           variant="successSoft"
@@ -421,18 +423,18 @@ export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
                           disabled={row.remainingUsd <= 0}
                           title={
                             row.remainingUsd <= 0
-                              ? "الفاتورة مسددة بالكامل"
+                              ? t("api.ledger.invoiceFullyPaid")
                               : undefined
                           }
                         >
-                          تسديد
+                          {t("common.settle")}
                         </PillAction>
                         <IconAction
                           icon={Trash2}
                           label={
                             hasAllocation
-                              ? "لا يمكن حذف فاتورة عليها دفعات أو خصم"
-                              : "حذف الفاتورة"
+                              ? t("api.ledger.invoiceHasPayments")
+                              : t("invoices.delete")
                           }
                           disabled={hasAllocation || deletingChargeId === row.chargeId}
                           onClick={() => void deleteInvoice(row)}

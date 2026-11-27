@@ -7,6 +7,8 @@ import {
 import "./globals.css";
 import { I18nProvider } from "@/components/i18n/I18nProvider";
 import { dirOf, getLocale } from "@/lib/i18n";
+import { translate } from "@/lib/i18n/core";
+import type { Locale } from "@/lib/i18n/core";
 
 // الهوية الطباعية: IBM Plex Sans Arabic — عناوين 600–700 ومتن 400–500.
 const plexArabic = IBM_Plex_Sans_Arabic({
@@ -31,11 +33,17 @@ const plexLatin = IBM_Plex_Sans({
   weight: ["400", "500", "600", "700"],
 });
 
-export const metadata: Metadata = {
-  title: "DENTIQ — نظام إدارة عيادات الأسنان",
-  description:
-    "نظام DENTIQ لإدارة عيادات الأسنان — مرضى، مواعيد، مخطط أسنان تفاعلي، حسابات ومخزون",
-};
+/**
+ * بيانات الصفحة الجذرية — العنوان والوصف حسب لغة الجلسة، فترويسة المتصفح
+ * وتشارك الرابط يعرضان نص اللغة الحالية بدل العربية الثابتة.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const locale: Locale = await getLocale();
+  return {
+    title: translate(locale, "app.title"),
+    description: translate(locale, "app.metaDescription"),
+  };
+}
 
 /**
  * تفضيل الثيم قبل أول رسم — يقرأ المخزن المحلي ويضبط صنف `dark`

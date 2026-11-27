@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useState } from "react";
 import {
@@ -25,6 +26,7 @@ type Props = {
  * أدوار)، التخصص، الهاتف، نسبة العمولة، لون التمييز، وملاحظات الدوام.
  */
 export function StaffFormModal({ open, editing, onClose, onSaved }: Props) {
+  const { t } = useI18n();
   const [values, setValues] = useState<StaffFormValues>(
     editing?.values ?? emptyStaffForm(),
   );
@@ -37,7 +39,7 @@ export function StaffFormModal({ open, editing, onClose, onSaved }: Props) {
   async function save() {
     setError(null);
     if (values.name.trim().length < 2) {
-      setError("الاسم مطلوب (حرفان على الأقل)");
+      setError(t("patients.nameRequired"));
       return;
     }
     setBusy(true);
@@ -60,12 +62,12 @@ export function StaffFormModal({ open, editing, onClose, onSaved }: Props) {
       );
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
-        setError(data.error ?? "تعذر حفظ بيانات العضو");
+        setError(data.error ?? t("staff.saveFailed"));
         return;
       }
-      onSaved(editing ? "حُدثت بيانات العضو" : "أُضيف العضو");
+      onSaved(editing ? t("staff.memberUpdated") : t("staff.memberAdded"));
     } catch {
-      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+      setError(t("errors.serverRetry"));
     } finally {
       setBusy(false);
     }
@@ -75,20 +77,20 @@ export function StaffFormModal({ open, editing, onClose, onSaved }: Props) {
     <Modal
       open={open}
       onClose={onClose}
-      title={editing ? "تعديل عضو الطاقم" : "إضافة عضو جديد"}
+      title={editing ? t("staff.editMember") : t("staff.addNewMember")}
       className="max-w-xl"
     >
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="الاسم *" htmlFor="staff-name">
+        <Field label={t("common.nameRequired")} htmlFor="staff-name">
           <Input
             id="staff-name"
             value={values.name}
             onChange={(e) => set("name")(e.target.value)}
-            placeholder="د. …"
+            placeholder={t("staff.drPlaceholder")}
             required
           />
         </Field>
-        <Field label="الدور" htmlFor="staff-role">
+        <Field label={t("staff.role")} htmlFor="staff-role">
           <Select
             id="staff-role"
             value={values.role}
@@ -101,15 +103,15 @@ export function StaffFormModal({ open, editing, onClose, onSaved }: Props) {
             ))}
           </Select>
         </Field>
-        <Field label="التخصص" htmlFor="staff-specialty">
+        <Field label={t("staff.specialty")} htmlFor="staff-specialty">
           <Input
             id="staff-specialty"
             value={values.specialty}
             onChange={(e) => set("specialty")(e.target.value)}
-            placeholder="تحليل وتقويم الأسنان"
+            placeholder={t("dental.orthodontics")}
           />
         </Field>
-        <Field label="الهاتف" htmlFor="staff-phone">
+        <Field label={t("common.phone")} htmlFor="staff-phone">
           <Input
             id="staff-phone"
             dir="ltr"
@@ -118,7 +120,7 @@ export function StaffFormModal({ open, editing, onClose, onSaved }: Props) {
             inputMode="tel"
           />
         </Field>
-        <Field label="نسبة العمولة %" htmlFor="staff-commission">
+        <Field label={t("staff.commissionPercent")} htmlFor="staff-commission">
           <Input
             id="staff-commission"
             type="number"
@@ -130,7 +132,7 @@ export function StaffFormModal({ open, editing, onClose, onSaved }: Props) {
             className="numeric"
           />
         </Field>
-        <Field label="لون التمييز" htmlFor="staff-color">
+        <Field label={t("staff.accentColor")} htmlFor="staff-color">
           <Input
             id="staff-color"
             type="color"
@@ -140,12 +142,12 @@ export function StaffFormModal({ open, editing, onClose, onSaved }: Props) {
           />
         </Field>
         <div className="sm:col-span-2">
-          <Field label="ملاحظات الدوام" htmlFor="staff-schedule">
+          <Field label={t("staff.scheduleNote")} htmlFor="staff-schedule">
             <Input
               id="staff-schedule"
               value={values.scheduleNote}
               onChange={(e) => set("scheduleNote")(e.target.value)}
-              placeholder="الأحد إلى الخميس — من 9:00 إلى 16:00"
+              placeholder={t("staff.scheduleExample")}
             />
           </Field>
         </div>
@@ -159,10 +161,10 @@ export function StaffFormModal({ open, editing, onClose, onSaved }: Props) {
 
       <div className="mt-5 flex gap-2">
         <Button onClick={save} loading={busy} disabled={busy}>
-          حفظ
+          {t("common.save")}
         </Button>
         <Button variant="secondary" onClick={onClose} disabled={busy}>
-          إلغاء
+          {t("common.cancel")}
         </Button>
       </div>
     </Modal>

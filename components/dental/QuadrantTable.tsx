@@ -1,17 +1,9 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { toothAnatomy } from "@/lib/odontogram/anatomy";
-import {
-  QUADRANT_LABEL_AR,
-  toothDisplayNameAr,
-  type ToothCell,
-} from "@/lib/odontogram/fdi";
-import {
-  TOOTH_CHART_FILL,
-  isChartFaded,
-  toothStatusMeta,
-  type ToothStatusKey,
-} from "@/lib/odontogram/statuses";
+import { type ToothCell, toothDisplayName, toothName, quadrantLabel } from "@/lib/odontogram/fdi";
+import { TOOTH_CHART_FILL, isChartFaded, toothStatusMeta, type ToothStatusKey, toothStatusLabel } from "@/lib/odontogram/statuses";
 import type { FindingDto } from "@/lib/services/findings";
 import { cn } from "@/components/ui/cn";
 
@@ -48,6 +40,7 @@ function quadrantRowTeeth(
 
 /** شارة حالة السن — نقطة بلون التعبئة (أو متقطعة للمقلوع) مع التسمية. */
 function StatusBadge({ status }: { status: ToothStatusKey }) {
+  const { locale } = useI18n();
   const meta = toothStatusMeta(status);
   const fill = TOOTH_CHART_FILL[status];
   const faded = isChartFaded(status);
@@ -66,7 +59,7 @@ function StatusBadge({ status }: { status: ToothStatusKey }) {
           aria-hidden
         />
       )}
-      {meta.labelAr}
+      {toothStatusLabel(locale, meta.value)}
     </span>
   );
 }
@@ -76,6 +69,7 @@ export default function QuadrantTable({
   selectedTooth,
   onSelect,
 }: Props) {
+  const { t, locale } = useI18n();
   return (
     <div className="space-y-3">
       {QUADRANT_ROWS.map(({ quadrant, order }) => {
@@ -86,7 +80,7 @@ export default function QuadrantTable({
             className="border-warm-200 rounded-panel border p-2 sm:p-3"
           >
             <p className="text-warm-500 mb-1.5 text-[11px] font-medium">
-              الربع {QUADRANT_LABEL_AR[quadrant]}
+              {t("dental.quadrant")} {quadrantLabel(locale, quadrant)}
             </p>
             <div className="flex flex-wrap gap-1.5">
               {teeth.map((tooth) => {
@@ -105,8 +99,8 @@ export default function QuadrantTable({
                     type="button"
                     onClick={() => onSelect(tooth.fdi)}
                     aria-pressed={selectedTooth === tooth.fdi}
-                    aria-label={`سن ${tooth.fdi} — ${tooth.nameAr}${
-                      status && status !== "HEALTHY" ? " — له حالة مسجلة" : ""
+                    aria-label={`${t("dental.toothAria", { fdi: tooth.fdi })} — ${toothName(locale, tooth.fdi) ?? ""}${
+                      status && status !== "HEALTHY" ? t("dental.hasRecordedStatus") : ""
                     }`}
                     className={cn(
                       "border-warm-200 bg-surface-raised rounded-field flex w-[74px] flex-col items-center gap-0.5 border p-1.5 transition-colors",
@@ -136,12 +130,12 @@ export default function QuadrantTable({
                       {tooth.fdi}
                     </span>
                     <span className="text-warm-600 text-center text-[10px] leading-tight">
-                      {toothDisplayNameAr(tooth.fdi)}
+                      {toothDisplayName(locale, tooth.fdi)}
                     </span>
                     {status ? (
                       <StatusBadge status={status} />
                     ) : (
-                      <span className="text-warm-400 text-[10px]">سليم</span>
+                      <span className="text-warm-400 text-[10px]">{t("dental.healthy")}</span>
                     )}
                   </button>
                 );

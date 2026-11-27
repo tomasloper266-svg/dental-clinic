@@ -9,7 +9,7 @@ import LogoutButton from "@/components/LogoutButton";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { cn } from "@/components/ui/cn";
 import { navGroups, homeNav, type BadgeKey, type NavGroup } from "./nav-items";
-import type { Locale } from "@/lib/i18n/core";
+import { translate, type Locale } from "@/lib/i18n/core";
 
 type SidebarProps = {
   collapsed: boolean;
@@ -25,8 +25,6 @@ type SidebarProps = {
   /** سعر صرف الدولار — لعرض العملة المزدوجة في بطاقة التنبيه */
   usdRate?: number;
 };
-
-const SYSTEM_NAME = "عيادات الأسنان";
 
 /*
  * هوية السايدبار — مربوط بنظام التصميم عبر الرموز الدلالية (نمط AuthShell):
@@ -56,13 +54,14 @@ export function clinicHeaderName(
 ): string {
   const trimmed = clinicName?.trim();
   if (!trimmed) {
-    return locale === "en" ? "Dental Clinics" : SYSTEM_NAME;
+    return translate(locale, "shell.systemName");
   }
   if (locale === "en") {
     return /\bDental$/i.test(trimmed) ? trimmed : `${trimmed} Dental`;
   }
   // الاسم المسجل قد ينتهي بلاقة اللاحق نفسها — لا تُضف مرتين
-  return trimmed.endsWith("لطب الأسنان") ? trimmed : `${trimmed} لطب الأسنان`;
+  const suffix = translate(locale, "shell.dentalSuffix");
+  return trimmed.endsWith(suffix) ? trimmed : `${trimmed} ${suffix}`;
 }
 
 function isItemActive(pathname: string, href: string): boolean {

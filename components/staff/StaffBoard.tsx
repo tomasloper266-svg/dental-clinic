@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useCallback, useEffect, useState } from "react";
 import { Pencil, Plus, RotateCw, Trash2, UserRound } from "lucide-react";
@@ -7,6 +8,7 @@ import {
   avatarTint,
   commissionLabel,
   staffMemberToForm,
+  staffRoleLabelKey,
   type StaffFormValues,
 } from "@/lib/staff-view";
 import { toDateInputValue, formatWeekdayDateCell } from "@/lib/dates";
@@ -31,6 +33,7 @@ type LoadState =
 type EditingTarget = { id: string; values: StaffFormValues } | null;
 
 export default function StaffBoard() {
+  const { t } = useI18n();
   const { toast } = useToast();
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -69,14 +72,14 @@ export default function StaffBoard() {
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
-        toast(data.error ?? "تعذر حذف العضو", "danger");
+        toast(data.error ?? t("api.staffDeleteFailed"), "danger");
         return;
       }
-      toast("حُذف العضو");
+      toast(t("staff.memberDeleted"));
       setDeleting(null);
       await refresh();
     } catch {
-      toast("تعذر الاتصال بالخادم، حاول مرة أخرى", "danger");
+      toast(t("errors.serverRetry"), "danger");
     } finally {
       setBusyId(null);
     }
@@ -85,7 +88,7 @@ export default function StaffBoard() {
   return (
     <>
       <PageHeader
-        title="الطاقم"
+        title={t("common.staff")}
         description={formatWeekdayDateCell(new Date())}
         actions={
           <Button
@@ -95,22 +98,22 @@ export default function StaffBoard() {
               setFormOpen(true);
             }}
           >
-            <Plus size={16} aria-hidden /> إضافة عضو
+            <Plus size={16} aria-hidden /> {t("staff.addMember")}
           </Button>
         }
       />
 
       {state.kind === "loading" && (
         <p className="text-sm text-steel-500" role="status">
-          جارٍ تحميل الطاقم…
+          {t("staff.loading")}
         </p>
       )}
 
       {state.kind === "error" && (
         <div className="border-danger-300 bg-danger-50 rounded-panel border p-4 text-sm text-danger-700">
-          <p role="alert">تعذر تحميل الطاقم، حاول مرة أخرى.</p>
+          <p role="alert">{t("staff.loadFailed")}</p>
           <Button variant="secondary" size="sm" className="mt-3" onClick={() => void refresh()}>
-            <RotateCw size={14} aria-hidden /> إعادة المحاولة
+            <RotateCw size={14} aria-hidden /> {t("common.retry")}
           </Button>
         </div>
       )}
@@ -120,8 +123,8 @@ export default function StaffBoard() {
           <CardBody>
             <EmptyState
               icon={UserRound}
-              title="لا أعضاء في الطاقم بعد"
-              description="أضف أول عضو بالضغط على «إضافة عضو» — الأطباء والاستقبال والمساعدون كلهم من هنا."
+              title={t("staff.empty")}
+              description={t("staff.emptyAction")}
             />
           </CardBody>
         </Card>
@@ -144,30 +147,30 @@ export default function StaffBoard() {
                       style={tint}
                       className="grid size-12 shrink-0 place-items-center rounded-2xl border text-lg font-bold"
                     >
-                      {member.name.trim().charAt(0) || "؟"}
+                      {member.name.trim().charAt(0) || t("common.questionMark")}
                     </span>
                     <div className="min-w-0">
                       <p className="flex items-center gap-2 truncate text-[15px] font-bold text-ink-900">
                         {member.name}
                         {!member.isActive && (
-                          <Badge tone="neutral">معطّل</Badge>
+                          <Badge tone="neutral">{t("settings.disabledShort")}</Badge>
                         )}
                       </p>
                       <p className="text-xs text-warm-500">
-                        {member.roleLabelAr}
+                        {t(staffRoleLabelKey(member.role))}
                       </p>
                     </div>
                   </div>
 
                   {member.specialty && (
                     <p className="flex items-baseline justify-between gap-2 border-b border-warm-200 py-1.5 text-sm">
-                      <span className="text-xs text-warm-500">التخصص</span>
+                      <span className="text-xs text-warm-500">{t("staff.specialty")}</span>
                       <span className="text-ink-900">{member.specialty}</span>
                     </p>
                   )}
                   {member.phone && (
                     <p className="flex items-baseline justify-between gap-2 border-b border-warm-200 py-1.5 text-sm">
-                      <span className="text-xs text-warm-500">الهاتف</span>
+                      <span className="text-xs text-warm-500">{t("common.phone")}</span>
                       <a
                         href={`tel:${member.phone.replace(/\s/g, "")}`}
                         dir="ltr"
@@ -179,14 +182,14 @@ export default function StaffBoard() {
                   )}
                   {commission && (
                     <p className="flex items-baseline justify-between gap-2 border-b border-warm-200 py-1.5 text-sm">
-                      <span className="text-xs text-warm-500">نسبة العمولة</span>
+                      <span className="text-xs text-warm-500">{t("staff.commission")}</span>
                       <span className="numeric font-bold text-primary-700">
                         {commission}
                       </span>
                     </p>
                   )}
                   <p className="flex items-baseline justify-between gap-2 border-b border-warm-200 py-1.5 text-sm">
-                    <span className="text-xs text-warm-500">مواعيد قادمة</span>
+                    <span className="text-xs text-warm-500">{t("dashboard.upcoming")}</span>
                     <span className="numeric text-ink-900">
                       {member.upcomingCount}
                     </span>
@@ -210,7 +213,7 @@ export default function StaffBoard() {
                         setFormOpen(true);
                       }}
                     >
-                      <Pencil size={14} aria-hidden /> تعديل
+                      <Pencil size={14} aria-hidden /> {t("common.edit")}
                     </Button>
                     <Button
                       variant="ghost"
@@ -218,7 +221,7 @@ export default function StaffBoard() {
                       disabled={busyId === member.id}
                       onClick={() => setDeleting(member)}
                     >
-                      <Trash2 size={14} aria-hidden /> حذف
+                      <Trash2 size={14} aria-hidden /> {t("common.delete")}
                     </Button>
                   </div>
                 </CardBody>
@@ -245,9 +248,9 @@ export default function StaffBoard() {
       <ConfirmDialog
         open={deleting !== null}
         onClose={() => setDeleting(null)}
-        title="حذف عضو الطاقم"
-        description="ستفصل مواعيده عنه (تبقى موجودة بلا طبيب). متابعة؟"
-        confirmLabel="حذف"
+        title={t("staff.deleteMember")}
+        description={t("staff.deleteWarning")}
+        confirmLabel={t("common.delete")}
         onConfirm={() => void removeMember()}
         loading={busyId === deleting?.id}
       />

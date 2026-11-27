@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import type { ToothAnatomy } from "@/lib/odontogram/anatomy";
 import {
@@ -10,7 +11,7 @@ import {
   CROWN_PAINT,
   CrownSurfaceOverlay,
 } from "@/components/odontogram/CrownPaint";
-import { toothDisplayNameAr } from "@/lib/odontogram/fdi";
+import { toothDisplayName } from "@/lib/odontogram/fdi";
 import { cn } from "@/components/ui/cn";
 
 // خلية سن واحدة في المخطط الوطني — رقم السن واسمه التشريحي حول رسم SVG،
@@ -35,12 +36,13 @@ export default function ChartTooth({
   selected,
   onSelect,
 }: Props) {
+  const { t, locale } = useI18n();
   const fill =
     status && status !== "HEALTHY" && status !== "WATCH"
       ? TOOTH_CHART_FILL[status]
       : undefined;
   const faded = status ? isChartFaded(status) : false;
-  const name = toothDisplayNameAr(tooth.fdi);
+  const name = toothDisplayName(locale, tooth.fdi);
   const numberNode = (
     <span className="numeric text-warm-700 text-xs leading-none font-bold">
       {tooth.fdi}
@@ -72,8 +74,8 @@ export default function ChartTooth({
       type="button"
       onClick={() => onSelect(tooth.fdi)}
       aria-pressed={selected}
-      aria-label={`سن ${tooth.fdi}${name ? ` — ${name}` : ""}${
-        status && status !== "HEALTHY" ? " — له حالة مسجلة" : ""
+      aria-label={`${t("dental.toothAria", { fdi: tooth.fdi })}${name ? ` — ${name}` : ""}${
+        status && status !== "HEALTHY" ? t("dental.hasRecordedStatus") : ""
       }`}
       className={cn(
         "rounded-field flex shrink-0 flex-col items-center gap-1 p-1 transition-colors",

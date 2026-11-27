@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -33,6 +34,7 @@ export default function SettlePaymentModal({
   dueUsd,
   usdRate,
 }: Props) {
+  const { t } = useI18n();
   const router = useRouter();
   const { toast } = useToast();
   const [amountStr, setAmountStr] = useState("");
@@ -56,7 +58,7 @@ export default function SettlePaymentModal({
 
   async function submit() {
     if (!isUsdAmount(amount) || amount <= 0) {
-      setError("المبلغ يجب أن يكون رقماً موجباً بمنزلتين عشريتين كحد أقصى");
+      setError(t("api.amountPositive2dp"));
       return;
     }
     setSaving(true);
@@ -76,16 +78,16 @@ export default function SettlePaymentModal({
       );
       const data = (await res.json()) as { entry?: object; error?: string };
       if (!res.ok || !data.entry) {
-        setError(data.error ?? "تعذر تسجيل الدفعة، أعد المحاولة");
+        setError(data.error ?? t("finance.paymentFailed"));
         return;
       }
-      toast("سُجّلت الدفعة في الدفتر");
+      toast(t("finance.paymentRecorded"));
       emitLedgerChanged();
       onClose();
       onSaved();
       router.refresh();
     } catch {
-      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+      setError(t("errors.serverRetry"));
     } finally {
       setSaving(false);
     }
@@ -99,20 +101,20 @@ export default function SettlePaymentModal({
       footer={
         <>
           <Button loading={saving} onClick={() => void submit()}>
-            تسجيل الدفعة
+            {t("finance.recordPayment")}
           </Button>
           <Button variant="secondary" disabled={saving} onClick={onClose}>
-            إلغاء
+            {t("common.cancel")}
           </Button>
         </>
       }
     >
       <div className="flex flex-col gap-4">
         <p className="rounded-field border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-800">
-          تُسجَّل الدفعة بقيمة سالبة تخفض رصيد المريض في الدفتر.
+          {t("finance.paymentNegativeHintLong")}
         </p>
         <Field
-          label="المبلغ ($)"
+          label={t("finance.amountUsd")}
           htmlFor="settle-amount"
           hint={
             parts !== null
@@ -131,12 +133,12 @@ export default function SettlePaymentModal({
             className="numeric"
           />
         </Field>
-        <Field label="البيان (اختياري)" htmlFor="settle-note">
+        <Field label={t("common.descriptionOptional")} htmlFor="settle-note">
           <Input
             id="settle-note"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="دفعة تسديد…"
+            placeholder={t("finance.paymentPlaceholder")}
           />
         </Field>
         {error && (

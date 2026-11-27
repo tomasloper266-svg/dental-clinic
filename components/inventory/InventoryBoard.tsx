@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -49,6 +50,7 @@ import { cn } from "@/components/ui/cn";
 type EditSubmit = (body: Record<string, unknown>) => Promise<string | null>;
 
 export default function InventoryBoard({ usdRate }: { usdRate: number }) {
+  const { t, locale } = useI18n();
   const { toast } = useToast();
   const [materials, setMaterials] = useState<MaterialDto[] | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -97,7 +99,7 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        const failure = data.error ?? "تعذر تنفيذ العملية، أعد المحاولة";
+        const failure = data.error ?? t("errors.operationFailed");
         toast(failure, "danger");
         return failure;
       }
@@ -105,8 +107,8 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
       await refresh();
       return null;
     } catch {
-      toast("تعذر الاتصال بالخادم، حاول مرة أخرى", "danger");
-      return "تعذر الاتصال بالخادم، حاول مرة أخرى";
+      toast(t("errors.serverRetry"), "danger");
+      return t("errors.serverRetry");
     } finally {
       setBusyId(null);
     }
@@ -127,7 +129,7 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
   /** تنزيل CSV على جهاز المستخدم — من بيانات المخزون المحمّلة حصراً */
   function exportCsv() {
     if (!materials?.length) return;
-    const blob = new Blob([materialsToCsv(materials)], {
+    const blob = new Blob([materialsToCsv(locale, materials)], {
       type: "text/csv;charset=utf-8",
     });
     const url = URL.createObjectURL(blob);
@@ -141,14 +143,14 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
   return (
     <>
       <PageHeader
-        title="المخزون"
+        title={t("common.inventory")}
         description={formatWeekdayDateCell(new Date())}
         actions={
           <>
             <ExportButton onClick={exportCsv} disabled={!materials?.length} />
             <Button onClick={() => setFormTarget({ mode: "create" })}>
               <Plus size={16} aria-hidden />
-              مادة جديدة
+              {t("inventory.newMaterial")}
             </Button>
           </>
         }
@@ -158,18 +160,18 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
       <div className="grid gap-3 sm:grid-cols-3">
         <StatCard
           value={materials ? String(materials.length) : "—"}
-          label="إجمالي المواد"
+          label={t("inventory.totalMaterials")}
           icon={Package}
         />
         <StatCard
           value={materials ? String(needSupplyCount) : "—"}
-          label="بحاجة تزويد"
+          label={t("inventory.needsSupply")}
           icon={BarChart3}
           iconClassName="bg-primary-500/10 text-primary-600"
         />
         <StatCard
           value={materials ? String(belowMin) : "—"}
-          label="تحت الحد الأدنى"
+          label={t("inventory.low")}
           icon={AlertTriangle}
           tone="danger"
         />
@@ -181,11 +183,11 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
           className="mt-4 flex flex-col items-start gap-2 rounded-panel border border-danger-300 bg-danger-50 px-4 py-4"
         >
           <p className="text-xs font-medium text-danger-700">
-            تعذر تحميل المخزون — تحقق من الاتصال ثم أعد المحاولة.
+            {t("inventory.loadFailed")}
           </p>
           <Button variant="secondary" size="sm" onClick={() => void refresh()}>
             <RotateCw size={14} aria-hidden />
-            إعادة المحاولة
+            {t("common.retry")}
           </Button>
         </div>
       ) : materials === null ? (
@@ -201,8 +203,8 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
         <div className="mt-4">
           <EmptyState
             icon={Package}
-            title="لا مواد في المخزون بعد"
-            description="أضف أول مادة باسمها ووحدتها وحد التنبيه، ثم زوّدها بكمية لتبدأ."
+            title={t("inventory.empty")}
+            description={t("inventory.emptyAction")}
             action={
               <Button
                 size="sm"
@@ -210,7 +212,7 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
                 onClick={() => setFormTarget({ mode: "create" })}
               >
                 <Plus size={14} aria-hidden />
-                مادة جديدة
+                {t("inventory.newMaterial")}
               </Button>
             }
           />
@@ -220,25 +222,25 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings size={16} className="text-warning-600" aria-hidden />
-              مخزون العيادة
+              {t("inventory.clinicInventory")}
             </CardTitle>
           </CardHeader>
           <PanelToolbar className="border-b border-warm-200">
             <SearchInput
               value={search}
               onChange={setSearch}
-              placeholder="ابحث باسم المادة…"
-              aria-label="بحث باسم المادة"
+              placeholder={t("inventory.searchPlaceholder")}
+              aria-label={t("inventory.search")}
             />
             <FilterPills
-              ariaLabel="تصفية المواد"
+              ariaLabel={t("inventory.filter")}
               value={lowOnly ? "low" : "all"}
               onChange={(value) => setLowOnly(value === "low")}
               options={[
-                { value: "all", label: "الكل" },
+                { value: "all", label: t("common.all") },
                 {
                   value: "low",
-                  label: "تحت الحد الأدنى",
+                  label: t("inventory.low"),
                   count: needSupplyCount,
                 },
               ]}
@@ -248,8 +250,8 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
             {visible.length === 0 ? (
               <EmptyState
                 icon={Package}
-                title="لا مواد مطابقة"
-                description="عدّل البحث أو أزل فلتر «تحت الحد الأدنى» لتوسيع القائمة."
+                title={t("inventory.noMatches")}
+                description={t("inventory.widenList")}
                 action={
                   <Button
                     variant="secondary"
@@ -259,7 +261,7 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
                       setLowOnly(false);
                     }}
                   >
-                    مسح التصفية
+                    {t("common.clearFilter")}
                   </Button>
                 }
               />
@@ -269,12 +271,12 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
                 <Table className="hidden md:table" wrapperClassName="border-0">
                   <THead>
                     <TRow>
-                      <TH>المادة</TH>
-                      <TH>الكمية</TH>
-                      <TH>الحالة</TH>
-                      <TH>المورد</TH>
-                      <TH className="text-end">سعر الوحدة</TH>
-                      <TH>إجراءات</TH>
+                      <TH>{t("inventory.theMaterial")}</TH>
+                      <TH>{t("inventory.quantity")}</TH>
+                      <TH>{t("common.status")}</TH>
+                      <TH>{t("inventory.supplier")}</TH>
+                      <TH className="text-end">{t("inventory.unitPrice")}</TH>
+                      <TH>{t("common.actions")}</TH>
                     </TRow>
                   </THead>
                   <tbody>
@@ -397,12 +399,12 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
                 `/${formTarget.material.id}`,
                 "PATCH",
                 body,
-                "حُفظت التعديلات",
+                t("common.editsSaved"),
               );
               if (!failure) setFormTarget(null);
               return failure;
             }
-            const failure = await apply("new", "", "POST", body, "أُضيفت المادة إلى المخزون");
+            const failure = await apply("new", "", "POST", body, t("inventory.materialAdded"));
             if (!failure) setFormTarget(null);
             return failure;
           }}
@@ -421,7 +423,7 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
               `/${supplying.id}/supply`,
               "POST",
               body,
-              "سُجل التوريد وأُضيفت الكمية",
+              t("inventory.supplyRecorded"),
             );
             if (!failure) setSupplying(null);
             return failure;
@@ -440,9 +442,9 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
       <ConfirmDialog
         open={deleting !== null}
         onClose={() => setDeleting(null)}
-        title="تأكيد حذف المادة"
+        title={t("inventory.deleteConfirm")}
         description={`ستُحذف «${deleting?.name ?? ""}» نهائياً من المخزون مع سطور استعمالها وحركاتها. لا يمكن التراجع عن الحذف.`}
-        confirmLabel="احذف المادة"
+        confirmLabel={t("inventory.deleteMaterial")}
         loading={deleting !== null && busyId === deleting.id}
         onConfirm={async () => {
           if (!deleting) return;
@@ -451,7 +453,7 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
             `/${deleting.id}`,
             "DELETE",
             undefined,
-            "حُذفت المادة من المخزون",
+            t("inventory.materialDeleted"),
           );
           if (!failure) setDeleting(null);
         }}
@@ -473,19 +475,20 @@ function MaterialActions({
   onHistory: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <PillAction variant="gold" onClick={onSupply} disabled={busy}>
-        توريد
+        {t("inventory.supply")}
       </PillAction>
-      <IconAction icon={Pencil} label="تعديل" onClick={onEdit} disabled={busy} />
+      <IconAction icon={Pencil} label={t("common.edit")} onClick={onEdit} disabled={busy} />
       <PillAction variant="outline" onClick={onHistory} disabled={busy}>
         <History size={13} aria-hidden />
-        السجل
+        {t("common.theLog")}
       </PillAction>
       <IconAction
         icon={Trash2}
-        label="حذف"
+        label={t("common.delete")}
         tone="danger"
         onClick={onDelete}
         disabled={busy}
@@ -567,6 +570,7 @@ function SupplyModal({
   onClose: () => void;
   onSubmit: (body: Record<string, unknown>) => Promise<string | null>;
 }) {
+  const { t } = useI18n();
   const [value, setValue] = useState("");
   const [date, setDate] = useState(() => toDateInputValue(new Date()));
   const [note, setNote] = useState("");
@@ -593,7 +597,7 @@ function SupplyModal({
     <Modal
       open
       onClose={onClose}
-      title="توريد — أضف كمية"
+      title={t("inventory.supplyTitle")}
       footer={
         <>
           <Button
@@ -601,7 +605,7 @@ function SupplyModal({
             loading={busy}
             onClick={async () => {
               if (!valid) {
-                setError("أدخل كمية رقماً موجباً");
+                setError(t("inventory.quantityPositive"));
                 return;
               }
               setError(null);
@@ -613,21 +617,21 @@ function SupplyModal({
               if (failure) setError(failure);
             }}
           >
-            تسجيل
+            {t("inventory.record")}
           </Button>
           <Button variant="secondary" onClick={onClose} disabled={busy}>
-            إلغاء
+            {t("common.cancel")}
           </Button>
         </>
       }
     >
       <div className="flex flex-col gap-4">
         <p className="text-xs text-warm-500">
-          الكمية الحالية:{" "}
+          {t("inventory.currentQuantity")}{" "}
           <span className="numeric font-semibold text-ink-900">
             {material.quantityOnHand} {material.unit}
           </span>{" "}
-          — بعد الإضافة:{" "}
+          {t("inventory.afterAdding")}{" "}
           <span className="numeric font-semibold text-ink-900">
             {afterAdd} {material.unit}
           </span>
@@ -644,7 +648,7 @@ function SupplyModal({
               step="0.01"
               min="0"
               inputMode="decimal"
-              placeholder="مثال: 10"
+              placeholder={t("reports.example10")}
               value={value}
               onChange={(e) => {
                 setValue(e.target.value);
@@ -652,7 +656,7 @@ function SupplyModal({
               }}
             />
           </Field>
-          <Field label="التاريخ" htmlFor="supply-date">
+          <Field label={t("common.date")} htmlFor="supply-date">
             <Input
               id="supply-date"
               type="date"
@@ -661,15 +665,15 @@ function SupplyModal({
             />
           </Field>
         </div>
-        <Field label="ملاحظات" htmlFor="supply-note">
+        <Field label={t("common.notes")} htmlFor="supply-note">
           <Input
             id="supply-note"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="اسم المورد، رقم الفاتورة…"
+            placeholder={t("inventory.supplierPlaceholder")}
           />
         </Field>
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="كميات سريعة">
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t("inventory.quickQuantities")}>
           {[5, 10, 20, 50].map((amount) => (
             <button
               key={amount}
@@ -694,6 +698,7 @@ function HistoryModal({
   material: MaterialDto;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const [movements, setMovements] = useState<MaterialMovementDto[] | null>(null);
   const [loadError, setLoadError] = useState(false);
 
@@ -724,13 +729,13 @@ function HistoryModal({
       title={`السجل — ${material.name}`}
       footer={
         <Button variant="secondary" onClick={onClose}>
-          إغلاق
+          {t("common.close")}
         </Button>
       }
     >
       {loadError ? (
         <p role="alert" className="text-xs text-danger-600">
-          تعذر تحميل السجل — أعد فتح النافذة للمحاولة من جديد.
+          {t("inventory.logLoadFailed")}
         </p>
       ) : movements === null ? (
         <div aria-busy="true" className="flex flex-col gap-2">
@@ -743,15 +748,15 @@ function HistoryModal({
         </div>
       ) : movements.length === 0 ? (
         <p className="text-sm text-warm-500">
-          لا حركات مسجلة لهذه المادة بعد — سجّل توريداً لبدء السجل.
+          {t("inventory.noMovements")}
         </p>
       ) : (
         <Table wrapperClassName="border border-warm-200 rounded-field">
           <THead>
             <TRow>
-              <TH>التاريخ</TH>
-              <TH>الكمية</TH>
-              <TH>ملاحظات</TH>
+              <TH>{t("common.date")}</TH>
+              <TH>{t("inventory.quantity")}</TH>
+              <TH>{t("common.notes")}</TH>
             </TRow>
           </THead>
           <tbody>
@@ -795,6 +800,7 @@ function MaterialFormModal({
   onClose: () => void;
   onSubmit: EditSubmit;
 }) {
+  const { t } = useI18n();
   const editing = material !== null;
   const [name, setName] = useState(material?.name ?? "");
   const [category, setCategory] = useState(material?.category ?? "");
@@ -818,19 +824,19 @@ function MaterialFormModal({
     const qty = Number(quantity);
     const cost = costUsd.trim() === "" ? null : Number(costUsd);
     if (!name.trim() || !unit.trim()) {
-      setError("اسم المادة والوحدة مطلوبان");
+      setError(t("api.material.nameUnitRequired"));
       return null;
     }
     if (!Number.isFinite(qty) || qty < 0) {
-      setError("الكمية رقم غير سالب");
+      setError(t("api.material.quantityNonNegative"));
       return null;
     }
     if (!Number.isFinite(min) || min < 0) {
-      setError("حد التنبيه رقم غير سالب");
+      setError(t("api.material.minQuantityInvalid"));
       return null;
     }
     if (cost !== null && (!Number.isFinite(cost) || cost < 0)) {
-      setError("السعر رقماً غير سالب بحد منزلتين أو اتركه فارغاً");
+      setError(t("api.material.priceValid"));
       return null;
     }
     setError(null);
@@ -853,7 +859,7 @@ function MaterialFormModal({
     <Modal
       open
       onClose={onClose}
-      title={editing ? "تعديل" : "مادة جديدة"}
+      title={editing ? t("common.edit") : t("inventory.newMaterial")}
       footer={
         <>
           <Button
@@ -866,33 +872,33 @@ function MaterialFormModal({
               if (failure) setError(failure);
             }}
           >
-            {editing ? "حفظ" : "إضافة"}
+            {editing ? t("common.save") : t("common.add")}
           </Button>
           <Button variant="secondary" onClick={onClose} disabled={busy}>
-            إلغاء
+            {t("common.cancel")}
           </Button>
         </>
       }
     >
       <div className="flex flex-col gap-4">
-        <Field label="اسم المادة *" htmlFor="material-name">
+        <Field label={t("inventory.materialNameRequired")} htmlFor="material-name">
           <Input
             id="material-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="مثال: قفازات لاتكس"
+            placeholder={t("inventory.exampleName")}
           />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="الفئة" htmlFor="material-category">
+          <Field label={t("inventory.category")} htmlFor="material-category">
             <Input
               id="material-category"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              placeholder="مثال: مواد وقاية"
+              placeholder={t("inventory.exampleCategory")}
             />
           </Field>
-          <Field label="الكمية" htmlFor="material-quantity">
+          <Field label={t("inventory.quantity")} htmlFor="material-quantity">
             <Input
               id="material-quantity"
               type="number"
@@ -903,15 +909,15 @@ function MaterialFormModal({
               onChange={(e) => setQuantity(e.target.value)}
             />
           </Field>
-          <Field label="الوحدة" htmlFor="material-unit">
+          <Field label={t("common.unit")} htmlFor="material-unit">
             <Input
               id="material-unit"
               value={unit}
               onChange={(e) => setUnit(e.target.value)}
-              placeholder="مثال: علبة"
+              placeholder={t("inventory.exampleUnit")}
             />
           </Field>
-          <Field label="الحد الأدنى للتنبيه" htmlFor="material-min">
+          <Field label={t("settings.alertThreshold")} htmlFor="material-min">
             <Input
               id="material-min"
               type="number"
@@ -922,15 +928,15 @@ function MaterialFormModal({
               onChange={(e) => setMinQuantity(e.target.value)}
             />
           </Field>
-          <Field label="المورد" htmlFor="material-supplier">
+          <Field label={t("inventory.supplier")} htmlFor="material-supplier">
             <Input
               id="material-supplier"
               value={supplier}
               onChange={(e) => setSupplier(e.target.value)}
-              placeholder="مثال: دنتكال سول"
+              placeholder={t("setup.exampleClinic")}
             />
           </Field>
-          <Field label="سعر الوحدة ($)" htmlFor="material-cost">
+          <Field label={t("inventory.unitPrice")} htmlFor="material-cost">
             <Input
               id="material-cost"
               type="number"
@@ -944,7 +950,7 @@ function MaterialFormModal({
         </div>
         {editing && (
           <p className="text-xs text-warm-500">
-            تعديل الكمية مباشرة يُسجَّل سطر تسوية في سجل المادة.
+            {t("inventory.directEditHint")}
           </p>
         )}
         {error && (

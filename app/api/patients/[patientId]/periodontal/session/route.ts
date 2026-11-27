@@ -1,3 +1,4 @@
+import { getServerT, tMaybe } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import { getPatient } from "@/lib/services/patients";
@@ -13,6 +14,7 @@ type Params = { params: Promise<{ patientId: string }> };
 // القراءات تُلحق بتوقيت قياس واحد داخل معاملة واحدة. الإدخال غير الصالح
 // يرفض الجلسة كاملة (400 مع موقع الخطأ) — لا جلسة جزئية صامتة.
 export async function POST(req: NextRequest, { params }: Params) {
+  const t = await getServerT();
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
@@ -20,14 +22,14 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { patientId } = await params;
   const patient = await getPatient(ctx, patientId);
   if (!patient) {
-    return NextResponse.json({ error: "المريض غير موجود" }, { status: 404 });
+    return NextResponse.json({ error: t("api.patientNotFound") }, { status: 404 });
   }
 
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
+    return NextResponse.json({ error: t("api.invalidRequest") }, { status: 400 });
   }
 
   const readings =
@@ -36,13 +38,13 @@ export async function POST(req: NextRequest, { params }: Params) {
       : undefined;
   if (!Array.isArray(readings) || readings.length === 0) {
     return NextResponse.json(
-      { error: "الجلسة تحتاج قياس سن واحد على الأقل" },
+      { error: t("api.periodontal.sessionEmpty") },
       { status: 400 },
     );
   }
   if (readings.length > 32) {
     return NextResponse.json(
-      { error: "الجلسة تتجاوز عدد الأسنان الدائمة" },
+      { error: t("api.periodontal.sessionTooLong") },
       { status: 400 },
     );
   }
@@ -53,7 +55,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     const result = parsed[i];
     if (!result.ok) {
       return NextResponse.json(
-        { error: `القياس رقم ${i + 1} في الجلسة غير صالح: ${result.error}` },
+        { error: t("api.readingInvalid", { index: i + 1, message: tMaybe(t, result.error) }) },
         { status: 400 },
       );
     }
@@ -68,7 +70,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   } catch (err) {
     console.error("[periodontal:session] failed:", err);
     return NextResponse.json(
-      { error: "تعذر حفظ جلسة قياس الدواعم" },
+      { error: t("api.periodontal.sessionSaveFailed") },
       { status: 500 },
     );
   }

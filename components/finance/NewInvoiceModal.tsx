@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -59,6 +60,7 @@ export default function NewInvoiceModal({
   onIssued,
   patients,
 }: Props) {
+  const { t } = useI18n();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -93,25 +95,25 @@ export default function NewInvoiceModal({
   }
 
   function validate(): string | null {
-    if (!patientId) return "اختر المريض";
-    if (!dateIso || Number.isNaN(dateIso.getTime())) return "التاريخ غير صالح";
-    if (futureDate) return "لا يمكن إصدار الفاتورة بتاريخ مستقبلي";
+    if (!patientId) return t("patients.choose");
+    if (!dateIso || Number.isNaN(dateIso.getTime())) return t("api.invalidDate");
+    if (futureDate) return t("invoices.noFutureDate");
     const valid = items.filter(
       (item) => item.procedure.trim() && Number(item.priceUsd) > 0,
     );
     if (valid.length === 0)
-      return "أدخل بنداً واحداً على الأقل (الإجراء والمبلغ)";
+      return t("invoices.oneItemMin");
     const discount = Number(discountStr);
     if (discountStr && (!Number.isFinite(discount) || discount < 0))
-      return "الخصم يجب أن يكون رقماً موجباً";
-    if (discount > totalUsd) return "الخصم أكبر من إجمالي الفاتورة";
+      return t("api.plans.discountPositive");
+    if (discount > totalUsd) return t("invoices.discountTooLarge");
     return null;
   }
 
   async function submit() {
     const validationError = validate();
     if (validationError || !dateIso) {
-      setError(validationError ?? "التاريخ غير صالح");
+      setError(validationError ?? t("api.invalidDate"));
       return;
     }
     setSaving(true);
@@ -161,7 +163,7 @@ export default function NewInvoiceModal({
       );
       const data = (await res.json()) as { entry?: object; error?: string };
       if (!res.ok || !data.entry) {
-        setError(data.error ?? "تعذر إصدار الفاتورة، أعد المحاولة");
+        setError(data.error ?? t("invoices.issueFailed"));
         return;
       }
       const discount = Number(discountStr);
@@ -176,22 +178,22 @@ export default function NewInvoiceModal({
               amountUsd: -roundUsd2(discount),
               note: notes.trim()
                 ? `خصم على فاتورة — ${notes.trim()}`
-                : "خصم على فاتورة",
+                : t("finance.discountOnInvoice"),
               createdAt: dateIso.toISOString(),
             }),
           },
         );
         if (!res.ok) {
-          setError("صدرت الفاتورة لكن تعذر تسجيل الخصم");
+          setError(t("invoices.issuedDiscountFailed"));
           return;
         }
       }
-      toast("صدرت الفاتورة في الدفتر");
+      toast(t("invoices.issuedRecorded"));
       emitLedgerChanged();
       onIssued();
       router.refresh();
     } catch {
-      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+      setError(t("errors.serverRetry"));
     } finally {
       setSaving(false);
     }
@@ -201,22 +203,22 @@ export default function NewInvoiceModal({
     <Modal
       open
       onClose={onClose}
-      title="فاتورة جديدة"
+      title={t("invoices.newInvoice")}
       className="max-w-2xl"
       footer={
         <>
           <Button loading={saving} onClick={() => void submit()}>
-            إصدار الفاتورة
+            {t("invoices.issue")}
           </Button>
           <Button variant="secondary" disabled={saving} onClick={onClose}>
-            إلغاء
+            {t("common.cancel")}
           </Button>
         </>
       }
     >
       <div className="flex flex-col gap-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="المريض *" htmlFor="inv-patient">
+          <Field label={t("common.patientRequired")} htmlFor="inv-patient">
             <Select
               id="inv-patient"
               value={patientId}
@@ -230,9 +232,9 @@ export default function NewInvoiceModal({
             </Select>
           </Field>
           <Field
-            label="التاريخ"
+            label={t("common.date")}
             htmlFor="inv-date"
-            error={futureDate ? "لا يمكن الإصدار بتاريخ مستقبلي" : undefined}
+            error={futureDate ? t("invoices.issueNoFutureDate") : undefined}
           >
             <Input
               id="inv-date"
@@ -247,7 +249,7 @@ export default function NewInvoiceModal({
 
         {/* بنود الفاتورة — قيد رسوم واحد ببنود مهيكلة تُصنَّف في التقارير */}
         <fieldset className="flex flex-col gap-2">
-          <legend className="text-sm font-medium text-ink-900">البنود *</legend>
+          <legend className="text-sm font-medium text-ink-900">{t("invoices.itemsRequired")}</legend>
           {items.map((item, index) => {
             const toothNum = Number(item.tooth.trim());
             const surfaceOptions = isValidToothFdi(toothNum)
@@ -258,16 +260,16 @@ export default function NewInvoiceModal({
               <div key={index} className="flex flex-col gap-1.5">
                 <div className="flex items-start gap-2">
                   <Input
-                    aria-label="الإجراء"
-                    placeholder="الإجراء — تنظيف عميق"
+                    aria-label={t("common.procedure")}
+                    placeholder={t("invoices.exampleDeepClean")}
                     value={item.procedure}
                     onChange={(e) =>
                       setItem(index, { procedure: e.target.value })
                     }
                   />
                   <Input
-                    aria-label="السن"
-                    placeholder="السن"
+                    aria-label={t("common.tooth")}
+                    placeholder={t("common.tooth")}
                     value={item.tooth}
                     onChange={(e) =>
                       setItem(index, {
@@ -283,7 +285,7 @@ export default function NewInvoiceModal({
                       $
                     </span>
                     <Input
-                      aria-label="المبلغ بالدولار"
+                      aria-label={t("common.amountUsd")}
                       type="number"
                       inputMode="decimal"
                       min={0}
@@ -298,7 +300,7 @@ export default function NewInvoiceModal({
                   </div>
                   <button
                     type="button"
-                    aria-label="حذف البند"
+                    aria-label={t("plans.deleteItem")}
                     disabled={items.length === 1}
                     onClick={() =>
                       setItems((current) =>
@@ -315,7 +317,7 @@ export default function NewInvoiceModal({
                   <div
                     className="flex flex-wrap items-center gap-1.5 ps-1"
                     role="group"
-                    aria-label="سطح السن للبند"
+                    aria-label={t("dental.itemSurface")}
                   >
                     {surfaceOptions.map((surface) => {
                       const active = chosenSurfaces.includes(surface);
@@ -353,13 +355,13 @@ export default function NewInvoiceModal({
             className="text-primary-700 inline-flex w-fit items-center gap-1 text-sm font-medium hover:underline"
           >
             <Plus size={15} aria-hidden />
-            إضافة بند
+            {t("plans.addItem")}
           </button>
         </fieldset>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
-            label="الخصم ($)"
+            label={t("finance.discountUsd")}
             htmlFor="inv-discount"
             hint={`الإجمالي: $ ${totalUsd.toLocaleString("en-US")}`}
           >
@@ -375,12 +377,12 @@ export default function NewInvoiceModal({
               className="numeric"
             />
           </Field>
-          <Field label="ملاحظات" htmlFor="inv-notes">
+          <Field label={t("common.notes")} htmlFor="inv-notes">
             <Textarea
               id="inv-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="ملاحظة اختيارية…"
+              placeholder={t("common.noteOptionalPlaceholder")}
             />
           </Field>
         </div>

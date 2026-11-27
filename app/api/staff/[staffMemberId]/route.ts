@@ -1,3 +1,4 @@
+import { getServerT, tMaybe } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import { requireRole } from "@/lib/tenant/context";
@@ -14,12 +15,13 @@ type Params = { params: Promise<{ staffMemberId: string }> };
 // كل عمليات هذا المسار إدارية — الطبيب حصراً.
 
 export async function PATCH(req: NextRequest, { params }: Params) {
+  const t = await getServerT();
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
   const roleError = requireRole(ctx, "DENTIST");
   if (roleError) {
-    return NextResponse.json({ error: roleError }, { status: 403 });
+    return NextResponse.json({ error: tMaybe(t, roleError) }, { status: 403 });
   }
   const { staffMemberId } = await params;
 
@@ -27,7 +29,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
+    return NextResponse.json({ error: t("api.invalidRequest") }, { status: 400 });
   }
 
   // تعطيل/تفعيل فقط — بلا بقية الحقول.
@@ -41,46 +43,47 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       isActive: (body as { isActive: boolean }).isActive,
     });
     if (!member) {
-      return NextResponse.json({ error: "العضو غير موجود" }, { status: 404 });
+      return NextResponse.json({ error: t("api.staffNotFound") }, { status: 404 });
     }
     return NextResponse.json({ member }, { status: 200 });
   }
 
   const parsed = parseStaffInput(body);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return NextResponse.json({ error: tMaybe(t, parsed.error) }, { status: 400 });
   }
 
   try {
     const member = await updateStaff(ctx, staffMemberId, parsed.value);
     if (!member) {
-      return NextResponse.json({ error: "العضو غير موجود" }, { status: 404 });
+      return NextResponse.json({ error: t("api.staffNotFound") }, { status: 404 });
     }
     return NextResponse.json({ member }, { status: 200 });
   } catch (err) {
     console.error("[staff:update] failed:", err);
-    return NextResponse.json({ error: "تعذر تعديل العضو" }, { status: 500 });
+    return NextResponse.json({ error: t("api.staffUpdateFailed") }, { status: 500 });
   }
 }
 
 export async function DELETE(req: NextRequest, { params }: Params) {
+  const t = await getServerT();
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
   const roleError = requireRole(ctx, "DENTIST");
   if (roleError) {
-    return NextResponse.json({ error: roleError }, { status: 403 });
+    return NextResponse.json({ error: tMaybe(t, roleError) }, { status: 403 });
   }
   const { staffMemberId } = await params;
 
   try {
     const deleted = await deleteStaff(ctx, staffMemberId);
     if (!deleted) {
-      return NextResponse.json({ error: "العضو غير موجود" }, { status: 404 });
+      return NextResponse.json({ error: t("api.staffNotFound") }, { status: 404 });
     }
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err) {
     console.error("[staff:delete] failed:", err);
-    return NextResponse.json({ error: "تعذر حذف العضو" }, { status: 500 });
+    return NextResponse.json({ error: t("api.staffDeleteFailed") }, { status: 500 });
   }
 }

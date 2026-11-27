@@ -1,3 +1,4 @@
+import { getServerT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import { getReportsPeriodSummary } from "@/lib/services/reports-period";
@@ -16,6 +17,7 @@ function parseDayParam(value: string | null): Date | null {
 }
 
 export async function GET(req: NextRequest) {
+  const t = await getServerT();
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
@@ -38,13 +40,13 @@ export async function GET(req: NextRequest) {
   const to = parseDayParam(toParam);
   if (!fromParam || !toParam || !from || !to) {
     return NextResponse.json(
-      { error: "التاريخان يجب أن يكونا بصيغة YYYY-MM-DD" },
+      { error: t("api.reports.dateFormat") },
       { status: 400 },
     );
   }
   if (from.getTime() > to.getTime()) {
     return NextResponse.json(
-      { error: "تاريخ «من» يجب أن يكون قبل تاريخ «إلى» أو مساوياً له" },
+      { error: t("api.reports.fromAfterTo") },
       { status: 400 },
     );
   }

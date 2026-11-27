@@ -1,8 +1,10 @@
 "use client";
+import { toothName } from "@/lib/odontogram/fdi";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import type { ReactElement } from "react";
 import type { ToothAnatomy } from "@/lib/odontogram/anatomy";
-import { type ToothStatusMeta } from "@/lib/odontogram/statuses";
+import { type ToothStatusMeta, toothStatusLabel } from "@/lib/odontogram/statuses";
 import {
   POCKET_SCALE_COLORS,
   pocketScaleLevel,
@@ -40,6 +42,7 @@ export default function ToothSvg({
   selected,
   onSelect,
 }: Props): ReactElement {
+  const { t, locale } = useI18n();
   const status = meta?.value ?? null;
   const paint = status ? CROWN_PAINT[status] : null;
   const patternId = paint?.pattern
@@ -74,7 +77,7 @@ export default function ToothSvg({
       type="button"
       onClick={() => onSelect(tooth.fdi)}
       aria-pressed={selected}
-      aria-label={`سن ${tooth.fdi} — ${tooth.nameAr}${meta ? ` — ${meta.labelAr}` : ""}${perioLevel ? ` — عمق الجيب ${periodontal?.pocketDepthMm}مم` : ""}${bleeding ? " — نزيف عند الجس" : ""}`}
+      aria-label={`${t("dental.toothAria", { fdi: tooth.fdi })} — ${toothName(locale, tooth.fdi) ?? ""}${meta ? ` — ${toothStatusLabel(locale, meta.value)}` : ""}${perioLevel ? ` — ${t("periodontal.pocketDepthAriaSuffix", { depth: periodontal?.pocketDepthMm ?? "" })}` : ""}${bleeding ? t("periodontal.bleedingSuffix") : ""}`}
       className={cn(
         "rounded-field flex shrink-0 flex-col items-center p-0.5 transition-colors",
         "hover:bg-surface-hover focus-visible:outline-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2",

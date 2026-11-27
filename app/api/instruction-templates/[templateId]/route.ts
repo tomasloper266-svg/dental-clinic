@@ -1,3 +1,4 @@
+import { getServerT, tMaybe } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import {
@@ -12,6 +13,7 @@ type Params = { params: Promise<{ templateId: string }> };
 // وقالب عيادة أخرى يعامل كغير موجود (404).
 
 export async function PUT(req: NextRequest, { params }: Params) {
+  const t = await getServerT();
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
@@ -21,22 +23,23 @@ export async function PUT(req: NextRequest, { params }: Params) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
+    return NextResponse.json({ error: t("api.invalidRequest") }, { status: 400 });
   }
 
   const parsed = parseUpdateTemplate(body);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return NextResponse.json({ error: tMaybe(t, parsed.error) }, { status: 400 });
   }
 
   const template = await updateTemplate(ctx, templateId, parsed.value);
   if (!template) {
-    return NextResponse.json({ error: "القالب غير موجود" }, { status: 404 });
+    return NextResponse.json({ error: t("api.templateNotFound") }, { status: 404 });
   }
   return NextResponse.json({ template }, { status: 200 });
 }
 
 export async function DELETE(req: NextRequest, { params }: Params) {
+  const t = await getServerT();
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
@@ -44,7 +47,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
   const deleted = await deleteTemplate(ctx, templateId);
   if (!deleted) {
-    return NextResponse.json({ error: "القالب غير موجود" }, { status: 404 });
+    return NextResponse.json({ error: t("api.templateNotFound") }, { status: 404 });
   }
   return new NextResponse(null, { status: 204 });
 }

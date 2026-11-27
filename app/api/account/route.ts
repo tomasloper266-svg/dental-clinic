@@ -1,3 +1,4 @@
+import { getServerT, tMaybe } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import {
@@ -17,6 +18,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const t = await getServerT();
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
@@ -25,7 +27,7 @@ export async function PATCH(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
+    return NextResponse.json({ error: t("api.invalidRequest") }, { status: 400 });
   }
   const raw = body as Record<string, unknown>;
 
@@ -35,7 +37,7 @@ export async function PATCH(req: NextRequest) {
     usdRate: typeof raw.usdRate === "number" ? raw.usdRate : undefined,
   });
   if (!result.ok) {
-    return NextResponse.json({ error: result.error.message }, { status: 400 });
+    return NextResponse.json({ error: tMaybe(t, result.error.message) }, { status: 400 });
   }
   return NextResponse.json(result.value, { status: 200 });
 }

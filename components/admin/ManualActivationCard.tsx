@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/components/i18n/I18nProvider";
+import { formatDate as formatDateLocale } from "@/lib/i18n/format";
+import type { Locale, T } from "@/lib/i18n/core";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Field, Input, Select } from "@/components/ui/Field";
@@ -11,14 +14,17 @@ import type { AdminClinicRow } from "./AdminBoard";
 
 const PLAN_OPTIONS: SubscriptionPlanName[] = ["MONTHLY", "YEARLY"];
 
-function countUnitLabel(plan: SubscriptionPlanName): string {
-  return plan === "MONTHLY" ? "عدد الأشهر" : "عدد السنوات";
+function countUnitLabel(plan: SubscriptionPlanName, t: T): string {
+  return plan === "MONTHLY"
+    ? t("admin.monthsCount")
+    : t("admin.yearsCount");
 }
 
-function formatEndDate(iso: string): string {
-  return new Intl.DateTimeFormat("ar", { dateStyle: "medium", timeZone: "UTC" }).format(
-    new Date(iso),
-  );
+function formatEndDate(iso: string, locale: Locale): string {
+  return formatDateLocale(new Date(iso), locale, {
+    dateStyle: "medium",
+    timeZone: "UTC",
+  });
 }
 
 /**
@@ -26,6 +32,7 @@ function formatEndDate(iso: string): string {
  * الإدارة، بنفس قاعدة التمدد التراكمي عبر API الجلسة الإدارية حصراً.
  */
 export function ManualActivationCard({ clinics }: { clinics: AdminClinicRow[] }) {
+  const { t, locale } = useI18n();
   const router = useRouter();
   const [clinicId, setClinicId] = useState(clinics[0]?.id ?? "");
   const [plan, setPlan] = useState<SubscriptionPlanName>("MONTHLY");
@@ -51,13 +58,13 @@ export function ManualActivationCard({ clinics }: { clinics: AdminClinicRow[] })
         subscriptionEndsAt?: string;
       } | null;
       if (!res.ok || !data?.subscriptionEndsAt) {
-        setError(data?.error ?? "تعذر التفعيل — أعد المحاولة");
+        setError(data?.error ?? t("admin.activationFailed"));
         return;
       }
       setDoneEndIso(data.subscriptionEndsAt);
       router.refresh();
     } catch {
-      setError("لا يوجد اتصال — تحقق من الشبكة وأعد المحاولة");
+      setError(t("errors.offline"));
     } finally {
       setSubmitting(false);
     }
@@ -68,17 +75,16 @@ export function ManualActivationCard({ clinics }: { clinics: AdminClinicRow[] })
   return (
     <Card>
       <CardHeader>
-        <CardTitle>تفعيل يدوي بلا دفع</CardTitle>
+        <CardTitle>{t("admin.manualActivation")}</CardTitle>
       </CardHeader>
       <CardBody>
         <p className="text-sm text-steel-600">
-          يضبط نهاية الاشتراك مباشرة بدون طلب دفع — التمديد تراكمي من نهاية
-          الاشتراك القائم إن كان مستقبلاً.
+          {t("admin.manualActivationHint")}
         </p>
 
         <form onSubmit={onActivate} className="mt-4 flex flex-wrap items-end gap-3">
           <div className="min-w-52 flex-1">
-            <Field label="العيادة" htmlFor="activate-clinic">
+            <Field label={t("common.clinic")} htmlFor="activate-clinic">
               <Select
                 id="activate-clinic"
                 value={clinicId}
@@ -94,7 +100,7 @@ export function ManualActivationCard({ clinics }: { clinics: AdminClinicRow[] })
           </div>
 
           <div className="min-w-36">
-            <Field label="الباقة" htmlFor="activate-plan">
+            <Field label={t("subscription.plan")} htmlFor="activate-plan">
               <Select
                 id="activate-plan"
                 value={plan}
@@ -102,7 +108,7 @@ export function ManualActivationCard({ clinics }: { clinics: AdminClinicRow[] })
               >
                 {PLAN_OPTIONS.map((name) => (
                   <option key={name} value={name}>
-                    باقة {SUBSCRIPTION_PLANS[name].label}
+                    {t("subscription.planUnit")} {SUBSCRIPTION_PLANS[name].label}
                   </option>
                 ))}
               </Select>
@@ -110,7 +116,7 @@ export function ManualActivationCard({ clinics }: { clinics: AdminClinicRow[] })
           </div>
 
           <div className="w-32">
-            <Field label={countUnitLabel(plan)} htmlFor="activate-count">
+            <Field label={countUnitLabel(plan, t)} htmlFor="activate-count">
               <Input
                 id="activate-count"
                 type="number"
@@ -125,7 +131,7 @@ export function ManualActivationCard({ clinics }: { clinics: AdminClinicRow[] })
           </div>
 
           <Button type="submit" loading={submitting} disabled={!clinicId}>
-            تفعيل بدون دفع
+            {t("admin.activateWithoutPayment")}
           </Button>
         </form>
 
@@ -136,8 +142,7 @@ export function ManualActivationCard({ clinics }: { clinics: AdminClinicRow[] })
         )}
         {doneEndIso && !error && (
           <p role="status" className="mt-3 text-sm font-medium text-primary-700">
-            تم التفعيل — الاشتراك الجديد ينتهي في {formatEndDate(doneEndIso)} وفتح
-            الوصول فوراً.
+            {t("admin.activatedUntil")} {formatEndDate(doneEndIso, locale)} {t("admin.andOpenAccess")}
           </p>
         )}
       </CardBody>

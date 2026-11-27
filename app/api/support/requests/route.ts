@@ -1,14 +1,16 @@
+import { getServerT, tMaybe } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { createSupportRequest } from "@/lib/auth/recovery";
 
 // طلب دعم — مسار التحقق من ملكية العيادة حين لا تتوفر قناة موثقة.
 // يُخزَّن الطلب في قاعدة البيانات ويُعالج من فريق الدعم.
 export async function POST(req: NextRequest) {
+  const t = await getServerT();
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
+    return NextResponse.json({ error: t("api.invalidRequest") }, { status: 400 });
   }
 
   const raw = body as Record<string, unknown>;
@@ -26,10 +28,10 @@ export async function POST(req: NextRequest) {
   });
 
   if ("code" in result) {
-    return NextResponse.json({ error: result.message }, { status: 400 });
+    return NextResponse.json({ error: tMaybe(t, result.message) }, { status: 400 });
   }
   return NextResponse.json(
-    { ok: true, message: "وصل طلبك إلى فريق الدعم — سنتواصل معك للتحقق من الملكية" },
+    { ok: true, message: t("api.support.received") },
     { status: 201 },
   );
 }

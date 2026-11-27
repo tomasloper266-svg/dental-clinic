@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { createT, type Locale, type TranslationKey } from "@/lib/i18n/core";
 import { deriveClinicInvoices } from "@/lib/invoices-view";
 import { listClinicLedgerEntries } from "@/lib/services/ledger";
 import { listMaterials } from "@/lib/services/inventory";
@@ -28,14 +29,10 @@ export const EXPORT_DATASETS = [
 
 export type ExportDataset = (typeof EXPORT_DATASETS)[number];
 
-export const EXPORT_FILENAMES: Record<ExportDataset, string> = {
-  patients: "المرضى.csv",
-  appointments: "المواعيد.csv",
-  invoices: "الفواتير.csv",
-  payments: "المدفوعات.csv",
-  inventory: "المخزون.csv",
-  staff: "الطاقم.csv",
-};
+/** اسم ملف التنزيل حسب اللغة */
+export function exportFileName(locale: Locale, dataset: ExportDataset): string {
+  return createT(locale)(`export.file.${dataset}` as TranslationKey);
+}
 
 export function isExportDataset(value: string): value is ExportDataset {
   return (EXPORT_DATASETS as readonly string[]).includes(value);
@@ -47,6 +44,7 @@ export async function buildDatasetCsv(
   dataset: ExportDataset,
   usdRate: number,
   currency: DisplayCurrency,
+  locale: Locale,
 ): Promise<string> {
   switch (dataset) {
     case "patients": {
@@ -65,7 +63,7 @@ export async function buildDatasetCsv(
           createdAt: true,
         },
       });
-      return patientsToCsv(rows);
+      return patientsToCsv(locale, rows);
     }
     case "appointments": {
       const rows = await prisma.appointment.findMany({
@@ -82,6 +80,7 @@ export async function buildDatasetCsv(
         },
       });
       return appointmentsToCsv(
+        locale,
         rows.map((row) => ({
           startsAt: row.startsAt,
           patientName: row.patient.name,
@@ -96,6 +95,7 @@ export async function buildDatasetCsv(
     case "invoices": {
       const entries = await listClinicLedgerEntries(ctx, { limit: 50000 });
       return invoicesToCsv(
+        locale,
         deriveClinicInvoices(entries),
         usdRate,
         currency,
@@ -104,6 +104,7 @@ export async function buildDatasetCsv(
     case "payments": {
       const entries = await listClinicLedgerEntries(ctx, { limit: 50000 });
       return paymentsToCsv(
+        locale,
         entries
           .filter((entry) => entry.type === "PAYMENT")
           .map(({ createdAt, patientName, patientPhone, amountUsd, note }) => ({
@@ -119,14 +120,15 @@ export async function buildDatasetCsv(
     }
     case "inventory": {
       const materials = await listMaterials(ctx);
-      return materialsCsvForExport(materials);
+      return materialsCsvForExport(locale, materials);
     }
     case "staff": {
       const staff = await listStaff(ctx);
       return staffToCsv(
-        staff.map(({ name, roleLabelAr, specialty, phone, commissionPercent, isActive }) => ({
+        locale,
+        staff.map(({ name, role, specialty, phone, commissionPercent, isActive }) => ({
           name,
-          roleLabelAr,
+          role,
           specialty,
           phone,
           commissionPercent,

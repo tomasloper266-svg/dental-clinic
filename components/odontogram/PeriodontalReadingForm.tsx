@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useState } from "react";
 import type { PeriodontalReadingDto } from "@/lib/services/periodontal";
@@ -43,6 +44,7 @@ export default function PeriodontalReadingForm({
   onSaved,
   saveVariant = "primary",
 }: Props) {
+  const { t } = useI18n();
   const [pocket, setPocket] = useState("");
   const [recession, setRecession] = useState("");
   const [mobility, setMobility] = useState("");
@@ -123,7 +125,7 @@ export default function PeriodontalReadingForm({
         error?: string;
       };
       if (!res.ok || !data.reading) {
-        setError(data.error ?? "تعذر تسجيل القياس");
+        setError(data.error ?? t("periodontal.recordFailed"));
         return;
       }
       onSaved(data.reading as PeriodontalReadingDto);
@@ -134,7 +136,7 @@ export default function PeriodontalReadingForm({
       setBleeding(false);
       setNote("");
     } catch {
-      setError("تعذر الاتصال بالخادم");
+      setError(t("errors.server"));
     } finally {
       setSaving(false);
     }
@@ -143,13 +145,12 @@ export default function PeriodontalReadingForm({
   return (
     <div className="space-y-4">
       <p className="text-warm-500 text-xs">
-        قياسات عددية بالمليمتر — اترك الحقل فارغاً إن لم يُقَس. القياسات الإلحاقية:
-        كل حفظ يضيف قياساً جديداً بتاريخه.
+        {t("periodontal.numericHint")}
       </p>
 
       <div className="grid grid-cols-2 gap-3">
         <Field
-          label={`عمق الجيب (مم)`}
+          label={t("periodontal.pocketDepthMm")}
           htmlFor={`perio-pocket-${fdi}`}
           hint={`${POCKET_DEPTH_MIN_MM}–${POCKET_DEPTH_MAX_MM}`}
         >
@@ -162,12 +163,12 @@ export default function PeriodontalReadingForm({
             step={1}
             value={pocket}
             onChange={(e) => setPocket(e.target.value)}
-            placeholder="مثال: 4"
+            placeholder={t("common.example4")}
             className="numeric"
           />
         </Field>
         <Field
-          label="الانكماش اللثوي (مم)"
+          label={t("periodontal.recessionMm")}
           htmlFor={`perio-recession-${fdi}`}
           hint={`${RECESSION_MIN_MM}–${RECESSION_MAX_MM} — سالب فوق الخط`}
         >
@@ -180,12 +181,12 @@ export default function PeriodontalReadingForm({
             step={1}
             value={recession}
             onChange={(e) => setRecession(e.target.value)}
-            placeholder="مثال: -2"
+            placeholder={t("finance.exampleMinus2")}
             className="numeric"
           />
         </Field>
         <Field
-          label="الحركية (درجة)"
+          label={t("periodontal.mobilityGrade")}
           htmlFor={`perio-mobility-${fdi}`}
           hint={`${MOBILITY_MIN_GRADE}–${MOBILITY_MAX_GRADE}`}
         >
@@ -198,13 +199,13 @@ export default function PeriodontalReadingForm({
             step={1}
             value={mobility}
             onChange={(e) => setMobility(e.target.value)}
-            placeholder="مثال: 1"
+            placeholder={t("waitlist.example1")}
             className="numeric"
           />
         </Field>
         <div className="flex flex-col justify-end gap-1.5">
           <span className="text-ink-900 text-sm font-medium">
-            نزيف عند الجس
+            {t("periodontal.bleedingOnProbing")}
           </span>
           <button
             type="button"
@@ -218,18 +219,18 @@ export default function PeriodontalReadingForm({
                 : "border-warm-300 bg-surface-raised text-warm-600 hover:bg-surface-hover active:bg-surface-sunken",
             )}
           >
-            {bleeding ? "نزيف موجود" : "بلا نزيف"}
+            {bleeding ? t("periodontal.bleedingPresent") : t("periodontal.noBleeding")}
           </button>
         </div>
       </div>
 
-      <Field label="ملاحظة (اختياري)" htmlFor={`perio-note-${fdi}`}>
+      <Field label={t("common.noteOptional")} htmlFor={`perio-note-${fdi}`}>
         <Input
           id={`perio-note-${fdi}`}
           value={note}
           onChange={(e) => setNote(e.target.value)}
           maxLength={500}
-          placeholder="مثال: جيب حيوي عند القريبة"
+          placeholder={t("periodontal.examplePocket")}
         />
       </Field>
 
@@ -240,7 +241,7 @@ export default function PeriodontalReadingForm({
           role="alert"
           className="border-danger-300 bg-danger-50 text-danger-700 rounded-field border px-3 py-2 text-xs"
         >
-          قيمة خارج الحدود المسموحة — صحّح الحقل المحدَّد قبل الحفظ.
+          {t("periodontal.outOfRange")}
         </p>
       )}
 
@@ -261,14 +262,14 @@ export default function PeriodontalReadingForm({
           disabled={!hasAnyMeasurement || saving}
           className="w-full sm:w-auto"
         >
-          {saving ? "جارٍ الحفظ…" : "تسجيل القياس"}
+          {saving ? t("common.saving") : t("dental.recordReading")}
         </Button>
       </div>
 
       {toothHistory.length > 0 && (
         <div className="border-warm-200 border-t pt-4">
           <p className="text-warm-600 mb-2 text-xs font-semibold">
-            سجل قياسات هذا السن (
+            {t("dental.toothReadingsPrefix")}
             <span className="numeric">{toothHistory.length}</span>)
           </p>
           <ul className="space-y-1.5">
@@ -286,13 +287,13 @@ export default function PeriodontalReadingForm({
                       : `عمق ${r.pocketDepthMm}مم`}
                   </span>
                   {r.recessionMm !== null && (
-                    <span className="numeric">انكماش {r.recessionMm}مم</span>
+                    <span className="numeric">{t("periodontal.recessionShort")} {r.recessionMm}{t("common.mm")}</span>
                   )}
                   {r.mobilityGrade !== null && (
-                    <span className="numeric">حركية {r.mobilityGrade}</span>
+                    <span className="numeric">{t("periodontal.mobilityShort")} {r.mobilityGrade}</span>
                   )}
                   {r.bleedingOnProbing && (
-                    <span className="text-danger-600 font-semibold">نزيف</span>
+                    <span className="text-danger-600 font-semibold">{t("periodontal.bleeding")}</span>
                   )}
                   <span className="text-warm-400 numeric">
                     {formatDateAr(r.measuredAt)}

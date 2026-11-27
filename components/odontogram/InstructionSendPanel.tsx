@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useEffect, useState } from "react";
 import { Copy, MessageCircle } from "lucide-react";
@@ -22,6 +23,7 @@ type PanelState =
   | { kind: "ready"; templates: TemplateJson[]; phone: string | null };
 
 export default function InstructionSendPanel({ patientId, procedure }: Props) {
+  const { t } = useI18n();
   const [state, setState] = useState<PanelState>({ kind: "loading" });
   const [recorded, setRecorded] = useState<string[]>([]);
   const [copyError, setCopyError] = useState(false);
@@ -121,7 +123,7 @@ export default function InstructionSendPanel({ patientId, procedure }: Props) {
         role="alert"
         className="mt-2 rounded-panel border border-danger-300 bg-danger-50 px-3 py-2 text-xs text-danger-700"
       >
-        تعذر تحميل قوالب التعليمات لهذا الإجراء.
+        {t("instructions.loadProcedureFailed")}
       </div>
     );
   }
@@ -129,8 +131,7 @@ export default function InstructionSendPanel({ patientId, procedure }: Props) {
   if (state.templates.length === 0) {
     return (
       <div className="mt-2 rounded-panel border border-warm-200 bg-surface-sunken px-3 py-2 text-xs text-warm-600">
-        لا توجد قوالب تعليمات مطابقة لإجراء «{procedure}» — أضف قالباً من صفحة
-        تعليمات ما بعد العلاج.
+        {t("instructions.noMatchForProcedure")}{procedure}{t("instructions.addFromPage")}
       </div>
     );
   }
@@ -138,41 +139,40 @@ export default function InstructionSendPanel({ patientId, procedure }: Props) {
   return (
     <div className="mt-2 flex flex-col gap-2">
       <p className="text-xs font-medium text-warm-600">
-        تعليمات ما بعد «{procedure}» — راجع الرسالة كما ستُرسل ثم اختر طريقة
-        الإرسال:
+        {t("instructions.afterPrefix")}{procedure}{t("instructions.reviewAndSend")}
       </p>
-      {state.templates.map((t) => (
+      {state.templates.map((tpl) => (
         <div
-          key={t.id}
+          key={tpl.id}
           className="rounded-panel border border-warm-200 bg-surface-raised p-3"
         >
-          <MessagePreview body={t.body} phone={state.phone} />
+          <MessagePreview body={tpl.body} phone={state.phone} />
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {state.phone ? (
               <button
                 type="button"
-                onClick={() => sendWhatsApp(t)}
+                onClick={() => sendWhatsApp(tpl)}
                 className="inline-flex items-center gap-1.5 rounded-full bg-success-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-success-700"
               >
                 <MessageCircle size={13} aria-hidden />
-                {recorded.includes(t.id) ? "أُرسل واتساب ✓" : "إرسال واتساب"}
+                {recorded.includes(tpl.id) ? t("instructions.whatsappSent") : t("instructions.sendWhatsapp")}
               </button>
             ) : (
               <span className="text-xs text-warning-700">
-                لا رقم هاتف للمريض — استخدم النسخ النصي
+                {t("instructions.noPhone")}
               </span>
             )}
             <button
               type="button"
-              onClick={() => void copyText(t)}
+              onClick={() => void copyText(tpl)}
               className="inline-flex items-center gap-1.5 rounded-full border border-warm-300 px-3 py-1.5 text-xs font-medium text-warm-700 hover:bg-surface-hover"
             >
               <Copy size={13} aria-hidden />
-              {recorded.includes(t.id) ? "نُسخ ✓" : "نسخ النص"}
+              {recorded.includes(tpl.id) ? t("instructions.copiedCheck") : t("instructions.copyText")}
             </button>
             {copyError && (
               <span role="alert" className="text-xs text-danger-600">
-                تعذر النسخ — انسخ النص يدوياً من المعاينة
+                {t("instructions.copyFailed")}
               </span>
             )}
           </div>

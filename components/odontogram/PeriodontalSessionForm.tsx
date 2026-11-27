@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useState } from "react";
 import type { PeriodontalReadingDto } from "@/lib/services/periodontal";
@@ -11,11 +12,7 @@ import {
   RECESSION_MIN_MM,
   latestReadingByTooth,
 } from "@/lib/odontogram/periodontal-view";
-import {
-  lowerRowLeftToRight,
-  upperRowLeftToRight,
-  toothNameAr,
-} from "@/lib/odontogram/fdi";
+import { lowerRowLeftToRight, upperRowLeftToRight, toothName } from "@/lib/odontogram/fdi";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/components/ui/cn";
 
@@ -63,6 +60,7 @@ export default function PeriodontalSessionForm({
   onDone,
   saveVariant = "primary",
 }: Props) {
+  const { t, locale } = useI18n();
   const upper = upperRowLeftToRight();
   const lower = lowerRowLeftToRight();
   const allFdi = [...upper, ...lower].map((cell) => cell.fdi);
@@ -129,13 +127,13 @@ export default function PeriodontalSessionForm({
         error?: string;
       };
       if (!res.ok || !data.readings) {
-        setError(data.error ?? "تعذر حفظ الجلسة");
+        setError(data.error ?? t("periodontal.saveSessionFailed"));
         return;
       }
       onSessionSaved(data.readings as PeriodontalReadingDto[]);
       onDone();
     } catch {
-      setError("تعذر الاتصال بالخادم");
+      setError(t("errors.server"));
     } finally {
       setSaving(false);
     }
@@ -158,7 +156,7 @@ export default function PeriodontalSessionForm({
                 </p>
                 {prev && (
                   <p className="text-warm-400 numeric text-center text-[10px]">
-                    آخر قياس:{" "}
+                    {t("periodontal.lastReading")}{" "}
                     {[
                       prev.pocketDepthMm !== null
                         ? `${prev.pocketDepthMm}مم`
@@ -166,14 +164,14 @@ export default function PeriodontalSessionForm({
                       prev.mobilityGrade !== null
                         ? `ح${prev.mobilityGrade}`
                         : null,
-                      prev.bleedingOnProbing ? "نزيف" : null,
+                      prev.bleedingOnProbing ? t("periodontal.bleeding") : null,
                     ]
                       .filter(Boolean)
                       .join(" · ") || "—"}
                   </p>
                 )}
                 <label className="text-warm-500 mt-1 block text-[10px]">
-                  عمق مم
+                  {t("periodontal.depthMm")}
                   <input
                     type="number"
                     inputMode="numeric"
@@ -182,12 +180,12 @@ export default function PeriodontalSessionForm({
                     step={1}
                     value={entry?.pocket ?? ""}
                     onChange={(e) => update(fdi, { pocket: e.target.value })}
-                    aria-label={`عمق الجيب للسن ${fdi} (${toothNameAr(fdi)})`}
+                    aria-label={t("periodontal.pocketAria", { fdi, name: toothName(locale, fdi) ?? "" })}
                     className="numeric border-warm-300 bg-surface-raised focus:border-primary-500 focus:outline-primary-500 rounded-field text-ink-900 w-full border px-1.5 py-1 text-xs focus:outline-2 focus:outline-offset-0"
                   />
                 </label>
                 <label className="text-warm-500 mt-1 block text-[10px]">
-                  انكماش مم
+                  {t("periodontal.recessionMmShort")}
                   <input
                     type="number"
                     inputMode="numeric"
@@ -201,7 +199,7 @@ export default function PeriodontalSessionForm({
                   />
                 </label>
                 <label className="text-warm-500 mt-1 block text-[10px]">
-                  حركية
+                  {t("periodontal.mobilityShort")}
                   <input
                     type="number"
                     inputMode="numeric"
@@ -226,7 +224,7 @@ export default function PeriodontalSessionForm({
                       : "border-warm-300 bg-surface-raised text-warm-600 hover:bg-surface-hover",
                   )}
                 >
-                  {entry?.bleeding ? "نزيف" : "بلا نزيف"}
+                  {entry?.bleeding ? t("periodontal.bleeding") : t("periodontal.noBleeding")}
                 </button>
               </div>
             );
@@ -239,9 +237,7 @@ export default function PeriodontalSessionForm({
   return (
     <div className="space-y-4">
       <p className="text-warm-500 text-xs">
-        جلسة قياس دواعم — موضع واحد لكل سن. اترك فارغاً ما لم يُقَس، و«حفظ الجلسة»
-        يلحق كل القياسات المُدخلة بتوقيت واحد. الحدود: عمق 0–15مم، انكماش
-        −5..10مم، حركية 0–3.
+        {t("periodontal.sessionFullHint")}
       </p>
 
       {renderRow(upper)}
@@ -266,11 +262,11 @@ export default function PeriodontalSessionForm({
           className="w-full sm:w-auto"
         >
           {saving
-            ? "جارٍ الحفظ…"
-            : `حفظ الجلسة (${filledFdi.length} ${filledFdi.length === 1 ? "سن" : "أسنان"})`}
+            ? t("common.saving")
+            : `حفظ الجلسة (${filledFdi.length} ${filledFdi.length === 1 ? t("common.toothUnit") : t("dental.teeth")})`}
         </Button>
         <Button variant="ghost" onClick={onDone}>
-          إلغاء
+          {t("common.cancel")}
         </Button>
       </div>
     </div>

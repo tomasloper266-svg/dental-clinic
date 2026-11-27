@@ -1,3 +1,4 @@
+import { getServerT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import {
@@ -9,6 +10,7 @@ import { dayRange } from "@/lib/dates";
 
 // مقترحات الفجوات الشاغرة ليوم محدد — ضمن ساعات العمل الافتراضية.
 export async function GET(req: NextRequest) {
+  const t = await getServerT();
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
@@ -18,7 +20,7 @@ export async function GET(req: NextRequest) {
     ? new Date(`${date}T00:00:00`)
     : new Date(new Date().toISOString().slice(0, 10) + "T00:00:00");
   if (Number.isNaN(base.getTime())) {
-    return NextResponse.json({ error: "تاريخ غير صالح" }, { status: 400 });
+    return NextResponse.json({ error: t("api.invalidDate") }, { status: 400 });
   }
 
   const [dayStart] = dayRange(base);

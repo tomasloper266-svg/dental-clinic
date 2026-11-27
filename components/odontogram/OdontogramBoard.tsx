@@ -1,18 +1,9 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useMemo, useState } from "react";
-import {
-  upperRowLeftToRight,
-  lowerRowLeftToRight,
-  toothNameAr,
-  QUADRANT_LABEL_AR,
-  type ToothCell,
-} from "@/lib/odontogram/fdi";
-import {
-  TOOTH_STATUS_META,
-  TOOTH_STATUS_KEYS,
-  toothStatusMeta,
-} from "@/lib/odontogram/statuses";
+import { upperRowLeftToRight, lowerRowLeftToRight, type ToothCell, toothName, quadrantLabel } from "@/lib/odontogram/fdi";
+import { TOOTH_STATUS_META, TOOTH_STATUS_KEYS, toothStatusMeta, toothStatusIcon, toothStatusLabel } from "@/lib/odontogram/statuses";
 import {
   latestFindingByTooth,
   findingsForTooth,
@@ -65,6 +56,7 @@ export default function OdontogramBoard({
   selectedTooth,
   onSelectTooth,
 }: Props) {
+  const { t, locale } = useI18n();
   const [findings, setFindings] = useState<FindingDto[]>(initialFindings);
   const [readings, setReadings] =
     useState<PeriodontalReadingDto[]>(initialReadings);
@@ -134,22 +126,20 @@ export default function OdontogramBoard({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-ink-900 text-base font-semibold">
-              مخطط الأسنان
+              {t("dental.chart")}
             </h2>
             <p className="text-warm-500 mt-1 text-xs">
-              رسم تشريحي بالترقيم FDI الدائم (11–48) — أرباع المريض كما يواجهها
-              الطبيب: قواطع وأنياب وضواحك وأضراس بأشكالها، التيجان تواجه خط
-              الإطباق. انقر سناً لعرض حالته وسجله وتسجيل مشاهدة جديدة.
+              {t("odontogram.fdiDescription")}
             </p>
           </div>
           <Button variant="secondary" onClick={() => setSessionOpen(true)}>
-            قياس دواعم (جلسة)
+            {t("periodontal.sessionMeasure")}
           </Button>
         </div>
 
         <div className="mt-4 space-y-1">
           <QuadrantLabel>
-            {QUADRANT_LABEL_AR[1]} / {QUADRANT_LABEL_AR[2]}
+            {quadrantLabel(locale, 1)} / {quadrantLabel(locale, 2)}
           </QuadrantLabel>
           {renderRow(upperRowLeftToRight())}
           <div
@@ -158,7 +148,7 @@ export default function OdontogramBoard({
           />
           {renderRow(lowerRowLeftToRight())}
           <QuadrantLabel>
-            {QUADRANT_LABEL_AR[4]} / {QUADRANT_LABEL_AR[3]}
+            {quadrantLabel(locale, 4)} / {quadrantLabel(locale, 3)}
           </QuadrantLabel>
         </div>
 
@@ -173,8 +163,8 @@ export default function OdontogramBoard({
                   meta.chipClass,
                 )}
               >
-                <span className="font-bold">{meta.icon}</span>
-                {meta.labelAr}
+                <span className="font-bold">{toothStatusIcon(locale, meta.value)}</span>
+                {toothStatusLabel(locale, meta.value)}
               </span>
             );
           })}
@@ -184,7 +174,7 @@ export default function OdontogramBoard({
         {readings.length > 0 && (
           <div className="border-warm-200 mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1.5 border-t pt-3">
             <span className="text-warm-400 text-[11px] font-semibold">
-              عمق الجيب:
+              {t("periodontal.pocketDepthLabel")}
             </span>
             {POCKET_SCALE_KEYS.map((level) => (
               <span
@@ -210,7 +200,7 @@ export default function OdontogramBoard({
                   backgroundColor: "var(--color-warm-100)",
                 }}
               />
-              نزيف عند الجس
+              {t("periodontal.bleedingOnProbing")}
             </span>
           </div>
         )}
@@ -224,7 +214,7 @@ export default function OdontogramBoard({
         onClose={() => onSelectTooth(null)}
         title={
           selectedTooth !== null
-            ? `السن ${selectedTooth} — ${toothNameAr(selectedTooth)}`
+            ? `${t("dental.toothAria", { fdi: selectedTooth })} — ${toothName(locale, selectedTooth) ?? ""}`
             : ""
         }
         className="max-w-md"
@@ -237,7 +227,7 @@ export default function OdontogramBoard({
             history={history}
             onSaved={appendFinding}
             preselectLatest
-            kindHeading="نوع القيد الجديد"
+            kindHeading={t("finance.newEntryType")}
             readings={toothReadings}
             onReadingSaved={appendReading}
           />
@@ -248,7 +238,7 @@ export default function OdontogramBoard({
       <Drawer
         open={sessionOpen}
         onClose={() => setSessionOpen(false)}
-        title="جلسة قياس الدواعم"
+        title={t("periodontal.session")}
         className="max-w-lg"
       >
         <PeriodontalSessionForm

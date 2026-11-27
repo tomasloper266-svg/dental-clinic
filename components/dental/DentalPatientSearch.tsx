@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -25,6 +26,7 @@ export default function DentalPatientSearch({
   selectedPatientId,
   className,
 }: Props) {
+  const { t } = useI18n();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [patients, setPatients] = useState<PatientDto[] | null>(null);
@@ -39,15 +41,15 @@ export default function DentalPatientSearch({
         `/api/patients${search ? `?q=${encodeURIComponent(search)}` : ""}`,
       );
       if (!res.ok) {
-        setError("تعذر تحميل قائمة المرضى، حاول مرة أخرى");
+        setError(t("patients.loadFailed"));
         return;
       }
       const data = (await res.json()) as { patients: PatientDto[] };
       setPatients(data.patients);
     } catch {
-      setError("تعذر الاتصال بالخادم");
+      setError(t("errors.server"));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const timer = setTimeout(
@@ -77,22 +79,22 @@ export default function DentalPatientSearch({
 
   return (
     <section
-      aria-label="اختيار المريض"
+      aria-label={t("patients.pick")}
       className={cn(
         "rounded-panel border border-warm-200 bg-surface-raised px-4 py-3 shadow-xs",
         className,
       )}
     >
-      <p className="text-steel-600 text-xs">اختر المريض لعرض مخطط أسنانه وخطة علاجه</p>
+      <p className="text-steel-600 text-xs">{t("dental.pickForChart")}</p>
 
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
         <Button
           variant="gold"
           onClick={openFullFile}
           disabled={!selectedPatientId}
-          title={selectedPatientId ? undefined : "اختر مريضاً أولاً"}
+          title={selectedPatientId ? undefined : t("patients.chooseFirst")}
         >
-          فتح الملف الكامل
+          {t("patients.openFullFile")}
         </Button>
 
         {/* منتقي المريض — قائمة حقيقية من قاعدة البيانات */}
@@ -105,7 +107,7 @@ export default function DentalPatientSearch({
             className="focus-ring flex w-full items-center justify-between gap-2 rounded-field border border-warm-300 bg-surface px-3 py-2 text-sm text-ink-900"
           >
             <span className={cn(!selected && "text-steel-400")}>
-              {selected ? selected.name : "اختر المريض…"}
+              {selected ? selected.name : t("patients.chooseDots")}
             </span>
             <Search size={14} className="text-steel-400" aria-hidden />
           </button>
@@ -118,8 +120,8 @@ export default function DentalPatientSearch({
                   type="search"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="ابحث بالاسم أو رقم الملف أو أي شيء"
-                  aria-label="بحث في المرضى"
+                  placeholder={t("patients.searchAnyPlaceholder")}
+                  aria-label={t("patients.search")}
                   className="focus-ring w-full bg-transparent py-1 text-sm text-ink-900 outline-none placeholder:text-steel-400"
                 />
               </div>
@@ -132,20 +134,20 @@ export default function DentalPatientSearch({
 
               {patients === null && !error && (
                 <p className="px-3 py-2 text-sm text-steel-500">
-                  جارٍ تحميل المرضى…
+                  {t("patients.loading")}
                 </p>
               )}
 
               {patients !== null && patients.length === 0 && (
                 <p className="px-3 py-2 text-sm text-steel-500">
-                  لا مرضى مطابقين للبحث.
+                  {t("patients.noMatches")}
                 </p>
               )}
 
               {patients !== null && patients.length > 0 && (
                 <ul
                   role="listbox"
-                  aria-label="قائمة المرضى"
+                  aria-label={t("patients.list")}
                   className="max-h-72 divide-y divide-warm-100 overflow-y-auto"
                 >
                   {patients.map((patient) => {

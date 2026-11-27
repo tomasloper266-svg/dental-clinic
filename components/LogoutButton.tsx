@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -8,6 +9,7 @@ export default function LogoutButton({
 }: {
   className?: string;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
 
@@ -32,7 +34,7 @@ export default function LogoutButton({
         "mt-6 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 disabled:opacity-50"
       }
     >
-      {submitting ? "جارٍ الخروج..." : "تسجيل الخروج"}
+      {submitting ? t("subscription.loggingOut") : t("subscription.logout")}
     </button>
   );
 }

@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, Coins, Plus, ReceiptText, RotateCw, Wallet, X } from "lucide-react";
@@ -102,6 +103,7 @@ function downloadCsv(filename: string, csv: string) {
 }
 
 export default function FinanceBoard({ usdRate }: { usdRate: number }) {
+  const { t } = useI18n();
   const money = useMoney();
   const { toast } = useToast();
   const [entries, setEntries] = useState<ClinicEntryJson[] | null>(null);
@@ -229,12 +231,12 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
   async function submitEntry() {
     setFormError(null);
     if (!entryPatient) {
-      setFormError("اختر المريض أولاً");
+      setFormError(t("patients.chooseFirst"));
       return;
     }
     const magnitude = Number(amountStr);
     if (!isUsdAmount(magnitude) || magnitude <= 0) {
-      setFormError("المبلغ يجب أن يكون رقماً موجباً بمنزلتين عشريتين كحد أقصى");
+      setFormError(t("api.amountPositive2dp"));
       return;
     }
     setBusy(true);
@@ -253,10 +255,10 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
       );
       const data = (await res.json()) as { entry?: object; error?: string };
       if (!res.ok || !data.entry) {
-        setFormError(data.error ?? "تعذر تسجيل القيد، أعد المحاولة");
+        setFormError(data.error ?? t("finance.entryFailed"));
         return;
       }
-      toast("سُجّل القيد في الدفتر");
+      toast(t("finance.entryRecorded"));
       emitLedgerChanged();
       setAddOpen(false);
       setEntryPatient(null);
@@ -267,7 +269,7 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
       setNote("");
       await refresh();
     } catch {
-      setFormError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+      setFormError(t("errors.serverRetry"));
     } finally {
       setBusy(false);
     }
@@ -276,7 +278,7 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
   function exportCsv() {
     if (!rows) return;
     const csv = toCsv(
-      ["التاريخ", "المريض", "الهاتف", "النوع", "البيان", "المبلغ", "الرصيد الجاري", "الحالة"],
+      [t("common.date"), t("common.patient"), t("common.phone"), t("common.type"), t("common.description"), t("common.amount"), t("admin.currentBalance"), t("common.status")],
       rows.map(({ entry, balance, settlement }) => [
         formatDateCell(entry.createdAt),
         entry.patientName,
@@ -288,12 +290,12 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
         settlement === null ? "" : LEDGER_SETTLEMENT_META[settlement].label,
       ]),
     );
-    downloadCsv("دفتر-مالي.csv", csv);
-    toast("صُدِّر ملف CSV");
+    downloadCsv(t("finance.ledgerCsvName"), csv);
+    toast(t("settings.csvExported"));
   }
 
   const filterLabels: Record<TypeFilter, string> = {
-    ALL: "الكل",
+    ALL: t("common.all"),
     CHARGE: LEDGER_TYPE_META.CHARGE.label,
     PAYMENT: LEDGER_TYPE_META.PAYMENT.label,
     ADJUSTMENT: LEDGER_TYPE_META.ADJUSTMENT.label,
@@ -303,12 +305,12 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
   return (
     <>
       <PageHeader
-        title="الفواتير والمدفوعات"
+        title={t("common.invoicesPayments")}
         description={formatDayLabel(new Date())}
         actions={
           <Button shape="pill" onClick={openCreate}>
             <Plus size={16} aria-hidden />
-            قيد جديد
+            {t("finance.newEntry")}
           </Button>
         }
       />
@@ -319,11 +321,11 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
           className="flex flex-col items-start gap-2 rounded-panel border border-danger-300 bg-danger-50 px-4 py-4"
         >
           <p className="text-xs font-medium text-danger-700">
-            تعذر تحميل الدفتر — تحقق من الاتصال ثم أعد المحاولة.
+            {t("finance.loadFailed")}
           </p>
           <Button variant="secondary" size="sm" onClick={() => void refresh()}>
             <RotateCw size={14} aria-hidden />
-            إعادة المحاولة
+            {t("common.retry")}
           </Button>
         </div>
       ) : (
@@ -332,20 +334,20 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
             <SearchInput
               value={search}
               onChange={setSearch}
-              placeholder="ابحث برقم الفاتورة أو اسم المريض…"
-              aria-label="بحث باسم المريض أو البيان"
+              placeholder={t("invoices.searchPlaceholderDots")}
+              aria-label={t("finance.searchPatientOrDescription")}
             />
             <div className="flex flex-wrap items-center gap-2">
               <FilterPills
                 options={SETTLEMENT_ORDER.map((key) => ({
                   value: key,
                   label:
-                    key === "ALL" ? "الكل" : LEDGER_SETTLEMENT_META[key].label,
+                    key === "ALL" ? t("common.all") : LEDGER_SETTLEMENT_META[key].label,
                   count: settlementCounts[key],
                 }))}
                 value={settlementFilter}
                 onChange={setSettlementFilter}
-                ariaLabel="تصفية بحالة السداد"
+                ariaLabel={t("invoices.filterByPayment")}
               />
               <FilterPills
                 options={(["ALL", ...TYPE_ORDER] as TypeFilter[]).map((key) => ({
@@ -355,7 +357,7 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
                 }))}
                 value={typeFilter}
                 onChange={setTypeFilter}
-                ariaLabel="تصفية بنوع القيد"
+                ariaLabel={t("finance.filterByType")}
               />
               <ExportButton onClick={exportCsv} />
             </div>
@@ -365,22 +367,22 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
           <div className="grid gap-3 px-5 pt-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               value={String(entries?.length ?? 0)}
-              label="عدد القيود"
+              label={t("finance.entriesCount")}
               icon={BookOpen}
             />
             <StatCard
               value={formatDualFromUsd(summary.chargesUsd, usdRate)}
-              label="إجمالي الرسوم المُصدرة"
+              label={t("invoices.totalIssued")}
               icon={ReceiptText}
             />
             <StatCard
               value={formatDualFromUsd(summary.paymentsUsd, usdRate)}
-              label="إجمالي المدخول (الدفعات)"
+              label={t("invoices.totalIncome")}
               icon={Coins}
             />
             <StatCard
               value={formatDualFromUsd(duesUsd, usdRate)}
-              label="المستحقات غير المسددة"
+              label={t("dues.outstanding")}
               icon={Wallet}
               tone="danger"
             />
@@ -400,20 +402,20 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
               entries.length === 0 ? (
                 <EmptyState
                   icon={BookOpen}
-                  title="الدفتر فارغ"
-                  description="سجّل أول قيد برسوم علاج أو دفعة، وستُبنى الحسابات والرصيد من القيود تلقائياً."
+                  title={t("finance.ledgerEmpty")}
+                  description={t("finance.ledgerEmptyHint")}
                   action={
                     <Button size="sm" onClick={openCreate}>
                       <Plus size={14} aria-hidden />
-                      قيد جديد
+                      {t("finance.newEntry")}
                     </Button>
                   }
                 />
               ) : (
                 <EmptyState
                   icon={BookOpen}
-                  title="لا قيود مطابقة للتصفية"
-                  description="عدّل حالة السداد أو نوع القيد أو نص البحث لتوسيع النتائج."
+                  title={t("finance.noMatches")}
+                  description={t("finance.widenResults")}
                   action={
                     <Button
                       variant="secondary"
@@ -424,7 +426,7 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
                         setSearch("");
                       }}
                     >
-                      مسح التصفية
+                      {t("common.clearFilter")}
                     </Button>
                   }
                 />
@@ -435,16 +437,16 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
                 <Table className="hidden md:table">
                   <THead>
                     <TRow>
-                      <TH>التاريخ</TH>
-                      <TH>المريض</TH>
-                      <TH className="hidden lg:table-cell">النوع</TH>
-                      <TH className="hidden xl:table-cell">البيان</TH>
-                      <TH className="text-end">الإجمالي</TH>
-                      <TH className="text-end">المسدد</TH>
-                      <TH className="text-end">المتبقي</TH>
-                      <TH>الحالة</TH>
+                      <TH>{t("common.date")}</TH>
+                      <TH>{t("common.patient")}</TH>
+                      <TH className="hidden lg:table-cell">{t("common.type")}</TH>
+                      <TH className="hidden xl:table-cell">{t("common.description")}</TH>
+                      <TH className="text-end">{t("common.total")}</TH>
+                      <TH className="text-end">{t("common.paid")}</TH>
+                      <TH className="text-end">{t("common.remaining")}</TH>
+                      <TH>{t("common.status")}</TH>
                       <TH>
-                        <span className="sr-only">إجراءات</span>
+                        <span className="sr-only">{t("common.actions")}</span>
                       </TH>
                     </TRow>
                   </THead>
@@ -512,7 +514,7 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
                           <TD>
                             <div className="flex items-center justify-end gap-1.5">
                               <PillAction href={`/patients/${entry.patientId}`}>
-                                عرض
+                                {t("common.view")}
                               </PillAction>
                               <PillAction
                                 variant="success"
@@ -525,7 +527,7 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
                                     : undefined
                                 }
                               >
-                                تسديد
+                                {t("common.settle")}
                               </PillAction>
                             </div>
                           </TD>
@@ -569,7 +571,7 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
                           <div className="flex items-center justify-between gap-2 border-t border-warm-200 pt-2">
                             {settlement === null ? (
                               <span className="text-xs text-warm-500">
-                                الرصيد بعد القيد:{" "}
+                                {t("finance.balanceAfterEntry")}{" "}
                                 <span className="numeric">{money(balance)}</span>
                               </span>
                             ) : (
@@ -581,7 +583,7 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
                             )}
                             <div className="flex items-center gap-1.5">
                               <PillAction href={`/patients/${entry.patientId}`}>
-                                عرض
+                                {t("common.view")}
                               </PillAction>
                             </div>
                           </div>
@@ -593,7 +595,7 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
 
                 {entries.length >= 300 && (
                   <p className="mt-2 text-xs text-warm-500">
-                    تُعرض أحدث 300 قيد — استخدم التصفية للوصول إلى قيود أقدم.
+                    {t("finance.latest300")}
                   </p>
                 )}
               </>
@@ -609,11 +611,11 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
           setAddOpen(false);
           setFormError(null);
         }}
-        title="قيد جديد"
+        title={t("finance.newEntry")}
         footer={
           <>
             <Button loading={busy} onClick={() => void submitEntry()}>
-              تسجيل القيد
+              {t("finance.recordEntry")}
             </Button>
             <Button
               variant="secondary"
@@ -623,7 +625,7 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
               }}
               disabled={busy}
             >
-              إلغاء
+              {t("common.cancel")}
             </Button>
           </>
         }
@@ -637,20 +639,20 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
               <button
                 type="button"
                 onClick={() => setEntryPatient(null)}
-                aria-label="تغيير المريض"
+                aria-label={t("patients.change")}
                 className="text-warm-400 hover:text-ink-900"
               >
                 <X size={14} aria-hidden />
               </button>
             </div>
           ) : (
-            <Field label="المريض" htmlFor="entry-patient">
+            <Field label={t("common.patient")} htmlFor="entry-patient">
               <div className="relative">
                 <Input
                   id="entry-patient"
                   value={patientQuery}
                   onChange={(e) => setPatientQuery(e.target.value)}
-                  placeholder="ابحث بالاسم أو الهاتف…"
+                  placeholder={t("patients.searchPhonePlaceholder")}
                   autoComplete="off"
                 />
                 {suggestions.length > 0 && (
@@ -675,7 +677,7 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
             </Field>
           )}
 
-          <Field label="نوع القيد" htmlFor="entry-type">
+          <Field label={t("finance.entryType")} htmlFor="entry-type">
             <Select
               id="entry-type"
               value={type}
@@ -692,7 +694,7 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
           {type === "ADJUSTMENT" && (
             <fieldset className="flex gap-2">
               <legend className="mb-1.5 text-sm font-medium text-ink-900">
-                اتجاه التصحيح
+                {t("finance.adjustDirection")}
               </legend>
               <Button
                 variant={adjustDir === "add" ? "primary" : "secondary"}
@@ -700,7 +702,7 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
                 onClick={() => setAdjustDir("add")}
                 aria-pressed={adjustDir === "add"}
               >
-                إضافة إلى الرصيد
+                {t("finance.addToBalance")}
               </Button>
               <Button
                 variant={adjustDir === "sub" ? "primary" : "secondary"}
@@ -708,19 +710,19 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
                 onClick={() => setAdjustDir("sub")}
                 aria-pressed={adjustDir === "sub"}
               >
-                خصم من الرصيد
+                {t("finance.discountFromBalance")}
               </Button>
             </fieldset>
           )}
 
           <Field
-            label="المبلغ ($)"
+            label={t("finance.amountUsd")}
             htmlFor="entry-amount"
             hint={
               finalAmount !== null
                 ? `سيُسجَّل بالدفتر: ${formatDualFromUsd(finalAmount, usdRate)}`
                 : type === "PAYMENT"
-                  ? "تُسجَّل الدفعة بقيمة سالبة تخفض رصيد المريض"
+                  ? t("finance.paymentNegativeHint")
                   : undefined
             }
           >
@@ -732,16 +734,16 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
               min={0.01}
               value={amountStr}
               onChange={(e) => setAmountStr(e.target.value)}
-              placeholder="مثال: 250"
+              placeholder={t("common.example250")}
             />
           </Field>
 
-          <Field label="البيان (اختياري)" htmlFor="entry-note">
+          <Field label={t("common.descriptionOptional")} htmlFor="entry-note">
             <Textarea
               id="entry-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="سبب القيد أو ملاحظة…"
+              placeholder={t("appointments.reasonPlaceholder")}
               rows={2}
             />
           </Field>

@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -51,6 +52,7 @@ function downloadCsv(filename: string, csv: string) {
 
 /** خلية المريض بشارة مرقّمة ذهبية وسطر «آخر فاتورة» — على شكل المرجع */
 function PatientCell({ row, index }: { row: DuesRowView; index: number }) {
+  const { t } = useI18n();
   return (
     <div className="flex items-center gap-2.5">
       <span
@@ -65,7 +67,7 @@ function PatientCell({ row, index }: { row: DuesRowView; index: number }) {
         </span>
         {row.lastChargeAt && (
           <span className="numeric block truncate text-xs text-warning-600">
-            آخر فاتورة {formatDateCell(row.lastChargeAt)}
+            {t("dues.lastInvoice")} {formatDateCell(row.lastChargeAt)}
           </span>
         )}
       </span>
@@ -74,6 +76,7 @@ function PatientCell({ row, index }: { row: DuesRowView; index: number }) {
 }
 
 export default function DuesBoard({ usdRate }: { usdRate: number }) {
+  const { t } = useI18n();
   const money = useMoney();
   const { toast } = useToast();
   const [entries, setEntries] = useState<ClinicEntryJson[] | null>(null);
@@ -139,7 +142,7 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
   function exportCsv() {
     if (!rows) return;
     const csv = toCsv(
-      ["المريض", "رقم الهاتف", "إجمالي الفواتير", "المسدد", "الفرقة المتبقية", "آخر دفعة"],
+      [t("common.patient"), t("common.phoneNumber"), t("invoices.totalInvoices"), t("common.paid"), t("dues.remainingSplit"), t("dues.lastPayment")],
       rows.map((row) => [
         row.patientName,
         row.patientPhone ?? "",
@@ -149,18 +152,18 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
         row.lastPaymentAt === null ? "" : formatDateCell(row.lastPaymentAt),
       ]),
     );
-    downloadCsv("المستحقات.csv", csv);
-    toast("صُدّر ملف CSV");
+    downloadCsv(t("dues.csvName"), csv);
+    toast(t("settings.csvExported"));
   }
 
   return (
     <div className="w-full">
       <PageHeader
-        title="المستحقات"
+        title={t("common.dues")}
         description={formatWeekdayDateCell(new Date())}
         actions={
           <Button variant="secondary" shape="pill" onClick={exportCsv} disabled={!rows}>
-            تصدير CSV
+            {t("settings.exportCsv")}
           </Button>
         }
       />
@@ -173,13 +176,13 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
               ? "—"
               : money(summary.totalDuesUsd)
           }
-          label="إجمالي المستحقات غير المسددة"
+          label={t("invoices.totalOutstanding")}
           icon={CircleDollarSign}
           tone="danger"
         />
         <StatCard
           value={summary === null ? "—" : String(summary.debtors)}
-          label="مرضى عليهم رصيد"
+          label={t("dues.patientsWithBalance")}
           icon={Users}
           iconClassName="bg-warning-500/10 text-warning-600"
         />
@@ -189,7 +192,7 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
               ? "—"
               : money(summary.maxDueUsd)
           }
-          label="أعلى رصيد فردي"
+          label={t("dues.highestIndividual")}
           icon={DollarSign}
           iconClassName="bg-steel-500/10 text-steel-600"
         />
@@ -199,7 +202,7 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
               ? "—"
               : money(summary.avgDueUsd)
           }
-          label="متوسط الرصيد"
+          label={t("dues.avgBalance")}
           icon={BarChart3}
           iconClassName="bg-primary-500/10 text-primary-700"
         />
@@ -211,11 +214,11 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
           className="flex flex-col items-start gap-2 rounded-panel border border-danger-300 bg-danger-50 px-4 py-4"
         >
           <p className="text-xs font-medium text-danger-700">
-            تعذر تحميل المستحقات — تحقق من الاتصال ثم أعد المحاولة.
+            {t("dues.loadFailed")}
           </p>
           <Button variant="secondary" size="sm" onClick={() => void refresh()}>
             <RotateCw size={14} aria-hidden />
-            إعادة المحاولة
+            {t("common.retry")}
           </Button>
         </div>
       ) : (
@@ -229,7 +232,7 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
               <Info size={14} />
             </span>
             <p className="text-xs text-warm-600">
-              سجل المدينين — كل مريض له رصيد غير مسدد
+              {t("dues.subtitle")}
             </p>
           </div>
 
@@ -247,15 +250,15 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
               entries !== null && entries.length === 0 ? (
                 <EmptyState
                   icon={Wallet}
-                  title="الدفتر فارغ"
-                  description="سجّل قيود الرسوم والدفعات في الدفتر المالي، وستظهر المستحقات هنا تلقائياً."
+                  title={t("finance.ledgerEmpty")}
+                  description={t("finance.ledgerHint")}
                   className="border-0 bg-transparent py-10"
                 />
               ) : (
                 <EmptyState
                   icon={Wallet}
-                  title="لا مستحقات غير مسددة"
-                  description="كل المرضى مسددون — لا يوجد أي رصيد مستحق."
+                  title={t("dues.noneOutstanding")}
+                  description={t("dues.allSettled")}
                   className="border-0 bg-transparent py-10"
                 />
               )
@@ -264,14 +267,14 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
                 <Table wrapperClassName="border-0 rounded-none">
                   <THead>
                     <TRow>
-                      <TH>المريض</TH>
-                      <TH className="hidden md:table-cell">رقم الهاتف</TH>
-                      <TH className="text-end">إجمالي الفواتير</TH>
-                      <TH className="text-end">المسدد</TH>
-                      <TH className="text-end text-danger-600">الفرقة المتبقية</TH>
-                      <TH className="hidden lg:table-cell">آخر دفعة</TH>
+                      <TH>{t("common.patient")}</TH>
+                      <TH className="hidden md:table-cell">{t("common.phoneNumber")}</TH>
+                      <TH className="text-end">{t("invoices.totalInvoices")}</TH>
+                      <TH className="text-end">{t("common.paid")}</TH>
+                      <TH className="text-end text-danger-600">{t("dues.remainingSplit")}</TH>
+                      <TH className="hidden lg:table-cell">{t("dues.lastPayment")}</TH>
                       <TH className="w-[12%]">
-                        <span className="sr-only">إجراءات</span>
+                        <span className="sr-only">{t("common.actions")}</span>
                       </TH>
                     </TRow>
                   </THead>
@@ -310,13 +313,13 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
                                 })
                               }
                             >
-                              تسديد
+                              {t("common.settle")}
                             </PillAction>
                             <PillAction
                               variant="outline"
                               href={`/patients/${row.patientId}`}
                             >
-                              الملف
+                              {t("common.file")}
                             </PillAction>
                           </div>
                         </TD>
@@ -333,14 +336,14 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
                         <div className="flex flex-col gap-2 px-5 py-3">
                           <PatientCell row={row} index={index} />
                           <div className="flex items-center justify-between gap-2 text-xs">
-                            <span className="text-warm-500">الفرقة المتبقية</span>
+                            <span className="text-warm-500">{t("dues.remainingSplit")}</span>
                             <span className="numeric font-semibold text-danger-600">
                               {money(row.dueUsd)}
                             </span>
                           </div>
                           {row.lastPaymentAt !== null && (
                             <p className="numeric text-[11px] text-warm-500">
-                              آخر دفعة {formatDateCell(row.lastPaymentAt)}
+                              {t("dues.lastPayment")} {formatDateCell(row.lastPaymentAt)}
                             </p>
                           )}
                           <div className="flex items-center justify-end gap-1.5 border-t border-warm-200 pt-2">
@@ -354,13 +357,13 @@ export default function DuesBoard({ usdRate }: { usdRate: number }) {
                                 })
                               }
                             >
-                              تسديد
+                              {t("common.settle")}
                             </PillAction>
                             <PillAction
                               variant="outline"
                               href={`/patients/${row.patientId}`}
                             >
-                              الملف
+                              {t("common.file")}
                             </PillAction>
                           </div>
                         </div>

@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -11,6 +12,7 @@ import { Field, Input } from "@/components/ui/Field";
  * النجاح يصدر كوكي الجلسة الإدارية ويعيد تحميل اللوحة.
  */
 export function AdminLogin() {
+  const { t } = useI18n();
   const router = useRouter();
   const [key, setKey] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -29,12 +31,12 @@ export function AdminLogin() {
       });
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
       if (!res.ok) {
-        setError(data?.error ?? "تعذر الدخول — أعد المحاولة");
+        setError(data?.error ?? t("errors.loginFailed"));
         return;
       }
       router.refresh();
     } catch {
-      setError("لا يوجد اتصال — تحقق من الشبكة وأعد المحاولة");
+      setError(t("errors.offline"));
     } finally {
       setSubmitting(false);
     }
@@ -54,15 +56,15 @@ export function AdminLogin() {
             <LockKeyhole size={22} />
           </span>
           <h1 className="font-display text-xl font-normal text-ink-900">
-            لوحة إدارة المنصة
+            {t("admin.platformBoard")}
           </h1>
           <p className="text-sm text-steel-600">
-            أدخل كلمة سر المنصة للمتابعة
+            {t("admin.enterPassword")}
           </p>
         </div>
 
         <div className="mt-6">
-          <Field label="كلمة سر المنصة" htmlFor="admin-key">
+          <Field label={t("admin.platformPassword")} htmlFor="admin-key">
             <Input
               id="admin-key"
               type="password"
@@ -81,7 +83,7 @@ export function AdminLogin() {
         )}
 
         <Button type="submit" disabled={submitting || !key} className="mt-5 w-full">
-          {submitting ? "جارٍ الدخول…" : "دخول"}
+          {submitting ? t("auth.signingIn") : t("admin.login")}
         </Button>
       </form>
     </main>

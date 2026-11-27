@@ -1,3 +1,4 @@
+import { getServerT } from "@/lib/i18n";
 import { cookies } from "next/headers";
 import { isAdminSession, isPlatformAdminConfigured } from "@/lib/auth/admin";
 import { prisma } from "@/lib/db";
@@ -13,12 +14,13 @@ export const dynamic = "force-dynamic";
 // لوحة إدارة المنصة — لسمر حصراً: جلسة إدارية منفصلة عن حسابات العيادات.
 // بلا سر مهيأ تعرض اللوحة رسالة إعداد فقط ولا تكشف شيئاً.
 export default async function AdminPage() {
+  const t = await getServerT();
   if (!isPlatformAdminConfigured()) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-surface-sunken p-6">
         <p className="max-w-sm rounded-card border border-warm-200 bg-surface-raised p-6 text-center text-sm text-steel-600">
-          لوحة الإدارة غير مهيأة — اضبط متغير البيئة <code>PLATFORM_ADMIN_KEY</code>{" "}
-          قبل الاستخدام.
+          {t("admin.notConfigured")} <code>PLATFORM_ADMIN_KEY</code>{" "}
+          {t("admin.notConfiguredSuffix")}
         </p>
       </main>
     );

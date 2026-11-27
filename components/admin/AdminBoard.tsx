@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/components/i18n/I18nProvider";
+import { formatDate as formatDateLocale } from "@/lib/i18n/format";
+import type { Locale, T } from "@/lib/i18n/core";
 import { Button } from "@/components/ui/Button";
 import {
   Card,
@@ -43,29 +46,29 @@ type AdminBoardProps = {
   pendingPayments: AdminPaymentRow[];
 };
 
-const DATE_FORMAT = new Intl.DateTimeFormat("ar", {
+const DATE_FORMAT_OPTS: Intl.DateTimeFormatOptions = {
   dateStyle: "medium",
   timeZone: "UTC",
-});
+};
 
-function formatDate(iso: string): string {
-  return DATE_FORMAT.format(new Date(iso));
+function formatDate(iso: string, locale: Locale): string {
+  return formatDateLocale(new Date(iso), locale, DATE_FORMAT_OPTS);
 }
 
 function statusTone(row: AdminClinicRow): BadgeTone {
   return row.status === "EXPIRED" ? "danger" : "success";
 }
 
-function statusLabel(row: AdminClinicRow): string {
-  if (row.status === "EXPIRED") return "منتهية — الدخول ممنوع";
+function statusLabel(row: AdminClinicRow, t: T): string {
+  if (row.status === "EXPIRED") return t("admin.expiredBlock");
   if (row.isTrial) {
     return row.daysLeft <= 0
-      ? "تجربة — تنتهي اليوم"
-      : `تجربة — ${row.daysLeft} يوم متبقٍ`;
+      ? t("admin.trialEndsToday")
+      : t("admin.trialDaysLeft", { days: row.daysLeft });
   }
   return row.daysLeft <= 0
-    ? "مشترك — ينتهي اليوم"
-    : `مشترك — ${row.daysLeft} يوم متبقٍ`;
+    ? t("admin.subEndsToday")
+    : t("admin.subDaysLeft", { days: row.daysLeft });
 }
 
 /**
@@ -73,6 +76,7 @@ function statusLabel(row: AdminClinicRow): string {
  * اعتماد/رفض مع سبب اختياري. القرار يمر عبر API الجلسة الإدارية حصراً.
  */
 export function AdminBoard({ clinics, pendingPayments }: AdminBoardProps) {
+  const { t, locale } = useI18n();
   const router = useRouter();
   const [deciding, setDeciding] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -90,12 +94,12 @@ export function AdminBoard({ clinics, pendingPayments }: AdminBoardProps) {
       });
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
       if (!res.ok) {
-        setError(data?.error ?? "تعذر تنفيذ القرار — أعد المحاولة");
+        setError(data?.error ?? t("api.billing.decisionFailed"));
         return;
       }
       router.refresh();
     } catch {
-      setError("لا يوجد اتصال — تحقق من الشبكة وأعد المحاولة");
+      setError(t("errors.offline"));
     } finally {
       setDeciding(null);
     }
@@ -105,10 +109,10 @@ export function AdminBoard({ clinics, pendingPayments }: AdminBoardProps) {
     <main className="mx-auto min-h-screen w-full max-w-6xl space-y-8 p-6">
       <div>
         <h1 className="font-display text-2xl font-normal text-ink-900">
-          لوحة إدارة المنصة
+          {t("admin.platformBoard")}
         </h1>
         <p className="mt-1 text-sm text-steel-600">
-          العيادات المسجلة وحالتها، وطلبات تفعيل اشتراكات شام كاش.
+          {t("admin.boardHint")}
         </p>
       </div>
 
@@ -116,7 +120,7 @@ export function AdminBoard({ clinics, pendingPayments }: AdminBoardProps) {
       <Card>
         <CardHeader>
           <CardTitle>
-            طلبات التفعيل المعلقة ({pendingPayments.length})
+            {t("admin.pendingRequestsCount")}{pendingPayments.length})
           </CardTitle>
         </CardHeader>
         <CardBody>
@@ -127,8 +131,8 @@ export function AdminBoard({ clinics, pendingPayments }: AdminBoardProps) {
           )}
           {pendingPayments.length === 0 ? (
             <EmptyState
-              title="لا طلبات معلقة"
-              description="ستظهر هنا حوالات شام كاش التي يرفعها أصحاب العيادات بانتظار التأكيد."
+              title={t("admin.noPendingRequests")}
+              description={t("admin.pendingHint")}
             />
           ) : (
             <ul className="space-y-3">
@@ -140,14 +144,14 @@ export function AdminBoard({ clinics, pendingPayments }: AdminBoardProps) {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="font-semibold text-ink-900">
-                        {payment.clinicName} — باقة {payment.planLabel} ({payment.amountUsd}$)
+                        {payment.clinicName} {t("subscription.planSuffix")} {payment.planLabel} ({payment.amountUsd}$)
                       </p>
                       <p className="mt-1 text-sm text-steel-600">
-                        رقم الحوالة:{" "}
+                        {t("subscription.transferRef")}{" "}
                         <span dir="ltr" className="select-all font-bold">
                           {payment.transferRef}
                         </span>{" "}
-                        — {formatDate(payment.createdAt)}
+                        — {formatDate(payment.createdAt, locale)}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -156,21 +160,21 @@ export function AdminBoard({ clinics, pendingPayments }: AdminBoardProps) {
                         onChange={(e) =>
                           setNotes((prev) => ({ ...prev, [payment.id]: e.target.value }))
                         }
-                        placeholder="سبب (اختياري)"
+                        placeholder={t("appointments.reasonOptional")}
                         className="w-40 rounded-field border border-warm-300 bg-surface-raised px-3 py-1.5 text-sm"
                       />
                       <Button
                         onClick={() => decide(payment.id, "APPROVED")}
                         disabled={deciding !== null}
                       >
-                        اعتماد
+                        {t("admin.approve")}
                       </Button>
                       <Button
                         variant="danger"
                         onClick={() => decide(payment.id, "REJECTED")}
                         disabled={deciding !== null}
                       >
-                        رفض
+                        {t("admin.reject")}
                       </Button>
                     </div>
                   </div>
@@ -184,21 +188,21 @@ export function AdminBoard({ clinics, pendingPayments }: AdminBoardProps) {
       {/* العيادات المسجلة */}
       <Card>
         <CardHeader>
-          <CardTitle>العيادات ({clinics.length})</CardTitle>
+          <CardTitle>{t("admin.clinicsCount")}{clinics.length})</CardTitle>
         </CardHeader>
         <CardBody>
           {clinics.length === 0 ? (
-            <EmptyState title="لا عيادات" description="لم تُسجل أي عيادة بعد." />
+            <EmptyState title={t("admin.noClinics")} description={t("admin.noClinicsYet")} />
           ) : (
             <Table>
               <THead>
                 <TRow>
-                  <TH>العيادة</TH>
-                  <TH>صاحبها</TH>
-                  <TH>التسجيل</TH>
-                  <TH>المرضى</TH>
-                  <TH>الحالة</TH>
-                  <TH>تنتهي</TH>
+                  <TH>{t("common.clinic")}</TH>
+                  <TH>{t("admin.owner")}</TH>
+                  <TH>{t("common.registration")}</TH>
+                  <TH>{t("common.patients")}</TH>
+                  <TH>{t("common.status")}</TH>
+                  <TH>{t("subscription.endsOn")}</TH>
                 </TRow>
               </THead>
               <tbody>
@@ -206,15 +210,15 @@ export function AdminBoard({ clinics, pendingPayments }: AdminBoardProps) {
                   <TRow key={clinic.id}>
                     <TD className="font-semibold text-ink-900">{clinic.name}</TD>
                     <TD>{clinic.owner}</TD>
-                    <TD>{formatDate(clinic.registeredAt)}</TD>
+                    <TD>{formatDate(clinic.registeredAt, locale)}</TD>
                     <TD>{clinic.patients}</TD>
                     <TD>
                       <StatusPill tone={statusTone(clinic)}>
-                        {statusLabel(clinic)}
+                        {statusLabel(clinic, t)}
                       </StatusPill>
                     </TD>
                     <TD className={cn(clinic.status === "EXPIRED" && "text-danger-600")}>
-                      {formatDate(clinic.endsAtIso)}
+                      {formatDate(clinic.endsAtIso, locale)}
                     </TD>
                   </TRow>
                 ))}

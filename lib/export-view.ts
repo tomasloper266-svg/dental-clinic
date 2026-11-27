@@ -1,16 +1,18 @@
-import { STATUS_LABEL } from "@/lib/appointment-ui";
+import { STATUS_META } from "@/lib/appointment-ui";
 import {
   formatPrimaryFromUsd,
   type DisplayCurrency,
 } from "@/lib/currency";
 import { toCsv } from "@/lib/csv";
 import { formatDateCell } from "@/lib/dates";
+import { createT, type Locale } from "@/lib/i18n/core";
 import type { DetailedInvoiceView } from "@/lib/patient-finance";
-import { INVOICE_STATUS_LABELS } from "@/lib/patient-finance";
+import { invoiceStatusLabel } from "@/lib/patient-finance";
 import type { ClinicLedgerEntryDto } from "@/lib/services/ledger";
 import { materialsToCsv } from "@/lib/inventory-view";
 import type { PatientDto } from "@/lib/services/patients";
 import type { StaffMemberDto } from "@/lib/services/staff";
+import { staffRoleLabelKey } from "@/lib/staff-view";
 import type { AppointmentDto } from "@/lib/services/appointments";
 
 // بنية أعمدة تصدير CSV لصفحة الإعدادات — نقية بلا I/O. نفس أعمدة أزرار
@@ -31,18 +33,22 @@ export type PatientsRow = Pick<
 >;
 
 /** نقّي — ملف المرضى كاملاً بأعمدة جدول المرضى */
-export function patientsToCsv(rows: ReadonlyArray<PatientsRow>): string {
+export function patientsToCsv(
+  locale: Locale,
+  rows: ReadonlyArray<PatientsRow>,
+): string {
+  const t = createT(locale);
   return toCsv(
     [
-      "الرقم",
-      "الاسم",
-      "سنة الميلاد",
-      "الهاتف",
-      "الهاتف الثاني",
-      "العنوان",
-      "البريد",
-      "الملاحظات الطبية",
-      "تاريخ التسجيل",
+      t("export.column.fileNo"),
+      t("export.column.name"),
+      t("export.column.birthYear"),
+      t("export.column.phone"),
+      t("export.column.phone2"),
+      t("export.column.address"),
+      t("export.column.email"),
+      t("export.column.medicalNotes"),
+      t("export.column.registeredAt"),
     ],
     rows.map((row) => [
       row.fileNo ?? "",
@@ -64,9 +70,13 @@ type AppointmentRow = Pick<
 >;
 
 /** نقّي — المواعيد كلها بأعمدة لوحة المواعيد */
-export function appointmentsToCsv(rows: ReadonlyArray<AppointmentRow>): string {
+export function appointmentsToCsv(
+  locale: Locale,
+  rows: ReadonlyArray<AppointmentRow>,
+): string {
+  const t = createT(locale);
   return toCsv(
-    ["التاريخ", "الوقت", "المريض", "الطبيب", "المدة (دقيقة)", "الحالة", "السبب", "الملاحظات"],
+    [t("export.column.date"), t("export.column.time"), t("export.column.patient"), t("export.column.doctor"), t("export.column.durationMin"), t("export.column.status"), t("export.column.reason"), t("export.column.notes")],
     rows.map((row) => [
       formatDateCell(row.startsAt),
       row.startsAt instanceof Date
@@ -75,7 +85,7 @@ export function appointmentsToCsv(rows: ReadonlyArray<AppointmentRow>): string {
       row.patientName,
       row.staffName ?? "",
       row.durationMin,
-      STATUS_LABEL(row.status),
+      t(STATUS_META[row.status].labelKey),
       row.reason ?? "",
       row.note ?? "",
     ]),
@@ -88,12 +98,14 @@ export type InvoiceRow = DetailedInvoiceView & {
 
 /** نقّي — الفواتير المشتقة من الدفتر بأعمدة صفحة الفواتير وبالعملة المعروضة */
 export function invoicesToCsv(
+  locale: Locale,
   rows: ReadonlyArray<InvoiceRow>,
   usdRate: number,
   currency: DisplayCurrency,
 ): string {
+  const t = createT(locale);
   return toCsv(
-    ["الرقم", "المريض", "التاريخ", "الإجمالي", "المدفوع", "المتبقي", "الحالة"],
+    [t("export.column.fileNo"), t("export.column.patient"), t("export.column.date"), t("export.column.total"), t("export.column.paid"), t("export.column.remaining"), t("export.column.status")],
     rows.map((row) => [
       row.number,
       row.patientName,
@@ -101,7 +113,7 @@ export function invoicesToCsv(
       formatPrimaryFromUsd(row.totalUsd, usdRate, currency),
       formatPrimaryFromUsd(row.paidUsd, usdRate, currency),
       formatPrimaryFromUsd(row.remainingUsd, usdRate, currency),
-      INVOICE_STATUS_LABELS[row.status],
+      invoiceStatusLabel(locale, row.status),
     ]),
   );
 }
@@ -113,12 +125,14 @@ export type PaymentRow = Pick<
 
 /** نقّي — قيود الدفع فقط بأعمدة الدفتر المالي وبالعملة المعروضة */
 export function paymentsToCsv(
+  locale: Locale,
   rows: ReadonlyArray<PaymentRow>,
   usdRate: number,
   currency: DisplayCurrency,
 ): string {
+  const t = createT(locale);
   return toCsv(
-    ["التاريخ", "المريض", "الهاتف", "المبلغ", "البيان"],
+    [t("export.column.date"), t("export.column.patient"), t("export.column.phone"), t("export.column.amount"), t("export.column.statement")],
     rows.map((row) => [
       formatDateCell(row.createdAt),
       row.patientName,
@@ -129,31 +143,36 @@ export function paymentsToCsv(
   );
 }
 
-export type MaterialCsvRow = Parameters<typeof materialsToCsv>[0][number];
+export type MaterialCsvRow = Parameters<typeof materialsToCsv>[1][number];
 
 /** نقّي — المخزون بعمود بنّاء materialsToCsv نفسه المستخدم في صفحة المخزون */
 export function materialsCsvForExport(
+  locale: Locale,
   rows: ReadonlyArray<MaterialCsvRow>,
 ): string {
-  return materialsToCsv(rows);
+  return materialsToCsv(locale, rows);
 }
 
 export type StaffCsvRow = Pick<
   StaffMemberDto,
-  "name" | "roleLabelAr" | "specialty" | "phone" | "commissionPercent" | "isActive"
+  "name" | "role" | "specialty" | "phone" | "commissionPercent" | "isActive"
 >;
 
 /** نقّي — الطاقم بأعمدة صفحة الطاقم */
-export function staffToCsv(rows: ReadonlyArray<StaffCsvRow>): string {
+export function staffToCsv(
+  locale: Locale,
+  rows: ReadonlyArray<StaffCsvRow>,
+): string {
+  const t = createT(locale);
   return toCsv(
-    ["الاسم", "الدور", "التخصص", "الهاتف", "العمولة %", "الحالة"],
+    [t("export.column.name"), t("export.column.role"), t("export.column.specialty"), t("export.column.phone"), t("export.column.commissionPercent"), t("export.column.status")],
     rows.map((row) => [
       row.name,
-      row.roleLabelAr,
+      t(staffRoleLabelKey(row.role)),
       row.specialty ?? "",
       row.phone ?? "",
       row.commissionPercent,
-      row.isActive ? "نشط" : "معطل",
+      row.isActive ? t("export.active") : t("export.disabled"),
     ]),
   );
 }

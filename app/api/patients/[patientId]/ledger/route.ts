@@ -1,3 +1,4 @@
+import { getServerT, tMaybe } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import { Prisma } from "@/lib/generated/prisma/client";
@@ -22,6 +23,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 }
 
 export async function POST(req: NextRequest, { params }: Params) {
+  const t = await getServerT();
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
@@ -31,12 +33,12 @@ export async function POST(req: NextRequest, { params }: Params) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
+    return NextResponse.json({ error: t("api.invalidRequest") }, { status: 400 });
   }
 
   const parsed = parseCreateLedgerEntry(body);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return NextResponse.json({ error: tMaybe(t, parsed.error) }, { status: 400 });
   }
 
   try {
@@ -46,7 +48,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       patientId,
     });
     if (!entry) {
-      return NextResponse.json({ error: "المريض غير موجود" }, { status: 404 });
+      return NextResponse.json({ error: t("api.patientNotFound") }, { status: 404 });
     }
     return NextResponse.json({ entry }, { status: 201 });
   } catch (err) {
@@ -57,11 +59,11 @@ export async function POST(req: NextRequest, { params }: Params) {
       err.code === "P2002"
     ) {
       return NextResponse.json(
-        { error: "هذا البند العلاجي مُرحَّل مسبقاً — لا يمكن تكرار قيد الرسوم" },
+        { error: t("api.ledger.itemAlreadyCharged") },
         { status: 409 },
       );
     }
     console.error("[ledger:create] failed:", err);
-    return NextResponse.json({ error: "تعذر إنشاء القيد" }, { status: 500 });
+    return NextResponse.json({ error: t("api.ledgerCreateFailed") }, { status: 500 });
   }
 }

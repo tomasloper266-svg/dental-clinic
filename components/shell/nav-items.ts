@@ -22,8 +22,7 @@ export type BadgeKey = "waitlist" | "lowStock" | "dues";
 
 export type NavItem = {
   href: string;
-  label: string;
-  /** مفتاح القاموس للتسمية — يُترجم عند الرسم حسب اللغة، والعربية هي label نفسها */
+  /** مفتاح القاموس للتسمية — يُترجم عند الرسم حسب اللغة */
   labelKey: TranslationKey;
   icon: NavIcon;
   /** شارة عددية مرتبطة بخدمة قائمة — تُحسب في غلاف (app) */
@@ -34,7 +33,6 @@ export type NavGroupKey = "clinical" | "operations" | "financial" | "admin";
 
 export type NavGroup = {
   key: NavGroupKey;
-  label: string;
   /** مفتاح القاموس لعنوان المجموعة — يُترجم عند الرسم حسب اللغة */
   labelKey: TranslationKey;
   items: NavItem[];
@@ -43,7 +41,6 @@ export type NavGroup = {
 /** بوابة التطبيق — أوّل عنصر في السايدبار وشريط الموبايل */
 export const homeNav: NavItem = {
   href: "/dashboard",
-  label: "الرئيسية",
   labelKey: "nav.home",
   icon: LayoutDashboard,
 };
@@ -55,18 +52,15 @@ export const homeNav: NavItem = {
 export const navGroups: NavGroup[] = [
   {
     key: "clinical",
-    label: "علاجي",
     labelKey: "nav.group.clinical",
     items: [
       {
         href: "/patients",
-        label: "المرضى",
         labelKey: "nav.patients",
         icon: Users,
       },
       {
         href: "/dental",
-        label: "مخطط الأسنان وخطط العلاج",
         labelKey: "nav.dentalChart",
         icon: ToothIcon,
       },
@@ -74,25 +68,21 @@ export const navGroups: NavGroup[] = [
   },
   {
     key: "operations",
-    label: "تشغيلي",
     labelKey: "nav.group.operations",
     items: [
       {
         href: "/appointments",
-        label: "المواعيد",
         labelKey: "nav.appointments",
         icon: CalendarDays,
       },
       {
         href: "/waitlist",
-        label: "قائمة الانتظار",
         labelKey: "nav.waitlist",
         icon: Clock,
         badge: "waitlist",
       },
       {
         href: "/reminders",
-        label: "تذكير الغد",
         labelKey: "nav.reminders",
         icon: BellRing,
       },
@@ -100,25 +90,21 @@ export const navGroups: NavGroup[] = [
   },
   {
     key: "financial",
-    label: "مالي",
     labelKey: "nav.group.financial",
     items: [
       {
         href: "/invoices",
-        label: "الفواتير والمدفوعات",
         labelKey: "nav.invoices",
         icon: BookOpen,
       },
       {
         href: "/dues",
-        label: "المستحقات",
         labelKey: "nav.dues",
         icon: Clock,
         badge: "dues",
       },
       {
         href: "/reports",
-        label: "التقارير",
         labelKey: "nav.reports",
         icon: BarChart3,
       },
@@ -126,31 +112,26 @@ export const navGroups: NavGroup[] = [
   },
   {
     key: "admin",
-    label: "إداري",
     labelKey: "nav.group.admin",
     items: [
       {
         href: "/staff",
-        label: "الطاقم",
         labelKey: "nav.staff",
         icon: UserRound,
       },
       {
         href: "/inventory",
-        label: "المخزون",
         labelKey: "nav.inventory",
         icon: Package,
         badge: "lowStock",
       },
       {
         href: "/instructions",
-        label: "قوالب التعليمات",
         labelKey: "nav.instructions",
         icon: FileText,
       },
       {
         href: "/settings",
-        label: "الإعدادات",
         labelKey: "nav.settings",
         icon: Settings,
       },
@@ -167,10 +148,9 @@ export const allNavItems: NavItem[] = [
 /** شريط الموبايل السفلي: الرئيسية والمرضى (بحث المرضى) والمواعيد + درج «المزيد» */
 export const mobileBarNav: NavItem[] = [
   homeNav,
-  { href: "/patients", label: "المرضى", labelKey: "nav.patients", icon: Users },
+  { href: "/patients", labelKey: "nav.patients", icon: Users },
   {
     href: "/appointments",
-    label: "المواعيد",
     labelKey: "nav.appointments",
     icon: CalendarDays,
   },
@@ -225,32 +205,6 @@ export function segmentLabelKey(segment: string): TranslationKey | undefined {
   return segment.length > 20 ? "nav.patientFile" : undefined;
 }
 
-const segmentLabels: Record<string, string> = {
-  dashboard: "الرئيسية",
-  patients: "المرضى",
-  appointments: "المواعيد",
-  waitlist: "قائمة الانتظار",
-  invoices: "الفواتير والمدفوعات",
-  dues: "المستحقات",
-  reports: "التقارير",
-  inventory: "المخزون",
-  reminders: "تذكير الغد",
-  instructions: "قوالب التعليمات",
-  dental: "مخطط الأسنان وخطط العلاج",
-  odontogram: "الأودوغرام",
-  staff: "الطاقم",
-  settings: "الإعدادات",
-  setup: "الإعداد",
-};
-
-/** تسمية عربية لقطعة مسار — دالة نقية تُستخدم في الـ breadcrumbs */
-export function segmentLabel(segment: string): string {
-  const known = segmentLabels[segment];
-  if (known) return known;
-  // معرّفات السجلات (cuid) طويلة — تُعرض «ملف المريض» بدل المعرّف الخام
-  return segment.length > 20 ? "ملف المريض" : segment;
-}
-
 export type Crumb = { href: string; label: string };
 
 /** بناء مسار تفصّل الصفحة من pathname — دالة نقية */
@@ -258,6 +212,6 @@ export function breadcrumbsFromPath(pathname: string): Crumb[] {
   const segments = pathname.split("/").filter(Boolean);
   return segments.map((segment, index) => ({
     href: "/" + segments.slice(0, index + 1).join("/"),
-    label: segmentLabel(segment),
+    label: segment,
   }));
 }

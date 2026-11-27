@@ -21,6 +21,7 @@ export type PlanTotals = {
 export type PlanItemStatusMeta = {
   status: PlanItemStatus;
   labelAr: string;
+  labelEn: string;
   toneClass: string;
 };
 
@@ -28,16 +29,19 @@ const PLAN_ITEM_STATUS_META: Record<PlanItemStatus, PlanItemStatusMeta> = {
   PROPOSED: {
     status: "PROPOSED",
     labelAr: "مخطط",
+    labelEn: "Planned",
     toneClass: "bg-warm-100 text-steel-600",
   },
   ACCEPTED: {
     status: "ACCEPTED",
     labelAr: "جاري",
+    labelEn: "In progress",
     toneClass: "bg-primary-50 text-primary-800",
   },
   DONE: {
     status: "DONE",
     labelAr: "مكتمل",
+    labelEn: "Completed",
     toneClass: "bg-success-50 text-success-700",
   },
 };
@@ -45,6 +49,12 @@ const PLAN_ITEM_STATUS_META: Record<PlanItemStatus, PlanItemStatusMeta> = {
 /** بيانات عرض حالة بند الخطة — تسمية عربية ودرجة لون الشارة. نقي — آمن للعميل */
 export function planStatusMeta(status: PlanItemStatus): PlanItemStatusMeta {
   return PLAN_ITEM_STATUS_META[status];
+}
+
+/** تسمية حالة بند الخطة بلغة محددة — الجداول والمنسدلات */
+export function planStatusLabel(locale: "ar" | "en", status: PlanItemStatus): string {
+  const meta = PLAN_ITEM_STATUS_META[status];
+  return locale === "en" ? meta.labelEn : meta.labelAr;
 }
 
 const EMPTY_COUNT = (): Record<PlanItemStatus, PlanStatusSummary> => ({

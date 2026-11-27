@@ -1,3 +1,4 @@
+import { getServerT } from "@/lib/i18n";
 import { Wallet } from "lucide-react";
 import { summarizePatientLedger } from "@/lib/ledger-view";
 import type { LedgerEntryDto } from "@/lib/services/ledger";
@@ -13,12 +14,13 @@ type Props = {
   className?: string;
 };
 
-export function PatientFinancialSummaryCard({
+export async function PatientFinancialSummaryCard({
   entries,
   balanceUsd,
   usdRate,
   className,
 }: Props) {
+  const t = await getServerT();
   const summary = summarizePatientLedger(entries, balanceUsd);
   const dueUsd = Math.max(balanceUsd, 0);
 
@@ -31,17 +33,17 @@ export function PatientFinancialSummaryCard({
     >
       <p className="flex items-center gap-2 text-sm font-semibold text-ink-900">
         <Wallet size={16} aria-hidden className="text-primary-600" />
-        ملخص مالي للمريض
+        {t("patients.financialSummary")}
       </p>
       <dl className="mt-3 space-y-3">
         <div className="flex items-baseline justify-between gap-2 border-b border-warm-200 pb-2">
-          <dt className="text-xs text-warm-500">إجمالي الفواتير</dt>
+          <dt className="text-xs text-warm-500">{t("invoices.totalInvoices")}</dt>
           <dd>
             <DualAmount usd={summary.chargesUsd} usdRate={usdRate} />
           </dd>
         </div>
         <div className="flex items-baseline justify-between gap-2 border-b border-warm-200 pb-2">
-          <dt className="text-xs text-primary-700">المسدد</dt>
+          <dt className="text-xs text-primary-700">{t("common.paid")}</dt>
           <dd>
             <DualAmount usd={summary.paidUsd} usdRate={usdRate} />
           </dd>
@@ -53,7 +55,7 @@ export function PatientFinancialSummaryCard({
               dueUsd > 0 ? "text-danger-600" : "text-warm-500",
             )}
           >
-            الرصيد المستحق
+            {t("finance.dueBalance")}
           </dt>
           <dd>
             <DualAmount
@@ -70,7 +72,7 @@ export function PatientFinancialSummaryCard({
           dueUsd > 0 ? "text-danger-600" : "text-primary-700",
         )}
       >
-        {dueUsd > 0 ? "عليه رصيد مستحق — سوِّف عبر صفحة المستحقات" : "مسدد ✓"}
+        {dueUsd > 0 ? t("patients.hasDuesHint") : t("dues.paidCheck")}
       </p>
     </div>
   );

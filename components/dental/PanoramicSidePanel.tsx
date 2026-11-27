@@ -1,14 +1,11 @@
 "use client";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import {
   findingsForTooth,
 } from "@/lib/odontogram/findings-view";
-import {
-  QUADRANT_LABEL_AR,
-  toothNameAr,
-  toothQuadrant,
-} from "@/lib/odontogram/fdi";
-import { findingKindLabel, toothStatusMeta } from "@/lib/odontogram/statuses";
+import { toothQuadrant, toothName, quadrantLabel } from "@/lib/odontogram/fdi";
+import { findingKindLabel, toothStatusMeta, toothStatusLabel } from "@/lib/odontogram/statuses";
 import { formatDateCell } from "@/lib/dates";
 import { formatUsd } from "@/lib/currency";
 import type { FindingDto } from "@/lib/services/findings";
@@ -37,7 +34,8 @@ function SelectedToothCard({
   findings: FindingDto[];
   latest: Map<number, FindingDto>;
 }) {
-  const name = toothNameAr(selectedTooth) ?? "";
+  const { t, locale } = useI18n();
+  const name = toothName(locale, selectedTooth) ?? "";
   const quadrant = toothQuadrant(selectedTooth);
   const current = latest.get(selectedTooth);
   const currentMeta = current ? toothStatusMeta(current.status) : null;
@@ -49,25 +47,25 @@ function SelectedToothCard({
   return (
     <div className="border-warm-200 bg-surface-raised rounded-panel border p-3">
       <h3 className="text-ink-900 text-sm font-semibold">
-        السن <span className="numeric text-primary-600">{selectedTooth}</span> —{" "}
+        {t("common.tooth")} <span className="numeric text-primary-600">{selectedTooth}</span> —{" "}
         {name}
       </h3>
       <p className="text-warm-500 mt-0.5 text-xs">
-        {quadrant ? `الربع ${QUADRANT_LABEL_AR[quadrant]}` : ""}
+        {quadrant ? t("dental.quadrantPrefix", { quadrant: quadrantLabel(locale, quadrant) }) : ""}
       </p>
       <p className="mt-2 text-xs">
-        <span className="text-warm-500">الحالة الحالية: </span>
+        <span className="text-warm-500">{t("appointments.currentStatus")} </span>
         {currentMeta ? (
-          <span className="text-ink-900 font-medium">{currentMeta.labelAr}</span>
+          <span className="text-ink-900 font-medium">{toothStatusLabel(locale, currentMeta.value)}</span>
         ) : (
-          <span className="text-warm-500">سليم — لا قيود مسجلة</span>
+          <span className="text-warm-500">{t("dental.healthyNoRecords")}</span>
         )}
       </p>
 
       {briefHistory.length > 0 && (
         <div className="border-warm-200 mt-3 border-t pt-2">
           <p className="text-warm-500 mb-1 text-[11px] font-medium">
-            آخر السجل
+            {t("dental.latestRecord")}
           </p>
           <ul className="space-y-1">
             {briefHistory.map((finding) => (
@@ -77,7 +75,7 @@ function SelectedToothCard({
               >
                 <span>
                   {findingKindLabel(finding.kind)} —{" "}
-                  {toothStatusMeta(finding.status)?.labelAr ?? finding.status}
+                  {toothStatusLabel(locale, finding.status)}
                 </span>
                 <span className="numeric shrink-0">
                   {formatDateCell(finding.recordedAt)}
@@ -93,12 +91,13 @@ function SelectedToothCard({
 
 /** خلاصة خطة العلاج — عدّ البنود بحالتها وإجمالي التكلفة التقديرية */
 function PlanSummaryCard({ planItems }: { planItems: PlanItemDto[] }) {
+  const { t } = useI18n();
   if (planItems.length === 0) {
     return (
       <div className="border-warm-200 bg-surface-raised rounded-panel border p-3">
-        <h3 className="text-ink-900 text-sm font-semibold">خطة العلاج</h3>
+        <h3 className="text-ink-900 text-sm font-semibold">{t("plans.thePlan")}</h3>
         <p className="text-warm-500 mt-1 text-xs">
-          لا بنود خطة مسجلة لهذا المريض بعد.
+          {t("plans.noItemsForPatient")}
         </p>
       </div>
     );
@@ -116,20 +115,20 @@ function PlanSummaryCard({ planItems }: { planItems: PlanItemDto[] }) {
 
   return (
     <div className="border-warm-200 bg-surface-raised rounded-panel border p-3">
-      <h3 className="text-ink-900 text-sm font-semibold">خلاصة خطة العلاج</h3>
+      <h3 className="text-ink-900 text-sm font-semibold">{t("plans.summary")}</h3>
       <ul className="mt-2 space-y-1">
         {(Object.keys(byStatus) as PlanItemStatus[]).map((status) => (
           <li
             key={status}
             className="text-warm-600 flex items-center justify-between text-[11px]"
           >
-            <span>{STATUS_META[status].labelAr}</span>
+            <span>{t(STATUS_META[status].labelKey)}</span>
             <span className="numeric">{byStatus[status]}</span>
           </li>
         ))}
       </ul>
       <p className="border-warm-200 mt-2 flex items-center justify-between border-t pt-2 text-xs">
-        <span className="text-warm-500">إجمالي البنود ({planItems.length})</span>
+        <span className="text-warm-500">{t("invoices.itemsTotalPrefix")}{planItems.length})</span>
         <span className="numeric text-ink-900 font-semibold">
           {formatUsd(totalUsd)}
         </span>
@@ -144,6 +143,7 @@ export default function PanoramicSidePanel({
   latest,
   planItems,
 }: Props) {
+  const { t } = useI18n();
   return (
     <div className="space-y-3">
       {selectedTooth !== null ? (
@@ -155,7 +155,7 @@ export default function PanoramicSidePanel({
       ) : (
         <div className="border-warm-300 rounded-panel border border-dashed p-3">
           <p className="text-warm-500 text-xs">
-            انقر على أي سن في المخطط البانورامي لعرض تفاصيله هنا وتسجيل حالته.
+            {t("dental.panoramicClickHint")}
           </p>
         </div>
       )}

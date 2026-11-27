@@ -1,6 +1,8 @@
 "use client";
+import { createT, type Locale } from "@/lib/i18n/core";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
-import { toothNameAr } from "@/lib/odontogram/fdi";
+import { toothName } from "@/lib/odontogram/fdi";
 import type { FindingDto } from "@/lib/services/findings";
 import type { PeriodontalReadingDto } from "@/lib/services/periodontal";
 import ToothRecordForm from "@/components/odontogram/ToothRecordForm";
@@ -28,6 +30,7 @@ export default function ToothRecordPanel({
   readings,
   onReadingSaved,
 }: Props) {
+  const { t } = useI18n();
   return (
     <ToothRecordForm
       patientId={patientId}
@@ -35,7 +38,7 @@ export default function ToothRecordPanel({
       history={history}
       onSaved={onSaved}
       saveVariant="gold"
-      kindHeading="نوع القيد"
+      kindHeading={t("finance.entryType")}
       noteInputId={`chart-note-${fdi}`}
       readings={readings}
       onReadingSaved={onReadingSaved}
@@ -44,6 +47,7 @@ export default function ToothRecordPanel({
 }
 
 // اسم كامل للسن في ترويسة اللوحة — نفس دالة الملف المرجعي
-export function toothPanelTitle(fdi: number): string {
-  return `السن ${fdi} — ${toothNameAr(fdi) ?? ""}`;
+export function toothPanelTitle(locale: Locale, fdi: number): string {
+  const t = createT(locale);
+  return `${t("dental.toothAria", { fdi })} — ${toothName(locale, fdi) ?? ""}`;
 }

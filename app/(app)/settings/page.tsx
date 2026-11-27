@@ -1,3 +1,4 @@
+import { getServerT } from "@/lib/i18n";
 import { cookies } from "next/headers";
 import { pageWrapClass } from "@/lib/page-width";
 import { redirect } from "next/navigation";
@@ -17,6 +18,7 @@ import { formatWeekdayDateCell } from "@/lib/dates";
 // وبياناتها من واجهة برمجة الحساب المرتبطة بالعيادة حصراً. قسم الاشتراك
 // يظهر أعلى اللوحة: الحالة والخطط وشام كاش ورفع الحوالة (الدفع المبكر).
 export default async function SettingsPage() {
+  const t = await getServerT();
   const session = await getSessionUser(
     (await cookies()).get(SESSION_COOKIE)?.value,
   );
@@ -45,7 +47,7 @@ export default async function SettingsPage() {
   return (
     <div className={pageWrapClass("wide")}>
       {/* الترويسة أولاً ككل الصفحات، ثم بطاقة الاشتراك، ثم اللوحة نفسها */}
-      <PageHeader title="الإعدادات" description={formatWeekdayDateCell(new Date())} />
+      <PageHeader title={t("nav.settings")} description={formatWeekdayDateCell(new Date())} />
       {subscription && progress && (
         <div className="mb-8">
           <SubscriptionStatusCard

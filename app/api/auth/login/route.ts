@@ -1,3 +1,4 @@
+import { getServerT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { authenticate } from "@/lib/auth/login";
 import {
@@ -13,11 +14,12 @@ import {
 } from "@/lib/auth/session";
 
 export async function POST(req: NextRequest) {
+  const t = await getServerT();
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
+    return NextResponse.json({ error: t("api.invalidRequest") }, { status: 400 });
   }
 
   // الحقل المعروض Username — نقبل أيضاً phone للتوافق مع العملاء الأقدم.
@@ -31,7 +33,7 @@ export async function POST(req: NextRequest) {
   const password = body2.password;
   if (typeof identifier !== "string" || typeof password !== "string") {
     return NextResponse.json(
-      { error: "أدخل اسم المستخدم وكلمة السر" },
+      { error: t("api.login.required") },
       { status: 400 },
     );
   }
@@ -42,7 +44,7 @@ export async function POST(req: NextRequest) {
   if (lockRemainingSec > 0) {
     return NextResponse.json(
       {
-        error: `تجاوزت عدد المحاولات — أعد المحاولة بعد ${Math.ceil(lockRemainingSec / 60)} دقيقة`,
+        error: t("api.lockedRetryMinutes", { minutes: Math.ceil(lockRemainingSec / 60) }),
       },
       { status: 429 },
     );
@@ -52,7 +54,7 @@ export async function POST(req: NextRequest) {
   if (!user) {
     recordLoginFailure(trimmedIdentifier);
     return NextResponse.json(
-      { error: "اسم المستخدم أو كلمة السر غير صحيحة" },
+      { error: t("api.login.invalidCredentials") },
       { status: 401 },
     );
   }

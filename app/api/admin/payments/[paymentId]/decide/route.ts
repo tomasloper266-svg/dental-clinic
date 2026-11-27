@@ -1,3 +1,4 @@
+import { getServerT, tMaybe } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminSession } from "@/lib/auth/admin";
 import {
@@ -13,8 +14,9 @@ export async function POST(
   req: NextRequest,
   ctx: { params: Promise<{ paymentId: string }> },
 ) {
+  const t = await getServerT();
   if (!isAdminSession(req.cookies)) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+    return NextResponse.json({ error: t("api.unauthorized") }, { status: 401 });
   }
 
   const { paymentId } = await ctx.params;
@@ -22,7 +24,7 @@ export async function POST(
   try {
     body = (await req.json()) as DecideBody;
   } catch {
-    return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
+    return NextResponse.json({ error: t("api.invalidRequest") }, { status: 400 });
   }
 
   const note =
@@ -38,17 +40,18 @@ export async function POST(
         : null;
   if (!result) {
     return NextResponse.json(
-      { error: "القرار يجب أن يكون APPROVED أو REJECTED" },
+      { error: t("api.admin.invalidDecision") },
       { status: 400 },
     );
   }
   if (!result.ok) {
-    return NextResponse.json({ error: result.error.message }, { status: 409 });
+    return NextResponse.json({ error: tMaybe(t, result.error.message) }, { status: 409 });
   }
   return NextResponse.json({ ok: true }, { status: 200 });
 }
 
 // حماية شاملة: أي طريقة أخرى بلا جلسة إدارية مرفوضة صراحةً
-export function GET() {
-  return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+export async function GET() {
+  const t = await getServerT();
+  return NextResponse.json({ error: t("api.unauthorized") }, { status: 401 });
 }

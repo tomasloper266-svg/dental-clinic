@@ -1,3 +1,4 @@
+import { createT, type Locale } from "@/lib/i18n/core";
 import { cn } from "./cn";
 
 type EntityCellProps = {
@@ -11,8 +12,8 @@ type EntityCellProps = {
 };
 
 /** الحرف الأول من الاسم — دالة نقية للاستخدام في الأفاتار والاختبارات */
-export function firstLetter(name: string): string {
-  return name.trim().charAt(0) || "؟";
+export function firstLetter(name: string, locale: Locale = "ar"): string {
+  return name.trim().charAt(0) || createT(locale)("common.questionMark");
 }
 
 /**

@@ -1,3 +1,4 @@
+import { getServerT } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { requireGate } from "@/lib/tenant/require-tenant";
 import {
@@ -11,6 +12,7 @@ import {
 // ?date=YYYY-MM-DD لتقرير يوم، أو ?year=2026&month=11 لتقرير شهري.
 
 export async function GET(req: NextRequest) {
+  const t = await getServerT();
   const gate = await requireGate(req);
   if (!gate.ok) return gate.response;
   const ctx = gate.ctx;
@@ -27,14 +29,14 @@ export async function GET(req: NextRequest) {
     const days = Number(daysParam);
     if (!Number.isInteger(days) || days < 7 || days > 60) {
       return NextResponse.json(
-        { error: "عدد الأيام يجب أن يكون بين 7 و60" },
+        { error: t("api.reports.daysRange") },
         { status: 400 },
       );
     }
     const endParam = params.get("endDate");
     const end = endParam ? new Date(endParam) : new Date();
     if (Number.isNaN(end.getTime())) {
-      return NextResponse.json({ error: "التاريخ غير صالح" }, { status: 400 });
+      return NextResponse.json({ error: t("api.invalidDate") }, { status: 400 });
     }
     const series = await getDailySeries(ctx, end, days);
     return NextResponse.json({ series }, { status: 200 });
@@ -43,7 +45,7 @@ export async function GET(req: NextRequest) {
   if (dateParam) {
     const date = new Date(dateParam);
     if (Number.isNaN(date.getTime())) {
-      return NextResponse.json({ error: "التاريخ غير صالح" }, { status: 400 });
+      return NextResponse.json({ error: t("api.invalidDate") }, { status: 400 });
     }
     const report = await getDailyReport(ctx, date);
     return NextResponse.json({ report }, { status: 200 });
@@ -59,7 +61,7 @@ export async function GET(req: NextRequest) {
       month > 12
     ) {
       return NextResponse.json(
-        { error: "السنة أو الشهر غير صالح" },
+        { error: t("api.reports.invalidYearMonth") },
         { status: 400 },
       );
     }

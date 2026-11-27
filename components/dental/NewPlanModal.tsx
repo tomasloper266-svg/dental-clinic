@@ -1,4 +1,6 @@
 "use client";
+import { toothStatusLabel } from "@/lib/odontogram/statuses";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 import { useEffect, useState } from "react";
 import type { PlanItemDto } from "@/lib/services/treatment-plan";
@@ -32,6 +34,7 @@ export default function NewPlanModal({
   doctors,
   onCreated,
 }: Props) {
+  const { t, locale } = useI18n();
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [doctorName, setDoctorName] = useState("");
@@ -78,13 +81,13 @@ export default function NewPlanModal({
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        setError(data?.error ?? "تعذر إنشاء الخطة، حاول مرة أخرى");
+        setError(data?.error ?? t("plans.createFailed"));
         return;
       }
-      toast("أُنشئت الخطة بنجاح");
+      toast(t("plans.created"));
       onCreated();
     } catch {
-      setError("تعذر الاتصال بالخادم");
+      setError(t("errors.server"));
     } finally {
       setSaving(false);
     }
@@ -94,15 +97,15 @@ export default function NewPlanModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="خطة جديدة"
+      title={t("plans.newPlan")}
       titleClassName="text-warning-500 text-base font-bold"
       className="max-w-2xl"
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="المريض *" htmlFor="plan-patient">
+        <Field label={t("common.patientRequired")} htmlFor="plan-patient">
           <Input id="plan-patient" value={patientName} readOnly />
         </Field>
-        <Field label="الطبيب" htmlFor="plan-doctor">
+        <Field label={t("staff.theDoctor")} htmlFor="plan-doctor">
           <select
             id="plan-doctor"
             value={doctorName}
@@ -117,15 +120,15 @@ export default function NewPlanModal({
             ))}
           </select>
         </Field>
-        <Field label="اسم الخطة" htmlFor="plan-name" hint="اختياري — يُشتق تلقائياً إن تُرك فارغاً">
+        <Field label={t("plans.planName")} htmlFor="plan-name" hint={t("setup.derivedHint")}>
           <Input
             id="plan-name"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder="خطة العلاج والتنظيف"
+            placeholder={t("plans.planAndClean")}
           />
         </Field>
-        <Field label="التاريخ" htmlFor="plan-date">
+        <Field label={t("common.date")} htmlFor="plan-date">
           <Input
             id="plan-date"
             type="date"
@@ -136,13 +139,13 @@ export default function NewPlanModal({
       </div>
 
       <p className="text-steel-500 mt-3 text-xs">
-        بنود بلا خطة محفوظة حالياً — اختر ما سيُربط بهذه الخطة (الباقي يبقى متاحاً)
+        {t("plans.unplannedPicker")}
       </p>
 
       <ul className="border-warm-200 mt-2 divide-y divide-warm-100 rounded-field border">
         {unassignedItems.length === 0 && (
           <li className="text-steel-500 px-3 py-3 text-sm">
-            لا بنود بلا خطة — أضف بنوداً من جدول العمليات أولاً.
+            {t("plans.noUnplannedItems")}
           </li>
         )}
         {unassignedItems.map((item) => {
@@ -161,7 +164,7 @@ export default function NewPlanModal({
                   className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${meta.toneClass}`}
                 >
                   <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                  {meta.labelAr}
+                  {toothStatusLabel(locale, meta.status)}
                 </span>
               </label>
             </li>
@@ -170,7 +173,7 @@ export default function NewPlanModal({
       </ul>
 
       <div className="mt-3">
-        <Field label="ملاحظات" htmlFor="plan-notes">
+        <Field label={t("common.notes")} htmlFor="plan-notes">
           <textarea
             id="plan-notes"
             value={notes}
@@ -189,10 +192,10 @@ export default function NewPlanModal({
 
       <footer className="mt-4 flex items-center justify-end gap-2">
         <Button variant="secondary" onClick={onClose}>
-          إغلاق
+          {t("common.close")}
         </Button>
         <Button variant="gold" onClick={create} loading={saving}>
-          إضافة الخطة
+          {t("plans.addPlan")}
         </Button>
       </footer>
     </Modal>
