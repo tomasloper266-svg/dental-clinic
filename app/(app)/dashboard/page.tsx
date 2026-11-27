@@ -81,7 +81,7 @@ export default async function DashboardPage() {
       <PageHeader
         title={
           locale === "ar"
-            ? `${t(now.getHours() < 12 ? "dashboard.greetingMorning" : "dashboard.greetingEvening")}، ${session.name}`
+            ? t("dashboard.greetingNamed", { greeting: t(now.getHours() < 12 ? "dashboard.greetingMorning" : "dashboard.greetingEvening"), name: session.name })
             : `${t(now.getHours() < 12 ? "dashboard.greetingMorning" : "dashboard.greetingEvening")}, ${session.name}`
         }
         description={formatDate(now, locale, {

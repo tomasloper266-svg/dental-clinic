@@ -289,7 +289,7 @@ export default function InstructionTemplatesBoard() {
         <TemplateModal
           key={`edit-${editing.id}`}
           open
-          title={`تعديل: ${editing.procedure}`}
+          title={t("instructions.editTitle", { procedure: editing.procedure })}
           busy={busy}
           initialProcedure={editing.procedure}
           initialBody={editing.body}
@@ -308,7 +308,7 @@ export default function InstructionTemplatesBoard() {
         title={t("instructions.deleteTemplateAction")}
         description={
           removing
-            ? `سيُحذف قالب «${removing.procedure}» نهائياً ولن تُرسل تعليماته تلقائياً بعد اكتمال العلاج. هل تريد المتابعة؟`
+            ? t("instructions.deleteTemplateConfirm", { procedure: removing.procedure })
             : ""
         }
         confirmLabel={t("instructions.deleteTemplate")}
@@ -359,12 +359,12 @@ function TemplateCard({
         </PillAction>
         <IconAction
           icon={Pencil}
-          label={`تعديل قالب ${template.procedure}`}
+          label={t("instructions.editTemplateLabel", { procedure: template.procedure })}
           onClick={onEdit}
         />
         <IconAction
           icon={Trash2}
-          label={`حذف قالب ${template.procedure}`}
+          label={t("instructions.deleteTemplateLabel", { procedure: template.procedure })}
           tone="danger"
           disabled={busy}
           onClick={onRemove}

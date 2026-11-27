@@ -461,7 +461,7 @@ function DayStrip({
       <div
         className="relative h-7 overflow-hidden rounded-field border border-warm-200 bg-surface-sunken"
         role="img"
-        aria-label={`خط نهار الطبيب من ${formatTime(windowStart)} إلى ${formatTime(windowEnd)} — فجوات شاغرة ${gaps.length}`}
+        aria-label={t("waitlist.dayTimelineAria", { start: formatTime(windowStart), end: formatTime(windowEnd), count: gaps.length })}
       >
         {/* كتل الانشغال */}
         {busy.map((b) => (

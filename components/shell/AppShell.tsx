@@ -65,7 +65,7 @@ export function AppShell({
       fetch("/api/dues/summary")
         .then(async (res) => {
           if (!res.ok) {
-            throw new Error(`حالة الجلب ${res.status}`);
+            throw new Error(t("shell.fetchStatusError", { status: res.status }));
           }
           const data = (await res.json()) as {
             outstandingDuesUsd?: number;

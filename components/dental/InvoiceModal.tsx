@@ -96,7 +96,7 @@ export default function InvoiceModal({
       <Modal
         open={open}
         onClose={onClose}
-        title={`الفاتورة ${invoice.number}`}
+        title={t("finance.invoiceNumberTitle", { number: invoice.number })}
         className="max-w-2xl"
       >
         {/* شريط الفاتورة — المريض والتاريخ يميناً، والرقم والحالة يساراً */}

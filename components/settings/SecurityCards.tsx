@@ -62,7 +62,7 @@ export function PasswordCard() {
       const revoked = data.otherSessionsRevoked ?? 0;
       toast(
         revoked > 0
-          ? `تم تغيير كلمة السر — وتم إبطال ${revoked} جلسة على أجهزة أخرى`
+          ? t("settings.passwordChangedSessions", { count: revoked })
           : t("api.auth.passwordChanged"),
       );
     } catch {
@@ -261,7 +261,7 @@ export function EmailCard({
               </strong>
             </p>
           )}
-          <Field label={t("common.verificationCode")} htmlFor="sec-code" hint={`أُرسل إلى ${email}`}>
+          <Field label={t("common.verificationCode")} htmlFor="sec-code" hint={t("settings.codeSentTo", { email: email })}>
             <Input
               id="sec-code"
               inputMode="numeric"

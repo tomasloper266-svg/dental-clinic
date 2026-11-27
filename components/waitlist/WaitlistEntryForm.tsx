@@ -69,7 +69,7 @@ export default function WaitlistEntryForm({
         setError(data.error ?? t("common.addFailed"));
         return;
       }
-      toast(`أُضيف ${selected.name} إلى قائمة الانتظار`);
+      toast(t("waitlist.addedToast", { name: selected.name }));
       onAdded();
       onClose();
     } catch {

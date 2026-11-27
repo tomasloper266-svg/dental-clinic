@@ -170,7 +170,7 @@ export default function PeriodontalReadingForm({
         <Field
           label={t("periodontal.recessionMm")}
           htmlFor={`perio-recession-${fdi}`}
-          hint={`${RECESSION_MIN_MM}–${RECESSION_MAX_MM} — سالب فوق الخط`}
+          hint={t("periodontal.recessionRange", { min: RECESSION_MIN_MM, max: RECESSION_MAX_MM })}
         >
           <Input
             id={`perio-recession-${fdi}`}
@@ -284,7 +284,7 @@ export default function PeriodontalReadingForm({
                   <span className="numeric">
                     {r.pocketDepthMm === null
                       ? "—"
-                      : `عمق ${r.pocketDepthMm}مم`}
+                      : t("periodontal.depthChip", { depth: r.pocketDepthMm })}
                   </span>
                   {r.recessionMm !== null && (
                     <span className="numeric">{t("periodontal.recessionShort")} {r.recessionMm}{t("common.mm")}</span>

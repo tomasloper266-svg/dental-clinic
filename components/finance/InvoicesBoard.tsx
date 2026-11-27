@@ -461,7 +461,7 @@ export default function InvoicesBoard({ usdRate }: { usdRate: number }) {
           usdRate={usdRate}
           companionLine={
             detailPatient?.emergencyContacts
-              ? `المرافق: ${detailPatient.emergencyContacts}`
+              ? t("finance.emergencyContacts", { contacts: detailPatient.emergencyContacts })
               : null
           }
           onLedgerChanged={() => void refresh()}

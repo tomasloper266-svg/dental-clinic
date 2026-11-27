@@ -35,7 +35,7 @@ export function SubscriptionStatusCard({
 }: SubscriptionStatusCardProps) {
   const { t } = useI18n();
   const daysLabel =
-    daysLeft <= 0 ? t("subscription.endsToday") : `تبقى ${daysLeft} أيام من ${totalDays}`;
+    daysLeft <= 0 ? t("subscription.endsToday") : t("subscription.daysLeftOf", { days: daysLeft, total: totalDays });
 
   return (
     <Card>

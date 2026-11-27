@@ -159,10 +159,10 @@ export default function PeriodontalSessionForm({
                     {t("periodontal.lastReading")}{" "}
                     {[
                       prev.pocketDepthMm !== null
-                        ? `${prev.pocketDepthMm}مم`
+                        ? t("periodontal.mmChip", { depth: prev.pocketDepthMm })
                         : null,
                       prev.mobilityGrade !== null
-                        ? `ح${prev.mobilityGrade}`
+                        ? t("periodontal.mobilityChip", { grade: prev.mobilityGrade })
                         : null,
                       prev.bleedingOnProbing ? t("periodontal.bleeding") : null,
                     ]
@@ -194,7 +194,7 @@ export default function PeriodontalSessionForm({
                     step={1}
                     value={entry?.recession ?? ""}
                     onChange={(e) => update(fdi, { recession: e.target.value })}
-                    aria-label={`الانكماش اللثوي للسن ${fdi}`}
+                    aria-label={t("periodontal.recessionAria", { tooth: fdi })}
                     className="numeric border-warm-300 bg-surface-raised focus:border-primary-500 focus:outline-primary-500 rounded-field text-ink-900 w-full border px-1.5 py-1 text-xs focus:outline-2 focus:outline-offset-0"
                   />
                 </label>
@@ -208,7 +208,7 @@ export default function PeriodontalSessionForm({
                     step={1}
                     value={entry?.mobility ?? ""}
                     onChange={(e) => update(fdi, { mobility: e.target.value })}
-                    aria-label={`درجة الحركية للسن ${fdi}`}
+                    aria-label={t("periodontal.mobilityAria", { tooth: fdi })}
                     className="numeric border-warm-300 bg-surface-raised focus:border-primary-500 focus:outline-primary-500 rounded-field text-ink-900 w-full border px-1.5 py-1 text-xs focus:outline-2 focus:outline-offset-0"
                   />
                 </label>
@@ -263,7 +263,7 @@ export default function PeriodontalSessionForm({
         >
           {saving
             ? t("common.saving")
-            : `حفظ الجلسة (${filledFdi.length} ${filledFdi.length === 1 ? t("common.toothUnit") : t("dental.teeth")})`}
+            : t("periodontal.saveSessionCount", { count: filledFdi.length, unit: filledFdi.length === 1 ? t("common.toothUnit") : t("dental.teeth") })}
         </Button>
         <Button variant="ghost" onClick={onDone}>
           {t("common.cancel")}

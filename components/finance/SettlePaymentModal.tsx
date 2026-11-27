@@ -97,7 +97,7 @@ export default function SettlePaymentModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={`تسديد دفعة — ${patientName}`}
+      title={t("finance.settlePaymentTitle", { patient: patientName })}
       footer={
         <>
           <Button loading={saving} onClick={() => void submit()}>
@@ -118,7 +118,7 @@ export default function SettlePaymentModal({
           htmlFor="settle-amount"
           hint={
             parts !== null
-              ? `سيُسجَّل في الدفتر: ${parts.usd} (${parts.syp})`
+              ? t("finance.settleLedgerNote", { usd: parts.usd, syp: parts.syp })
               : undefined
           }
         >

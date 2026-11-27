@@ -155,7 +155,7 @@ export default function NewInvoiceModal({
           body: JSON.stringify(
             buildChargeWithItemsBody({
               items: payloadItems,
-              note: notes.trim() || `فاتورة — ${payloadItems.length} بنود`,
+              note: notes.trim() || t("finance.invoiceNoteDefault", { count: payloadItems.length }),
               createdAt: dateIso.toISOString(),
             }),
           ),
@@ -177,7 +177,7 @@ export default function NewInvoiceModal({
               type: "ADJUSTMENT",
               amountUsd: -roundUsd2(discount),
               note: notes.trim()
-                ? `خصم على فاتورة — ${notes.trim()}`
+                ? t("finance.discountOnInvoice", { notes: notes.trim() })
                 : t("finance.discountOnInvoice"),
               createdAt: dateIso.toISOString(),
             }),
@@ -363,7 +363,7 @@ export default function NewInvoiceModal({
           <Field
             label={t("finance.discountUsd")}
             htmlFor="inv-discount"
-            hint={`الإجمالي: $ ${totalUsd.toLocaleString("en-US")}`}
+            hint={t("finance.totalHint", { total: totalUsd.toLocaleString("en-US") })}
           >
             <Input
               id="inv-discount"

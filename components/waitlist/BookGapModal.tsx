@@ -90,7 +90,7 @@ export default function BookGapModal({
       }
       const entry = waiting.find((e) => e.id === entryId);
       toast(
-        `تم حجز ${entry?.patientName ?? t("common.patient")} في فجوة ${formatTime(gap.start)}`,
+        t("waitlist.gapBookedToast", { patient: entry?.patientName ?? t("common.patient"), time: formatTime(gap.start) }),
       );
       onBooked();
       onClose();
@@ -105,7 +105,7 @@ export default function BookGapModal({
     <Modal
       open
       onClose={onClose}
-      title={`حجز في فجوة ${formatTime(gap.start)} — ${formatTime(gap.end)}`}
+      title={t("waitlist.bookGapTitle", { start: formatTime(gap.start), end: formatTime(gap.end) })}
     >
       <div className="flex flex-col gap-4">
         <p className="rounded-field border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-800">
@@ -138,7 +138,7 @@ export default function BookGapModal({
                   <span className="font-medium text-ink-900">{e.patientName}</span>
                   <span className="block text-xs text-warm-500">
                     {e.preferredWindow}
-                    {e.priority > 0 ? ` · أولوية ${e.priority}` : ""}
+                    {e.priority > 0 ? t("waitlist.prioritySuffix", { priority: e.priority }) : ""}
                   </span>
                 </span>
               </label>

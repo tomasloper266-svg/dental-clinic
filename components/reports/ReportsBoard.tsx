@@ -244,7 +244,7 @@ export default function ReportsBoard({
           <StatCard
             value={String(summary.invoiceCount)}
             label={t("invoices.issued")}
-            subLabel={`متوسط ${usd(avgInvoiceUsd)}`}
+            subLabel={t("reports.averageLabel", { amount: usd(avgInvoiceUsd) })}
             icon={ReceiptText}
             iconClassName="bg-warning-500/10 text-warning-600"
             className="border-warning-500/50"
@@ -252,7 +252,7 @@ export default function ReportsBoard({
           <StatCard
             value={usd(summary.totalPaymentsUsd)}
             label={t("reports.periodCollected")}
-            subLabel={`متوسط ${usd(avgPaymentUsd)} · ${summary.paymentCount} دفعة`}
+            subLabel={t("reports.averagePayments", { amount: usd(avgPaymentUsd), count: summary.paymentCount })}
             icon={Wallet}
           />
           <StatCard
@@ -357,7 +357,7 @@ export default function ReportsBoard({
                       label: monthLabel(month.month),
                       value: month.count,
                       valueText: String(month.count),
-                      title: `${monthLabel(month.month)}: ${month.count} مريض جديد`,
+                      title: t("reports.newPatientsTitle", { month: monthLabel(month.month), count: month.count }),
                     }))}
                 />
               ) : (

@@ -39,7 +39,7 @@ export default async function OdontogramPage({
   return (
     <div className={pageWrapClass("full")}>
       <PageHeader
-        title={`أودوغرام — ${patient.name}`}
+        title={t("dental.odontogramTitle", { name: patient.name })}
         description={t("odontogram.findingsTimelineHint")}
         actions={
           <Link

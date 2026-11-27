@@ -75,7 +75,7 @@ export default function AppointmentOutcomesDonut({
         viewBox={`0 0 ${SIZE} ${SIZE}`}
         className="size-48 shrink-0"
         role="img"
-        aria-label={`نتائج المواعيد — ${total} موعد`}
+        aria-label={t("reports.outcomesAria", { total: total })}
       >
         {outcomes.map((outcome) => {
           const fraction = outcome.count / total;

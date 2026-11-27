@@ -443,7 +443,7 @@ export default function InventoryBoard({ usdRate }: { usdRate: number }) {
         open={deleting !== null}
         onClose={() => setDeleting(null)}
         title={t("inventory.deleteConfirm")}
-        description={`ستُحذف «${deleting?.name ?? ""}» نهائياً من المخزون مع سطور استعمالها وحركاتها. لا يمكن التراجع عن الحذف.`}
+        description={t("inventory.deleteConfirm", { name: deleting?.name ?? "" })}
         confirmLabel={t("inventory.deleteMaterial")}
         loading={deleting !== null && busyId === deleting.id}
         onConfirm={async () => {
@@ -507,6 +507,7 @@ function QuantityCell({
   minQuantity: number;
   unit: string;
 }) {
+  const { t } = useI18n();
   const status = materialStockStatus({ quantityOnHand, minQuantity });
   const ratio = stockLevelRatio({ quantityOnHand, minQuantity });
   return (
@@ -524,7 +525,7 @@ function QuantityCell({
         aria-valuenow={ratio * 100}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label={`نسبة الرصيد من ضعف حد التنبيه — ${MATERIAL_STATUS_LABELS[status]}`}
+        aria-label={t("inventory.stockRatioAria", { status: MATERIAL_STATUS_LABELS[status] })}
         className="h-1 w-full max-w-28 overflow-hidden rounded-full bg-surface-sunken"
       >
         <div
@@ -638,7 +639,7 @@ function SupplyModal({
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
-            label={`الكمية (${material.unit})`}
+            label={t("inventory.quantityWithUnit", { unit: material.unit })}
             htmlFor="supply-quantity"
             error={error ?? undefined}
           >
@@ -726,7 +727,7 @@ function HistoryModal({
     <Modal
       open
       onClose={onClose}
-      title={`السجل — ${material.name}`}
+      title={t("inventory.logTitle", { name: material.name })}
       footer={
         <Button variant="secondary" onClick={onClose}>
           {t("common.close")}

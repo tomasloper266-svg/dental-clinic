@@ -720,7 +720,7 @@ export default function FinanceBoard({ usdRate }: { usdRate: number }) {
             htmlFor="entry-amount"
             hint={
               finalAmount !== null
-                ? `سيُسجَّل بالدفتر: ${formatDualFromUsd(finalAmount, usdRate)}`
+                ? t("finance.willRecordLedger", { amount: formatDualFromUsd(finalAmount, usdRate) })
                 : type === "PAYMENT"
                   ? t("finance.paymentNegativeHint")
                   : undefined

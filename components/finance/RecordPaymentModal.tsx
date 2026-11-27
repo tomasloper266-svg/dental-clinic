@@ -138,7 +138,7 @@ export default function RecordPaymentModal({
     const parts = [
       notes.trim(),
       selectedInvoice
-        ? `سداد الفاتورة ${selectedInvoice.number}`
+        ? t("finance.payInvoiceTitle", { number: selectedInvoice.number })
         : t("finance.onAccount"),
     ];
     return parts.filter(Boolean).join(" — ");
@@ -259,7 +259,7 @@ export default function RecordPaymentModal({
           htmlFor="pay-amount"
           hint={
             selectedInvoice
-              ? `المتبقي على الفاتورة: ${money(selectedInvoice.remainingUsd)}`
+              ? t("finance.remainingOnInvoice", { amount: money(selectedInvoice.remainingUsd) })
               : undefined
           }
         >
