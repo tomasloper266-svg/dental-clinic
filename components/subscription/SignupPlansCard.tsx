@@ -37,7 +37,7 @@ export function SignupPlansCard() {
         {t("auth.plans.everyFeature", { days: TRIAL_DAYS })}
       </p>
 
-      <ul className="mt-[22px] grid grid-cols-2 gap-3.5">
+      <ul className="mt-4 grid grid-cols-2 gap-3">
         {PLAN_ORDER.map((name) => {
           const spec = SUBSCRIPTION_PLANS[name];
           const isYearly = name === "YEARLY";
@@ -45,7 +45,7 @@ export function SignupPlansCard() {
             <li
               key={name}
               className={cn(
-                "relative rounded-[14px] px-3 pb-4 pt-[18px] transition-all duration-200",
+                "relative rounded-xl px-2.5 pb-3 pt-3.5 transition-all duration-200",
                 "hover:-translate-y-1 hover:shadow-[0_14px_30px_-16px_rgba(79,70,229,0.35)]",
                 isYearly
                   ? "border-[1.5px] border-[#d4a94a] bg-gradient-to-b from-[#fbf7ec] to-white shadow-[0_16px_34px_-16px_rgba(196,150,40,0.45)]"
@@ -54,7 +54,7 @@ export function SignupPlansCard() {
             >
               {isYearly && (
                 <span
-                  className="absolute -top-3 left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full px-3 py-0.5 text-[11.5px] font-bold text-[#241d05]"
+                  className="absolute -top-2.5 left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[10.5px] font-bold text-[#241d05]"
                   style={{
                     background: "linear-gradient(135deg, #f0c75e, #d4a94a)",
                   }}
@@ -63,22 +63,22 @@ export function SignupPlansCard() {
                   <span>{t("auth.plans.bestValue")}</span>
                 </span>
               )}
-              <span className="block text-[13px] font-medium text-[#1e2233]/75">
+              <span className="block text-[12px] font-medium text-[#1e2233]/75">
                 {isYearly ? t("auth.plans.yearly") : t("auth.plans.monthly")}
               </span>
               <span
                 className={cn(
-                  "mt-1.5 block text-[30px] font-extrabold leading-tight",
+                  "mt-0.5 block text-[22px] font-extrabold leading-tight",
                   isYearly ? "text-[#a97e1d]" : "text-[#1e2233]",
                 )}
               >
                 {spec.priceUsd}$
               </span>
-              <span className="mt-1 block text-[12px] text-[#1e2233]/60">
+              <span className="block text-[11px] text-[#1e2233]/60">
                 {isYearly ? t("auth.plans.perYear") : t("auth.plans.perMonth")}
               </span>
               {isYearly && (
-                <span className="mt-3.5 inline-block rounded-full border border-[#bfe9d4] bg-[#e3f7ee] px-3.5 py-1 text-[12px] font-bold text-[#0d7a4f]">
+                <span className="mt-2 inline-block rounded-full border border-[#bfe9d4] bg-[#e3f7ee] px-2.5 py-0.5 text-[10.5px] font-bold text-[#0d7a4f]">
                   {t("auth.plans.saveYearly", { amount: savings })}
                 </span>
               )}
