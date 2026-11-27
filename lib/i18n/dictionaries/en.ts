@@ -579,6 +579,7 @@ export const en: Partial<Dictionary> = {
   "auth.plans.monthly": "Monthly",
   "auth.plans.perMonth": "per month",
   "auth.plans.perYear": "per year",
+  "auth.plans.saveYearly": "Save {amount}$ vs paying monthly",
   "auth.plans.shamCash": "Pay via SHAM Cash — from day one, even before your trial ends",
   "auth.plans.startFree": "Start free — {days}-day full trial",
   "auth.plans.yearly": "Yearly",
