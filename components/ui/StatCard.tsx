@@ -43,7 +43,7 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-4 rounded-panel border border-warm-200 bg-surface-raised px-5 py-4",
+        "flex items-center justify-between gap-4 rounded-panel border border-warm-200/60 bg-surface-raised px-5 py-4 shadow-md",
         className,
       )}
     >

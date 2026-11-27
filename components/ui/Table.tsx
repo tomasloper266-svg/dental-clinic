@@ -11,7 +11,7 @@ export const Table = forwardRef<HTMLTableElement, TableProps>(
     return (
       <div
         className={cn(
-          "w-full overflow-x-auto rounded-panel border border-warm-200 bg-surface-raised",
+          "w-full overflow-x-auto rounded-panel bg-surface-raised shadow-md",
           wrapperClassName,
         )}
       >
@@ -31,7 +31,7 @@ export function THead({
 }: React.HTMLAttributes<HTMLTableSectionElement>) {
   return (
     <thead
-      className={cn("bg-surface-sunken text-ink-900", className)}
+      className={cn("bg-warm-100 text-ink-900", className)}
       {...rest}
     />
   );

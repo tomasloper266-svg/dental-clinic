@@ -19,16 +19,18 @@ type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800 border border-transparent",
+    "bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800 border border-transparent " +
+    // توهج نيلي ناعم كزر CTA في صفحات الدخول
+    "shadow-md shadow-primary-500/25 hover:shadow-lg hover:shadow-primary-500/30 hover:-translate-y-px active:translate-y-0",
   secondary:
-    "bg-surface-raised text-ink-900 border border-warm-300 hover:bg-surface-hover active:bg-surface-sunken",
+    "bg-surface-raised text-ink-900 border border-warm-300/70 hover:bg-surface-hover hover:border-warm-300 active:bg-surface-sunken shadow-xs",
   ghost:
     "bg-transparent text-ink-900 border border-transparent hover:bg-surface-hover active:bg-surface-sunken",
   danger:
-    "bg-danger-500 text-white hover:bg-danger-600 active:bg-danger-700 border border-transparent",
+    "bg-danger-500 text-white hover:bg-danger-600 active:bg-danger-700 border border-transparent shadow-md shadow-danger-500/25",
   // ذهبي — أزرار الإجراء البارز في مخطط الأسنان المستقل (فتح الملف الكامل، إضافة)
   gold:
-    "bg-warning-500 text-white hover:bg-warning-600 active:bg-warning-700 border border-transparent",
+    "bg-warning-500 text-white hover:bg-warning-600 active:bg-warning-700 border border-transparent shadow-md shadow-warning-500/25",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -48,7 +50,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || loading}
         aria-busy={loading || undefined}
         className={cn(
-          "inline-flex items-center justify-center font-medium transition-colors",
+          "inline-flex items-center justify-center font-medium transition",
           shape === "pill" ? "rounded-full" : "rounded-field",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
           "disabled:pointer-events-none disabled:opacity-50",

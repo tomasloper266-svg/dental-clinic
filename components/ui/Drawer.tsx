@@ -34,7 +34,7 @@ export function Drawer({ open, onClose, title, children, footer, className }: Dr
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-ink-950/40"
+      className="fixed inset-0 z-50 bg-ink-950/45 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -46,17 +46,17 @@ export function Drawer({ open, onClose, title, children, footer, className }: Dr
         aria-label={title}
         tabIndex={-1}
         className={cn(
-          "absolute inset-y-0 start-0 flex w-full max-w-sm flex-col bg-surface-raised shadow-lg outline-none",
+          "absolute inset-y-0 start-0 flex w-full max-w-sm flex-col rounded-e-panel bg-surface-raised shadow-lg outline-none",
           className,
         )}
       >
-        <div className="flex items-center justify-between border-b border-warm-200 px-5 py-3">
-          <h2 className="text-sm font-semibold text-ink-900">{title}</h2>
+        <div className="flex items-center justify-between border-b border-warm-200/60 px-5 py-3">
+          <h2 className="text-base font-bold text-ink-900">{title}</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="إغلاق"
-            className="rounded-field p-1 text-warm-500 hover:bg-surface-hover hover:text-ink-900"
+            className="rounded-full p-1.5 text-warm-500 hover:bg-surface-hover hover:text-ink-900"
           >
             <X size={16} aria-hidden />
           </button>

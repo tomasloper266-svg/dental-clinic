@@ -34,7 +34,7 @@ export function Modal({ open, onClose, title, titleClassName, children, footer, 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/45 p-4 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -46,17 +46,17 @@ export function Modal({ open, onClose, title, titleClassName, children, footer, 
         aria-label={title}
         tabIndex={-1}
         className={cn(
-          "w-full max-w-lg rounded-panel border border-warm-200 bg-surface-raised shadow-lg outline-none",
+          "w-full max-w-lg rounded-panel bg-surface-raised shadow-lg outline-none",
           className,
         )}
       >
-        <div className="flex items-center justify-between border-b border-warm-200 px-5 py-3">
-          <h2 className={cn("text-sm font-semibold text-ink-900", titleClassName)}>{title}</h2>
+        <div className="flex items-center justify-between border-b border-warm-200/60 px-5 py-3">
+          <h2 className={cn("text-base font-bold text-ink-900", titleClassName)}>{title}</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="إغلاق"
-            className="rounded-field p-1 text-warm-500 hover:bg-surface-hover hover:text-ink-900"
+            className="rounded-full p-1.5 text-warm-500 hover:bg-surface-hover hover:text-ink-900"
           >
             <X size={16} aria-hidden />
           </button>

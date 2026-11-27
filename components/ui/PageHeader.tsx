@@ -50,7 +50,7 @@ export function PageHeader({
         <div className="flex items-start gap-3">
           {leading}
           <div>
-            <h1 className="font-display text-[25px] font-normal leading-[1.45] text-ink-900">
+            <h1 className="font-display text-[26px] font-bold leading-tight text-ink-900">
               {title}
             </h1>
             {description && (

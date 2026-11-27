@@ -10,7 +10,7 @@ export function Card({ className, as = "div", ...rest }: CardProps) {
   return (
     <Tag
       className={cn(
-        "rounded-panel border border-warm-200 bg-surface-raised",
+        "rounded-panel border border-warm-200/60 bg-surface-raised shadow-md",
         className,
       )}
       {...rest}
