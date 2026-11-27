@@ -5,7 +5,6 @@ import { RefreshCw, Stethoscope } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Field";
-import { PageHeader } from "@/components/ui/PageHeader";
 import type { DisplayCurrency } from "@/lib/currency";
 import { ClinicInfoCard, type ClinicInfoPatch } from "./ClinicInfoCard";
 import { AppLockCard } from "./AppLockCard";
@@ -34,20 +33,6 @@ type Overview = SecurityOverview & {
   workEnd: string;
   lockEnabled: boolean;
 };
-
-/** سطر تاريخ الترويسة — «السبت، 2026/11/14» بترتيب السنة أولاً كما في المخطط */
-const WEEKDAY_FMT = new Intl.DateTimeFormat("ar-SY-u-nu-latn", {
-  weekday: "long",
-});
-const NUMERIC_DATE_FMT = new Intl.DateTimeFormat("en-GB", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-});
-export function weekdayDateHeading(date: Date): string {
-  const [day, month, year] = NUMERIC_DATE_FMT.format(date).split("/");
-  return `${WEEKDAY_FMT.format(date)}، ${year}/${month}/${day}`;
-}
 
 // ─── بطاقة حقل واحد — اسم الطبيب في قسم الحساب والأمان ─────────────────────
 
@@ -213,10 +198,7 @@ export default function SettingsBoard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="الإعدادات"
-        description={weekdayDateHeading(new Date())}
-      />
+      {/* الترويسة تُرسم في صفحة الإعدادات أعلى بطاقة الاشتراك — هنا اللوحة فقط */}
 
       <div className="grid items-start gap-6 lg:grid-cols-2">
         <ClinicInfoCard

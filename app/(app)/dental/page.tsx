@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
 import { tenantContextFromSession } from "@/lib/tenant/context";
 import { pageWrapClass } from "@/lib/page-width";
+import { formatWeekdayDateCell } from "@/lib/dates";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { getPatient } from "@/lib/services/patients";
 import { listFindings } from "@/lib/services/findings";
 import { listReadings } from "@/lib/services/periodontal";
@@ -50,7 +52,12 @@ export default async function DentalPage({
 
   return (
     <div className={pageWrapClass("full")}>
-      <DentalPatientSearch selectedPatientId={patient?.id} className="mb-5" />
+      {/* ترويسة موحّدة كبقية الصفحات — شريط اختيار المريض تحتها */}
+      <PageHeader
+        title="مخطط الأسنان وخطط العلاج"
+        description={formatWeekdayDateCell(new Date())}
+      />
+      <DentalPatientSearch selectedPatientId={patient?.id} />
 
       {patient && ledger ? (
         <>

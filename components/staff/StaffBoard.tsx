@@ -89,7 +89,6 @@ export default function StaffBoard() {
         description={formatWeekdayDateCell(new Date())}
         actions={
           <Button
-            variant="gold"
             shape="pill"
             onClick={() => {
               setEditing(null);

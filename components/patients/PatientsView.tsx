@@ -3,8 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Mars, Pencil, Plus, Trash2, Users, Venus } from "lucide-react";
-import { formatDateCell } from "@/lib/dates";
-import { formatDayLabel } from "@/lib/appointment-ui";
+import { formatDateCell, formatWeekdayDateCell } from "@/lib/dates";
 import { useMoney } from "@/components/ui/CurrencyContext";
 import type { PatientDto } from "@/lib/services/patients";
 import {
@@ -186,7 +185,7 @@ export default function PatientsView({ rows }: Props) {
     <div className="w-full">
       <PageHeader
         title="المرضى"
-        description={formatDayLabel(new Date())}
+        description={formatWeekdayDateCell(new Date())}
         actions={
           <Button shape="pill" onClick={openCreate}>
             <Plus size={16} aria-hidden />

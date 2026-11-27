@@ -41,7 +41,7 @@ export function RecentPayments({
       ))}
       <li className="py-2.5 text-end">
         <Link
-          href="/finance"
+          href="/invoices"
           className="text-xs font-medium text-primary-700 hover:text-primary-800"
         >
           فتح الدفتر المالي
