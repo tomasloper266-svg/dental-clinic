@@ -4,7 +4,8 @@ import { Loader2 } from "lucide-react";
 import { forwardRef } from "react";
 import { cn } from "./cn";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "gold";
+export type ButtonVariant =
+  "primary" | "secondary" | "ghost" | "danger" | "gold";
 export type ButtonSize = "sm" | "md";
 /** شكل الزر — field الحقل القياسي، pill حبة الإجراء البارزة في رؤوس الصفحات */
 export type ButtonShape = "field" | "pill";
@@ -29,8 +30,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   danger:
     "bg-danger-500 text-white hover:bg-danger-600 active:bg-danger-700 border border-transparent shadow-md shadow-danger-500/25",
   // ذهبي — أزرار الإجراء البارز في مخطط الأسنان المستقل (فتح الملف الكامل، إضافة)
-  gold:
-    "bg-warning-500 text-white hover:bg-warning-600 active:bg-warning-700 border border-transparent shadow-md shadow-warning-500/25",
+  gold: "bg-warning-500 text-white hover:bg-warning-600 active:bg-warning-700 border border-transparent shadow-md shadow-warning-500/25",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -40,7 +40,17 @@ const sizeClasses: Record<ButtonSize, string> = {
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   function Button(
-    { variant = "primary", size = "md", shape = "field", loading = false, className, children, disabled, type = "button", ...rest },
+    {
+      variant = "primary",
+      size = "md",
+      shape = "field",
+      loading = false,
+      className,
+      children,
+      disabled,
+      type = "button",
+      ...rest
+    },
     ref,
   ) {
     return (
@@ -52,7 +62,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         className={cn(
           "inline-flex items-center justify-center font-medium transition",
           shape === "pill" ? "rounded-full" : "rounded-field",
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
+          "focus-visible:outline-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2",
           "disabled:pointer-events-none disabled:opacity-50",
           variantClasses[variant],
           sizeClasses[size],

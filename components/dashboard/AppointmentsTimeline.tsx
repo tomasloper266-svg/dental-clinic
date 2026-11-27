@@ -1,7 +1,8 @@
 import { CalendarDays } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/components/ui/cn";
-import { STATUS_META, formatTime } from "@/lib/appointment-ui";
+import { STATUS_META } from "@/lib/appointment-ui";
+import { formatTime, getLocale, getT } from "@/lib/i18n";
 import type { AppointmentDto } from "@/lib/services/appointments";
 // خط زمني لمواعيد اليوم — صف لكل موعد بألوان الحالة المعتمدة عبر النظام
 // (STATUS_META) مع تسمية نصية صريحة حتى لا يعتمد التمييز على اللون وحده.
@@ -13,16 +14,18 @@ type AppointmentsTimelineProps = {
   emptyAction?: React.ReactNode;
 };
 
-export function AppointmentsTimeline({
+export async function AppointmentsTimeline({
   appointments,
   emptyAction,
 }: AppointmentsTimelineProps) {
+  const locale = await getLocale();
+  const t = getT(locale);
   if (appointments.length === 0) {
     return (
       <EmptyState
         icon={CalendarDays}
-        title="لا مواعيد اليوم"
-        description="جدول اليوم فارغ — احجز موعداً من زر الحجز أو من صفحة المواعيد."
+        title={t("timeline.noAppointmentsToday")}
+        description={t("timeline.emptyDesc")}
         action={emptyAction}
       />
     );
@@ -43,9 +46,9 @@ export function AppointmentsTimeline({
             {/* عمود الوقت — ثابت العرض بأرقام تبويبية */}
             <time
               dateTime={appt.startsAt.toISOString()}
-              className="numeric text-warm-600 w-16 shrink-0 whitespace-nowrap pt-0.5 text-sm font-medium"
+              className="numeric text-warm-600 w-16 shrink-0 pt-0.5 text-sm font-medium whitespace-nowrap"
             >
-              {formatTime(appt.startsAt)}
+              {formatTime(appt.startsAt, locale)}
             </time>
 
             {/* خط الحالة — تظليل جانبي بلون شارة الحالة */}
@@ -71,11 +74,11 @@ export function AppointmentsTimeline({
                     meta.chip,
                   )}
                 >
-                  {meta.label}
+                  {t(meta.labelKey)}
                 </span>
               </div>
               <p className="text-warm-500 mt-0.5 truncate text-xs">
-                {appt.durationMin} دقيقة
+                {t("timeline.duration", { minutes: appt.durationMin })}
                 {appt.reason ? ` — ${appt.reason}` : ""}
               </p>
             </div>

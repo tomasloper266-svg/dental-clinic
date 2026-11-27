@@ -18,7 +18,14 @@ import { parseCreateLedgerEntry } from "@/lib/services/ledger";
 
 describe("SURFACE_CODES — الترميز المرجعي", () => {
   it("كل كود حرف واحد والكتالوج الستة كاملاً", () => {
-    expect(Object.values(SURFACE_CODES)).toEqual(["O", "I", "M", "D", "B", "L"]);
+    expect(Object.values(SURFACE_CODES)).toEqual([
+      "O",
+      "I",
+      "M",
+      "D",
+      "B",
+      "L",
+    ]);
   });
 
   it("أسطح النوع التشريحي: الضرس بالمضغية والقاطع بلاها", () => {
@@ -44,10 +51,9 @@ describe("normalizeLegacySurfaces — هجرة القيم القديمة", () =>
   });
 
   it("فراغات حول العلامة والرموز الزائدة تُلغى", () => {
-    expect(normalizeLegacySurfaces(" المضغية + المضغية + القريبة ").codes).toEqual([
-      "O",
-      "M",
-    ]);
+    expect(
+      normalizeLegacySurfaces(" المضغية + المضغية + القريبة ").codes,
+    ).toEqual(["O", "M"]);
   });
 
   it("نص غير مطابق يصبح OTHER مع حفظ النص الأصلي — لا فقدان بيانات", () => {
@@ -195,7 +201,12 @@ describe("parseCreateLedgerEntry — إشارة السن/السطح على ال�
       type: "CHARGE",
       amountUsd: 30,
       items: [
-        { description: "حشو ضوئي", category: "حشو ضوئي", amountUsd: 30, surface: "O" },
+        {
+          description: "حشو ضوئي",
+          category: "حشو ضوئي",
+          amountUsd: 30,
+          surface: "O",
+        },
       ],
     });
     expect(r.ok).toBe(true);

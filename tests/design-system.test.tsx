@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
+import { mount } from "./ui";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Package, Trash2 } from "lucide-react";
@@ -18,13 +19,13 @@ import { barHeights, shortDayLabel } from "@/components/dashboard/RevenueChart";
 
 describe("StatCard", () => {
   it("يعرض الرقم والتسمية", () => {
-    render(<StatCard value="18" label="عدد المرضى" icon={Package} />);
+    mount(<StatCard value="18" label="عدد المرضى" icon={Package} />);
     expect(screen.getByText("18")).toBeInTheDocument();
     expect(screen.getByText("عدد المرضى")).toBeInTheDocument();
   });
 
   it("يقلب نبرة الخطر المالي إلى الأحمر", () => {
-    render(
+    mount(
       <StatCard
         value="970"
         label="مستحقات غير مسددة"
@@ -39,7 +40,7 @@ describe("StatCard", () => {
 
 describe("PageHeader", () => {
   it("يعرض العنوان الكبير والوصف الباهت والإجراءات", () => {
-    render(
+    mount(
       <PageHeader
         title="المرضى"
         description="السبت 2026/11/13"
@@ -56,7 +57,7 @@ describe("PageHeader", () => {
   });
 
   it("يرسم فاصلاً بمعيّن صغير في المنتصف", () => {
-    const { container } = render(<HeaderDivider />);
+    const { container } = mount(<HeaderDivider />);
     expect(container.querySelector(".rotate-45")).not.toBeNull();
   });
 });
@@ -64,7 +65,7 @@ describe("PageHeader", () => {
 describe("SearchInput", () => {
   it("يستقبل الكتابة ويستدعي التغيير", async () => {
     const onChange = vi.fn();
-    render(
+    mount(
       <SearchInput
         value=""
         onChange={onChange}
@@ -86,7 +87,7 @@ describe("FilterPills", () => {
   ] as const;
 
   it("يعلّم الحبة النشطة بـ aria-pressed وممتلئة", () => {
-    render(
+    mount(
       <FilterPills
         options={[...options]}
         value="ALL"
@@ -104,7 +105,7 @@ describe("FilterPills", () => {
 
   it("يستدعي التغيير بقيمة الحبة المختارة", async () => {
     const onChange = vi.fn();
-    render(
+    mount(
       <FilterPills options={[...options]} value="ALL" onChange={onChange} />,
     );
     await userEvent.click(screen.getByRole("button", { name: /غير مسددة/ }));
@@ -115,7 +116,7 @@ describe("FilterPills", () => {
 describe("SortSelect", () => {
   it("يستدعي الترتيب بالقيمة المختارة", async () => {
     const onChange = vi.fn();
-    render(
+    mount(
       <SortSelect
         options={[
           { value: "newest", label: "الأحدث" },
@@ -133,7 +134,7 @@ describe("SortSelect", () => {
 
 describe("PanelToolbar و ExportButton", () => {
   it("يعرض زر التصدير داخل شريط الأدوات", () => {
-    render(
+    mount(
       <PanelToolbar>
         <ExportButton />
       </PanelToolbar>,
@@ -146,10 +147,14 @@ describe("PanelToolbar و ExportButton", () => {
 
 describe("EntityCell", () => {
   it("يعرض أفاتاراً بالحرف الأول واسم بارز وسطراً فرعياً", () => {
-    render(<EntityCell name="نور العصقنين" subtitle="0932 476 599" />);
-    expect(screen.getByText("ن", { selector: "[aria-hidden]" })).toBeInTheDocument();
+    mount(<EntityCell name="نور العصقنين" subtitle="0932 476 599" />);
+    expect(
+      screen.getByText("ن", { selector: "[aria-hidden]" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("0932 476 599")).toBeInTheDocument();
-    expect(screen.getByText("نور العصقنين").className).toContain("font-semibold");
+    expect(screen.getByText("نور العصقنين").className).toContain(
+      "font-semibold",
+    );
   });
 
   it("يستخرج الحرف الأول من اسم مقصوص الفراغات — دالة نقية", () => {
@@ -160,7 +165,7 @@ describe("EntityCell", () => {
 
 describe("TableActions", () => {
   it("حبة العرض تُصدر رابطاً ممتلئاً", () => {
-    render(<PillAction href="/patients/p1">الملف</PillAction>);
+    mount(<PillAction href="/patients/p1">الملف</PillAction>);
     const link = screen.getByRole("link", { name: "الملف" });
     expect(link).toHaveAttribute("href", "/patients/p1");
     expect(link.className).toContain("rounded-full");
@@ -168,16 +173,14 @@ describe("TableActions", () => {
   });
 
   it("زر الأيقونة الخطرة يحمل تسمية للقارئ", () => {
-    render(<IconAction icon={Trash2} label="حذف" tone="danger" />);
-    expect(
-      screen.getByRole("button", { name: "حذف" }),
-    ).toBeInTheDocument();
+    mount(<IconAction icon={Trash2} label="حذف" tone="danger" />);
+    expect(screen.getByRole("button", { name: "حذف" })).toBeInTheDocument();
   });
 });
 
 describe("EmptyState", () => {
   it("يعرض نصاً هادئاً وأيقونة كبيرة بالمنتصف", () => {
-    render(
+    mount(
       <EmptyState icon={Package} title="لا مواعيد اليوم" description="استرح" />,
     );
     expect(screen.getByText("لا مواعيد اليوم")).toBeInTheDocument();

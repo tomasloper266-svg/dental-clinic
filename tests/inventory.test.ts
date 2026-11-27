@@ -83,6 +83,7 @@ async function cleanDb(): Promise<void> {
   await prisma.expense.deleteMany();
   await prisma.instructionTemplate.deleteMany();
   await prisma.material.deleteMany();
+  await prisma.instructionSend.deleteMany();
   await prisma.patient.deleteMany();
   await prisma.user.deleteMany();
   await prisma.clinic.deleteMany();
@@ -267,14 +268,14 @@ describeDb("المخزون — integration", () => {
       clinicId: clinicAId,
       name: "د. سامر",
       lockEnabled: false,
-role: "DENTIST",
+      role: "DENTIST",
     });
     ctxB = tenantContextFromSession({
       userId: userB.id,
       clinicId: clinicBId,
       name: "د. ناديا",
       lockEnabled: false,
-role: "DENTIST",
+      role: "DENTIST",
     });
   });
 
@@ -285,7 +286,10 @@ role: "DENTIST",
   async function createMaterialApi(
     token: string,
     body: Record<string, unknown>,
-  ): Promise<{ status: number; body: { material?: { id: string; quantityOnHand?: number } } }> {
+  ): Promise<{
+    status: number;
+    body: { material?: { id: string; quantityOnHand?: number } };
+  }> {
     const res = await materialsPOST(
       authedRequest("/api/materials", token, {
         method: "POST",

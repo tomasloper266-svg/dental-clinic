@@ -25,12 +25,20 @@ describe("الرصيد الجاري التراكمي", () => {
 
   it("الرصيد بعد كل قيد يجمع القيود الموقّعة تراكمياً", () => {
     expect(
-      runningBalances([{ amountUsd: 500_000 }, { amountUsd: -200_000 }, { amountUsd: 100_000 }]),
+      runningBalances([
+        { amountUsd: 500_000 },
+        { amountUsd: -200_000 },
+        { amountUsd: 100_000 },
+      ]),
     ).toEqual([500_000, 300_000, 400_000]);
   });
 
   it("الرصيد الأخير يساوي معادلة الرصيد (Σ القيود)", () => {
-    const entries = [{ amountUsd: 300_000 }, { amountUsd: -300_000 }, { amountUsd: 75_000 }];
+    const entries = [
+      { amountUsd: 300_000 },
+      { amountUsd: -300_000 },
+      { amountUsd: 75_000 },
+    ];
     const balances = runningBalances(entries);
     expect(balances[balances.length - 1]).toBe(75_000);
   });
@@ -94,7 +102,6 @@ describe("تنسيق تاريخ القيد", () => {
   });
 });
 
-
 // ─── حالة السداد وصفوف العرض (الهيكل المرجعي) ───────────────────────────────
 
 describe("settlementOfCharge", () => {
@@ -116,9 +123,24 @@ describe("settlementOfCharge", () => {
 describe("runningBalancesByPatient", () => {
   it("يحسب الرصيد لكل مريض على حدة بترتيبه الزمني", () => {
     const after = runningBalancesByPatient([
-      { id: "e1", patientId: "p1", amountUsd: 300_000, createdAt: "2026-01-01" },
-      { id: "e2", patientId: "p2", amountUsd: 100_000, createdAt: "2026-01-02" },
-      { id: "e3", patientId: "p1", amountUsd: -200_000, createdAt: "2026-01-03" },
+      {
+        id: "e1",
+        patientId: "p1",
+        amountUsd: 300_000,
+        createdAt: "2026-01-01",
+      },
+      {
+        id: "e2",
+        patientId: "p2",
+        amountUsd: 100_000,
+        createdAt: "2026-01-02",
+      },
+      {
+        id: "e3",
+        patientId: "p1",
+        amountUsd: -200_000,
+        createdAt: "2026-01-03",
+      },
     ]);
     expect(after.get("e1")).toBe(300_000);
     expect(after.get("e2")).toBe(100_000);
@@ -128,8 +150,26 @@ describe("runningBalancesByPatient", () => {
 
 describe("buildLedgerRows و filterBySettlement", () => {
   const entries = [
-    { id: "e1", patientId: "p1", patientName: "أحمد", patientPhone: null, type: "CHARGE" as const, amountUsd: 300_000, note: null, createdAt: "2026-01-01" },
-    { id: "e2", patientId: "p1", patientName: "أحمد", patientPhone: null, type: "PAYMENT" as const, amountUsd: -200_000, note: null, createdAt: "2026-01-02" },
+    {
+      id: "e1",
+      patientId: "p1",
+      patientName: "أحمد",
+      patientPhone: null,
+      type: "CHARGE" as const,
+      amountUsd: 300_000,
+      note: null,
+      createdAt: "2026-01-01",
+    },
+    {
+      id: "e2",
+      patientId: "p1",
+      patientName: "أحمد",
+      patientPhone: null,
+      type: "PAYMENT" as const,
+      amountUsd: -200_000,
+      note: null,
+      createdAt: "2026-01-02",
+    },
   ];
 
   it("الرسوم المُصدرة تُصنَّف من رصيد المريض بعدها، والدفعات مسددة بحكمها", () => {
@@ -144,10 +184,12 @@ describe("buildLedgerRows و filterBySettlement", () => {
   it("التصفية تعيد الكل كما هو وترشّح بحالة السداد", () => {
     const rows = buildLedgerRows(entries);
     expect(filterBySettlement(rows, "ALL")).toHaveLength(2);
+    expect(filterBySettlement(rows, "settled").map((r) => r.entry.id)).toEqual([
+      "e2",
+    ]);
     expect(
-      filterBySettlement(rows, "settled").map((r) => r.entry.id),
-    ).toEqual(["e2"]);
-    expect(filterBySettlement(rows, "unsettled").map((r) => r.entry.id)).toEqual(["e1"]);
+      filterBySettlement(rows, "unsettled").map((r) => r.entry.id),
+    ).toEqual(["e1"]);
     // التصحيح والاسترداد بلا حالة سداد — لا يظهرون إلا تحت الكل
   });
 
@@ -158,7 +200,10 @@ describe("buildLedgerRows و filterBySettlement", () => {
   });
 
   it("لكل حالة سداد تسمية عربية ونبرة موحّدة", () => {
-    expect(LEDGER_SETTLEMENT_META.settled).toEqual({ label: "مسدد", tone: "success" });
+    expect(LEDGER_SETTLEMENT_META.settled).toEqual({
+      label: "مسدد",
+      tone: "success",
+    });
     expect(LEDGER_SETTLEMENT_META.partial.label).toBe("جزئي");
     expect(LEDGER_SETTLEMENT_META.unsettled.tone).toBe("danger");
   });

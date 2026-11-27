@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
+import { mount } from "./ui";
 import { describe, expect, it } from "vitest";
 import DentalChart from "@/components/dental/DentalChart";
 import type { FindingDto } from "@/lib/services/findings";
@@ -20,7 +21,7 @@ function finding(overrides: Partial<FindingDto>): FindingDto {
 }
 
 function renderChart(findings: FindingDto[] = []) {
-  return render(
+  return mount(
     <DentalChart patientId="p1" initialFindings={findings} planItems={[]} />,
   );
 }

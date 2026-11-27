@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { TriangleAlert } from "lucide-react";
 import type { Gender, PatientDto } from "@/lib/services/patients";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Field";
 
@@ -57,6 +58,7 @@ function initialState(patient: PatientDto | null): FormState {
 }
 
 export default function PatientForm({ editing, onSaved, onCancel }: Props) {
+  const { t } = useI18n();
   const [form, setForm] = useState<FormState>(() => initialState(editing));
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -103,12 +105,12 @@ export default function PatientForm({ editing, onSaved, onCancel }: Props) {
         error?: string;
       };
       if (!res.ok || !data.patient) {
-        setError(data.error ?? "حدث خطأ غير متوقع");
+        setError(data.error ?? t("common.error.unexpected"));
         return;
       }
       onSaved();
     } catch {
-      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+      setError(t("common.error.network"));
     } finally {
       setSubmitting(false);
     }
@@ -118,7 +120,7 @@ export default function PatientForm({ editing, onSaved, onCancel }: Props) {
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <Field label="الاسم الكامل *" htmlFor="name">
+          <Field label={t("form.fullName")} htmlFor="name">
             <Input
               id="name"
               type="text"
@@ -130,7 +132,7 @@ export default function PatientForm({ editing, onSaved, onCancel }: Props) {
           </Field>
         </div>
 
-        <Field label="الهاتف الأساسي" htmlFor="phone">
+        <Field label={t("form.phone")} htmlFor="phone">
           <Input
             id="phone"
             type="tel"
@@ -142,7 +144,7 @@ export default function PatientForm({ editing, onSaved, onCancel }: Props) {
           />
         </Field>
 
-        <Field label="هاتف إضافي" htmlFor="secondaryPhone">
+        <Field label={t("form.secondaryPhone")} htmlFor="secondaryPhone">
           <Input
             id="secondaryPhone"
             type="tel"
@@ -153,19 +155,25 @@ export default function PatientForm({ editing, onSaved, onCancel }: Props) {
           />
         </Field>
 
-        <Field label="الجنس" htmlFor="gender">
+        <Field label={t("form.gender")} htmlFor="gender">
           <Select
             id="gender"
             value={form.gender}
-            onChange={(e) => set("gender", e.target.value as FormState["gender"])}
+            onChange={(e) =>
+              set("gender", e.target.value as FormState["gender"])
+            }
           >
             <option value="">—</option>
-            <option value="MALE">ذكر</option>
-            <option value="FEMALE">أنثى</option>
+            <option value="MALE">{t("gender.male")}</option>
+            <option value="FEMALE">{t("gender.female")}</option>
           </Select>
         </Field>
 
-        <Field label="سنة الميلاد" htmlFor="birthYear" hint="لحساب العمر في القائمة والملف">
+        <Field
+          label={t("form.birthYear")}
+          htmlFor="birthYear"
+          hint={t("form.birthYearHint")}
+        >
           <Input
             id="birthYear"
             type="number"
@@ -177,17 +185,17 @@ export default function PatientForm({ editing, onSaved, onCancel }: Props) {
           />
         </Field>
 
-        <Field label="العنوان" htmlFor="address">
+        <Field label={t("form.address")} htmlFor="address">
           <Input
             id="address"
             type="text"
             value={form.address}
             onChange={(e) => set("address", e.target.value)}
-            placeholder="المدينة - الحي"
+            placeholder={t("form.addressPlaceholder")}
           />
         </Field>
 
-        <Field label="البريد الإلكتروني" htmlFor="email">
+        <Field label={t("form.email")} htmlFor="email">
           <Input
             id="email"
             type="email"
@@ -198,7 +206,7 @@ export default function PatientForm({ editing, onSaved, onCancel }: Props) {
           />
         </Field>
 
-        <Field label="الرقم الوطني / الهوية" htmlFor="nationalId">
+        <Field label={t("form.nationalId")} htmlFor="nationalId">
           <Input
             id="nationalId"
             type="text"
@@ -209,7 +217,7 @@ export default function PatientForm({ editing, onSaved, onCancel }: Props) {
           />
         </Field>
 
-        <Field label="فصيلة الدم" htmlFor="bloodType">
+        <Field label={t("form.bloodType")} htmlFor="bloodType">
           <Select
             id="bloodType"
             value={form.bloodType}
@@ -233,7 +241,7 @@ export default function PatientForm({ editing, onSaved, onCancel }: Props) {
                   aria-hidden
                   className="text-warning-500"
                 />
-                الحساسيات
+                {t("form.allergies")}
               </span>
             }
             htmlFor="allergies"
@@ -244,24 +252,24 @@ export default function PatientForm({ editing, onSaved, onCancel }: Props) {
               className="border-danger-300"
               value={form.allergies}
               onChange={(e) => set("allergies", e.target.value)}
-              placeholder="حساسية البنسلين…"
+              placeholder={t("form.allergiesPlaceholder")}
             />
           </Field>
         </div>
 
         <div className="sm:col-span-2">
-          <Field label="الأمراض المزمنة" htmlFor="chronicDiseases">
+          <Field label={t("form.chronic")} htmlFor="chronicDiseases">
             <Input
               id="chronicDiseases"
               type="text"
               value={form.chronicDiseases}
               onChange={(e) => set("chronicDiseases", e.target.value)}
-              placeholder="ضغط دم مرتفع، سكري…"
+              placeholder={t("form.chronicPlaceholder")}
             />
           </Field>
         </div>
 
-        <Field label="هاتف المنزل" htmlFor="homePhone">
+        <Field label={t("form.homePhone")} htmlFor="homePhone">
           <Input
             id="homePhone"
             type="tel"
@@ -272,18 +280,18 @@ export default function PatientForm({ editing, onSaved, onCancel }: Props) {
           />
         </Field>
 
-        <Field label="جهات اتصال الطوارئ" htmlFor="emergencyContacts">
+        <Field label={t("form.emergency")} htmlFor="emergencyContacts">
           <Input
             id="emergencyContacts"
             type="text"
             value={form.emergencyContacts}
             onChange={(e) => set("emergencyContacts", e.target.value)}
-            placeholder="الاسم — رقم الهاتف"
+            placeholder={t("form.emergencyPlaceholder")}
           />
         </Field>
 
         <div className="sm:col-span-2">
-          <Field label="الملاحظات" htmlFor="medicalNotes">
+          <Field label={t("form.notes")} htmlFor="medicalNotes">
             <Textarea
               id="medicalNotes"
               rows={3}
@@ -297,7 +305,7 @@ export default function PatientForm({ editing, onSaved, onCancel }: Props) {
       {error && (
         <p
           role="alert"
-          className="rounded-field border border-danger-300 bg-danger-50 text-danger-700 px-3 py-2 text-sm"
+          className="rounded-field border-danger-300 bg-danger-50 text-danger-700 border px-3 py-2 text-sm"
         >
           {error}
         </p>
@@ -305,10 +313,10 @@ export default function PatientForm({ editing, onSaved, onCancel }: Props) {
 
       <div className="flex justify-start gap-2 pt-1">
         <Button type="submit" loading={submitting}>
-          {submitting ? "جارٍ الحفظ…" : "حفظ البيانات"}
+          {submitting ? t("form.saving") : t("form.save")}
         </Button>
         <Button variant="secondary" onClick={onCancel} disabled={submitting}>
-          إلغاء
+          {t("common.cancel")}
         </Button>
       </div>
     </form>

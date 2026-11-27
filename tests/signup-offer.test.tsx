@@ -27,7 +27,9 @@ describe("بطاقة عرض الاشتراك في التسجيل", () => {
     expect(
       screen.getByText(/Start free — 15-day full trial/),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Every feature unlocked for the full 15-day trial/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Every feature unlocked for the full 15-day trial/),
+    ).toBeInTheDocument();
   });
 
   it("تعرض الخطتين 15$ شهرياً و120$ سنوياً مع شارة الأوفر للسنوي", () => {
@@ -38,9 +40,7 @@ describe("بطاقة عرض الاشتراك في التسجيل", () => {
   });
 
   it("تعرض سطر الدفع عبر شام كاش من أول يوم", () => {
-    render(
-      withLocale(<SignupPlansCard />),
-    );
+    render(withLocale(<SignupPlansCard />));
     expect(
       screen.getByText(/Pay via SHAM Cash — from day one/),
     ).toBeInTheDocument();
@@ -56,6 +56,8 @@ describe("صفحة التسجيل تعرض العرض", () => {
       screen.getByRole("button", { name: "Create Your Clinic Account" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Subscription offer")).toBeInTheDocument();
-    expect(screen.getByText(/Start free — 15-day full trial/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Start free — 15-day full trial/),
+    ).toBeInTheDocument();
   });
 });

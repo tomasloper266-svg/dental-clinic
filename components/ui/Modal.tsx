@@ -1,6 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { useEffect, useRef } from "react";
 import { cn } from "./cn";
 
@@ -17,7 +18,16 @@ type ModalProps = {
 };
 
 /** نافذة حوارية — إغلاق بـ Escape أو بالنقر على الخلفية، بتركيز داخل الحوار */
-export function Modal({ open, onClose, title, titleClassName, children, footer, className }: ModalProps) {
+export function Modal({
+  open,
+  onClose,
+  title,
+  titleClassName,
+  children,
+  footer,
+  className,
+}: ModalProps) {
+  const { t } = useI18n();
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -34,7 +44,7 @@ export function Modal({ open, onClose, title, titleClassName, children, footer, 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/45 p-4 backdrop-blur-sm"
+      className="bg-ink-950/45 fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -46,17 +56,21 @@ export function Modal({ open, onClose, title, titleClassName, children, footer, 
         aria-label={title}
         tabIndex={-1}
         className={cn(
-          "w-full max-w-lg rounded-panel bg-surface-raised shadow-lg outline-none",
+          "rounded-panel bg-surface-raised w-full max-w-lg shadow-lg outline-none",
           className,
         )}
       >
-        <div className="flex items-center justify-between border-b border-warm-200/60 px-5 py-3">
-          <h2 className={cn("text-base font-bold text-ink-900", titleClassName)}>{title}</h2>
+        <div className="border-warm-200/60 flex items-center justify-between border-b px-5 py-3">
+          <h2
+            className={cn("text-ink-900 text-base font-bold", titleClassName)}
+          >
+            {title}
+          </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="إغلاق"
-            className="rounded-full p-1.5 text-warm-500 hover:bg-surface-hover hover:text-ink-900"
+            aria-label={t("common.close")}
+            className="text-warm-500 hover:bg-surface-hover hover:text-ink-900 rounded-full p-1.5"
           >
             <X size={16} aria-hidden />
           </button>
@@ -65,7 +79,7 @@ export function Modal({ open, onClose, title, titleClassName, children, footer, 
           {children}
         </div>
         {footer && (
-          <div className="flex justify-start gap-2 border-t border-warm-200 px-5 py-3">
+          <div className="border-warm-200 flex justify-start gap-2 border-t px-5 py-3">
             {footer}
           </div>
         )}

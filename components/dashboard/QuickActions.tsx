@@ -1,4 +1,7 @@
+"use client";
+
 import { CalendarPlus, UserPlus } from "lucide-react";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { cn } from "@/components/ui/cn";
 
 // شريط الإجراءات السريعة في لوحة الطبيب — روابط لمسارات قائمة: نموذج «مريض
@@ -8,13 +11,13 @@ import { cn } from "@/components/ui/cn";
 const QUICK_ACTIONS = [
   {
     href: "/patients",
-    label: "+ مريض جديد",
+    labelKey: "dashboard.newPatientAction",
     Icon: UserPlus,
     primary: false,
   },
   {
     href: "/appointments",
-    label: "+ موعد جديد",
+    labelKey: "dashboard.newAppointmentAction",
     Icon: CalendarPlus,
     primary: true,
   },
@@ -30,19 +33,23 @@ const primaryClasses =
   "border border-transparent bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800";
 
 export function QuickActions() {
+  const { t } = useI18n();
   return (
     <nav
-      aria-label="إجراءات سريعة"
+      aria-label={t("dashboard.quickActions")}
       className="flex flex-wrap items-center gap-2"
     >
-      {QUICK_ACTIONS.map(({ href, label, Icon, primary }) => (
+      {QUICK_ACTIONS.map(({ href, labelKey, Icon, primary }) => (
         <a
-          key={label}
+          key={href}
           href={href}
-          className={cn(actionClasses, primary ? primaryClasses : secondaryClasses)}
+          className={cn(
+            actionClasses,
+            primary ? primaryClasses : secondaryClasses,
+          )}
         >
           <Icon size={16} aria-hidden />
-          {label}
+          {t(labelKey)}
         </a>
       ))}
     </nav>

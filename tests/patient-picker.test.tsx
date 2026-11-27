@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { mount } from "./ui";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PatientPicker } from "@/components/patients/PatientPicker";
 import { LAST_PATIENT_KEY } from "@/lib/patients/last-patient";
@@ -11,8 +12,22 @@ vi.mock("next/navigation", () => ({
 }));
 
 const PATIENTS = [
-  { id: "a", name: "أحمد", birthYear: 1990, phone: "0501", address: null, medicalNotes: null },
-  { id: "b", name: "سارة", birthYear: 1985, phone: "0502", address: null, medicalNotes: null },
+  {
+    id: "a",
+    name: "أحمد",
+    birthYear: 1990,
+    phone: "0501",
+    address: null,
+    medicalNotes: null,
+  },
+  {
+    id: "b",
+    name: "سارة",
+    birthYear: 1985,
+    phone: "0502",
+    address: null,
+    medicalNotes: null,
+  },
 ];
 
 function fetchOk() {
@@ -30,7 +45,7 @@ beforeEach(() => {
 describe("PatientPicker", () => {
   it("يحمّل القائمة ويعرض المرضى", async () => {
     vi.stubGlobal("fetch", fetchOk());
-    render(<PatientPicker basePath="/chart" />);
+    mount(<PatientPicker basePath="/chart" />);
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /أحمد/ })).toBeInTheDocument(),
     );
@@ -38,7 +53,7 @@ describe("PatientPicker", () => {
 
   it("اختيار مريض يحفظه آخر مريض مُدار ويوجّه لأساس المسار الحالي", async () => {
     vi.stubGlobal("fetch", fetchOk());
-    render(<PatientPicker basePath="/plans" />);
+    mount(<PatientPicker basePath="/plans" />);
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /سارة/ })).toBeInTheDocument(),
     );
@@ -50,13 +65,15 @@ describe("PatientPicker", () => {
   it("بلا مريض في العنوان يُعاد التوجيه لآخر مريض مُدار المتبقّي في القائمة", async () => {
     window.localStorage.setItem(LAST_PATIENT_KEY, "b");
     vi.stubGlobal("fetch", fetchOk());
-    render(<PatientPicker basePath="/chart" />);
-    await waitFor(() => expect(replace).toHaveBeenCalledWith("/chart?patient=b"));
+    mount(<PatientPicker basePath="/chart" />);
+    await waitFor(() =>
+      expect(replace).toHaveBeenCalledWith("/chart?patient=b"),
+    );
   });
 
   it("لا توجيه تلقائي حين يكون مريض العنوان محدداً", async () => {
     vi.stubGlobal("fetch", fetchOk());
-    render(<PatientPicker basePath="/chart" selectedPatientId="a" />);
+    mount(<PatientPicker basePath="/chart" selectedPatientId="a" />);
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /أحمد/ })).toBeInTheDocument(),
     );
@@ -69,7 +86,7 @@ describe("PatientPicker", () => {
       "fetch",
       vi.fn().mockRejectedValue(new Error("network down")),
     );
-    render(<PatientPicker basePath="/chart" />);
+    mount(<PatientPicker basePath="/chart" />);
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent(
         "تعذر الاتصال بالخادم",

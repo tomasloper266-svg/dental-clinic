@@ -1,4 +1,5 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { mount } from "./ui";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import RecordPaymentModal from "@/components/finance/RecordPaymentModal";
@@ -95,7 +96,7 @@ describe("نموذج تسديد الدفعة — التحقق الزمني", () 
   afterEach(() => vi.unstubAllGlobals());
 
   async function renderModal() {
-    render(
+    mount(
       <CurrencyProvider currency="USD" usdRate={1}>
         <ToastProvider>
           <RecordPaymentModal
@@ -151,7 +152,7 @@ describe("نموذج فاتورة جديدة — التحقق الزمني", () 
   afterEach(() => vi.unstubAllGlobals());
 
   async function renderModal() {
-    render(
+    mount(
       <CurrencyProvider currency="USD" usdRate={1}>
         <ToastProvider>
           <NewInvoiceModal

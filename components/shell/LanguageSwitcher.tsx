@@ -10,7 +10,11 @@ import { useI18n } from "@/components/i18n/I18nProvider";
  * الخياران يُكتب كل منهما بلغته الأصلية دائماً — لا يمرّ عبر القاموس،
  * فالقارئ يختار بلغة يفهمها أصلاً.
  */
-export function LanguageSwitcher({ tone = "default" }: { tone?: "default" | "auth" }) {
+export function LanguageSwitcher({
+  tone = "default",
+}: {
+  tone?: "default" | "auth";
+}) {
   const { locale, setLocale } = useI18n();
 
   const shellCls =

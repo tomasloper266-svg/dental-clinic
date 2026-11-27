@@ -13,6 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import { ToothIcon } from "./icons/ToothIcon";
+import type { TranslationKey } from "@/lib/i18n/core";
 
 /** أيقونة عنصر تنقل — أيقونات lucide أو رسوم الريبو الخاصة (ToothIcon) */
 export type NavIcon = LucideIcon | typeof ToothIcon;
@@ -22,6 +23,8 @@ export type BadgeKey = "waitlist" | "lowStock" | "dues";
 export type NavItem = {
   href: string;
   label: string;
+  /** مفتاح القاموس للتسمية — يُترجم عند الرسم حسب اللغة، والعربية هي label نفسها */
+  labelKey: TranslationKey;
   icon: NavIcon;
   /** شارة عددية مرتبطة بخدمة قائمة — تُحسب في غلاف (app) */
   badge?: BadgeKey;
@@ -32,6 +35,8 @@ export type NavGroupKey = "clinical" | "operations" | "financial" | "admin";
 export type NavGroup = {
   key: NavGroupKey;
   label: string;
+  /** مفتاح القاموس لعنوان المجموعة — يُترجم عند الرسم حسب اللغة */
+  labelKey: TranslationKey;
   items: NavItem[];
 };
 
@@ -39,6 +44,7 @@ export type NavGroup = {
 export const homeNav: NavItem = {
   href: "/dashboard",
   label: "الرئيسية",
+  labelKey: "nav.home",
   icon: LayoutDashboard,
 };
 
@@ -50,42 +56,104 @@ export const navGroups: NavGroup[] = [
   {
     key: "clinical",
     label: "علاجي",
+    labelKey: "nav.group.clinical",
     items: [
-      { href: "/patients", label: "المرضى", icon: Users },
-      { href: "/dental", label: "مخطط الأسنان وخطط العلاج", icon: ToothIcon },
+      {
+        href: "/patients",
+        label: "المرضى",
+        labelKey: "nav.patients",
+        icon: Users,
+      },
+      {
+        href: "/dental",
+        label: "مخطط الأسنان وخطط العلاج",
+        labelKey: "nav.dentalChart",
+        icon: ToothIcon,
+      },
     ],
   },
   {
     key: "operations",
     label: "تشغيلي",
+    labelKey: "nav.group.operations",
     items: [
-      { href: "/appointments", label: "المواعيد", icon: CalendarDays },
+      {
+        href: "/appointments",
+        label: "المواعيد",
+        labelKey: "nav.appointments",
+        icon: CalendarDays,
+      },
       {
         href: "/waitlist",
         label: "قائمة الانتظار",
+        labelKey: "nav.waitlist",
         icon: Clock,
         badge: "waitlist",
       },
-      { href: "/reminders", label: "تذكير الغد", icon: BellRing },
+      {
+        href: "/reminders",
+        label: "تذكير الغد",
+        labelKey: "nav.reminders",
+        icon: BellRing,
+      },
     ],
   },
   {
     key: "financial",
     label: "مالي",
+    labelKey: "nav.group.financial",
     items: [
-      { href: "/invoices", label: "الفواتير والمدفوعات", icon: BookOpen },
-      { href: "/dues", label: "المستحقات", icon: Clock, badge: "dues" },
-      { href: "/reports", label: "التقارير", icon: BarChart3 },
+      {
+        href: "/invoices",
+        label: "الفواتير والمدفوعات",
+        labelKey: "nav.invoices",
+        icon: BookOpen,
+      },
+      {
+        href: "/dues",
+        label: "المستحقات",
+        labelKey: "nav.dues",
+        icon: Clock,
+        badge: "dues",
+      },
+      {
+        href: "/reports",
+        label: "التقارير",
+        labelKey: "nav.reports",
+        icon: BarChart3,
+      },
     ],
   },
   {
     key: "admin",
     label: "إداري",
+    labelKey: "nav.group.admin",
     items: [
-      { href: "/staff", label: "الطاقم", icon: UserRound },
-      { href: "/inventory", label: "المخزون", icon: Package, badge: "lowStock" },
-      { href: "/instructions", label: "قوالب التعليمات", icon: FileText },
-      { href: "/settings", label: "الإعدادات", icon: Settings },
+      {
+        href: "/staff",
+        label: "الطاقم",
+        labelKey: "nav.staff",
+        icon: UserRound,
+      },
+      {
+        href: "/inventory",
+        label: "المخزون",
+        labelKey: "nav.inventory",
+        icon: Package,
+        badge: "lowStock",
+      },
+      {
+        href: "/instructions",
+        label: "قوالب التعليمات",
+        labelKey: "nav.instructions",
+        icon: FileText,
+      },
+      {
+        href: "/settings",
+        label: "الإعدادات",
+        labelKey: "nav.settings",
+        icon: Settings,
+      },
     ],
   },
 ];
@@ -99,8 +167,13 @@ export const allNavItems: NavItem[] = [
 /** شريط الموبايل السفلي: الرئيسية والمرضى (بحث المرضى) والمواعيد + درج «المزيد» */
 export const mobileBarNav: NavItem[] = [
   homeNav,
-  { href: "/patients", label: "المرضى", icon: Users },
-  { href: "/appointments", label: "المواعيد", icon: CalendarDays },
+  { href: "/patients", label: "المرضى", labelKey: "nav.patients", icon: Users },
+  {
+    href: "/appointments",
+    label: "المواعيد",
+    labelKey: "nav.appointments",
+    icon: CalendarDays,
+  },
 ];
 
 export const navItemByHref = (href: string): NavItem | undefined =>
@@ -108,7 +181,10 @@ export const navItemByHref = (href: string): NavItem | undefined =>
 
 /** مجموع شارات التنبيه القائمة — تغذية عداد جرس الشريط العلوي (دالة نقية) */
 export function badgeTotal(badges: Partial<Record<BadgeKey, number>>): number {
-  return Object.values(badges).reduce((total, count) => total + (count ?? 0), 0);
+  return Object.values(badges).reduce(
+    (total, count) => total + (count ?? 0),
+    0,
+  );
 }
 
 /** مداخل التنبيه ذات شارة موجبة فقط — قائمة جرس الشريط العلوي (دالة نقية) */
@@ -121,6 +197,32 @@ export function activeBadgeEntries(
         item.badge !== undefined && (badges[item.badge] ?? 0) > 0,
     )
     .map((item) => ({ ...item, count: badges[item.badge] as number }));
+}
+
+/** مفاتيح القاموس لتسميات قطع المسار — يُترجم في الترويسة حسب اللغة */
+const segmentLabelKeys: Record<string, TranslationKey> = {
+  dashboard: "nav.home",
+  patients: "nav.patients",
+  appointments: "nav.appointments",
+  waitlist: "nav.waitlist",
+  invoices: "nav.invoices",
+  dues: "nav.dues",
+  reports: "nav.reports",
+  inventory: "nav.inventory",
+  reminders: "nav.reminders",
+  instructions: "nav.instructions",
+  dental: "nav.dentalChart",
+  odontogram: "nav.odontogram",
+  staff: "nav.staff",
+  settings: "nav.settings",
+  setup: "nav.setup",
+};
+
+/** مفتاح قاموس لقطعة مسار — undefined تعني التسمية العربية في segmentLabel */
+export function segmentLabelKey(segment: string): TranslationKey | undefined {
+  if (segmentLabelKeys[segment]) return segmentLabelKeys[segment];
+  // معرّفات السجلات (cuid) طويلة — تُعرض «ملف المريض» بدل المعرّف الخام
+  return segment.length > 20 ? "nav.patientFile" : undefined;
 }
 
 const segmentLabels: Record<string, string> = {

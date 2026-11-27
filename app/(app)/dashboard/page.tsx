@@ -8,13 +8,8 @@ import { listAppointments } from "@/lib/services/appointments";
 import { lowStockMaterials } from "@/lib/services/inventory";
 import { listPatients } from "@/lib/services/patients";
 import { listClinicLedgerEntries } from "@/lib/services/ledger";
-import { dayStart, formatWeekdayDateCell } from "@/lib/dates";
-// تسمية اليوم الطويلة لعنوان بطاقة مواعيد اليوم داخل المحتوى
-import { formatDayLabel } from "@/lib/appointment-ui";
-import {
-  appointmentsWithin,
-  greetingForDate,
-} from "@/lib/dashboard-view";
+import { dayStart } from "@/lib/dates";
+import { appointmentsWithin } from "@/lib/dashboard-view";
 import { outstandingDuesUsd } from "@/lib/finance-view";
 import {
   currentMonthRevenue,
@@ -24,6 +19,7 @@ import {
 import { localDayOf } from "@/lib/local-day";
 import { getClinicUsdRate } from "@/lib/services/account";
 import { formatDualFromUsd } from "@/lib/currency";
+import { formatDate, getLocale, getT } from "@/lib/i18n";
 import { CalendarDays, Coins, Users, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
@@ -43,6 +39,8 @@ export default async function DashboardPage() {
     (await cookies()).get(SESSION_COOKIE)?.value,
   );
   if (!session) redirect("/login");
+  const locale = await getLocale();
+  const t = getT(locale);
 
   const ctx = tenantContextFromSession(session);
   const now = new Date();
@@ -51,21 +49,15 @@ export default async function DashboardPage() {
     fetchWindowStart.getTime() + 8 * 24 * 60 * 60 * 1000,
   );
 
-  const [
-    report,
-    weekAppointments,
-    lowStock,
-    patients,
-    clinicEntries,
-    usdRate,
-  ] = await Promise.all([
-    getDailyReport(ctx, now),
-    listAppointments(ctx, fetchWindowStart, fetchWindowEnd),
-    lowStockMaterials(ctx),
-    listPatients(ctx),
-    listClinicLedgerEntries(ctx),
-    getClinicUsdRate(ctx),
-  ]);
+  const [report, weekAppointments, lowStock, patients, clinicEntries, usdRate] =
+    await Promise.all([
+      getDailyReport(ctx, now),
+      listAppointments(ctx, fetchWindowStart, fetchWindowEnd),
+      lowStockMaterials(ctx),
+      listPatients(ctx),
+      listClinicLedgerEntries(ctx),
+      getClinicUsdRate(ctx),
+    ]);
 
   const todaysAppointments = appointmentsWithin(
     weekAppointments,
@@ -87,8 +79,16 @@ export default async function DashboardPage() {
   return (
     <div className={pageWrapClass("wide")}>
       <PageHeader
-        title={`${greetingForDate(now)}، ${session.name}`}
-        description={formatWeekdayDateCell(now)}
+        title={
+          locale === "ar"
+            ? `${t(now.getHours() < 12 ? "dashboard.greetingMorning" : "dashboard.greetingEvening")}، ${session.name}`
+            : `${t(now.getHours() < 12 ? "dashboard.greetingMorning" : "dashboard.greetingEvening")}, ${session.name}`
+        }
+        description={formatDate(now, locale, {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+        })}
         actions={<QuickActions />}
       />
 
@@ -96,28 +96,30 @@ export default async function DashboardPage() {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           value={String(patients.length)}
-          label="إجمالي المرضى"
+          label={t("dashboard.statPatients")}
           icon={Users}
         />
         <StatCard
           value={String(todaysAppointments.length)}
-          label="موعد اليوم"
+          label={t("dashboard.statTodayAppointments")}
           icon={CalendarDays}
         />
         <StatCard
           value={formatDualFromUsd(report.collectedUsd, usdRate)}
-          label="دخل اليوم"
+          label={t("dashboard.statTodayIncome")}
           icon={Coins}
         />
         <StatCard
           value={formatDualFromUsd(monthRevenue.collectedUsd, usdRate)}
-          label="إيراد هذا الشهر (تحصيل)"
-          subLabel={`رسوم الشهر: ${formatDualFromUsd(monthRevenue.chargesUsd, usdRate)}`}
+          label={t("dashboard.statMonthRevenue")}
+          subLabel={t("dashboard.statMonthCharges", {
+            amount: formatDualFromUsd(monthRevenue.chargesUsd, usdRate),
+          })}
           icon={Coins}
         />
         <StatCard
           value={formatDualFromUsd(duesUsd, usdRate)}
-          label="مستحقات غير مسددة"
+          label={t("shell.duesAlert")}
           icon={Wallet}
           tone="danger"
         />
@@ -127,7 +129,15 @@ export default async function DashboardPage() {
       <div className="mt-4 grid items-start gap-4 lg:grid-cols-[5fr_4fr]">
         <Card>
           <CardHeader>
-            <CardTitle>مواعيد اليوم — {formatDayLabel(now)}</CardTitle>
+            <CardTitle>
+              {t("dashboard.todayAppointments", {
+                day: formatDate(now, locale, {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                }),
+              })}
+            </CardTitle>
           </CardHeader>
           <CardBody>
             <AppointmentsTimeline
@@ -135,9 +145,9 @@ export default async function DashboardPage() {
               emptyAction={
                 <a
                   href="/appointments"
-                  className="inline-flex h-8 items-center rounded-full border border-warm-300 bg-surface-raised px-3 text-xs font-medium text-ink-900 transition-colors hover:bg-surface-hover active:bg-surface-sunken"
+                  className="border-warm-300 bg-surface-raised text-ink-900 hover:bg-surface-hover active:bg-surface-sunken inline-flex h-8 items-center rounded-full border px-3 text-xs font-medium transition-colors"
                 >
-                  اذهب إلى المواعيد
+                  {t("dashboard.goToAppointments")}
                 </a>
               }
             />
@@ -146,7 +156,7 @@ export default async function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>الإيراد — مبدّل نافذة ومقياس</CardTitle>
+            <CardTitle>{t("dashboard.revenueTitle")}</CardTitle>
           </CardHeader>
           <CardBody>
             <RevenueChart daily={dailySeries} monthly={monthlySeries} />
@@ -158,7 +168,7 @@ export default async function DashboardPage() {
       <div className="mt-4 grid items-start gap-4 lg:grid-cols-[5fr_4fr]">
         <Card>
           <CardHeader>
-            <CardTitle>آخر العمليات</CardTitle>
+            <CardTitle>{t("dashboard.recentActivity")}</CardTitle>
           </CardHeader>
           <CardBody>
             <RecentPayments entries={recentPayments} />

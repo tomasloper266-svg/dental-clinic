@@ -33,7 +33,11 @@ let patientCounter = 0;
 async function createPatient(name: string): Promise<string> {
   patientCounter += 1;
   const patient = await prisma.patient.create({
-    data: { clinicId, name, phone: `0935${String(patientCounter).padStart(7, "0")}` },
+    data: {
+      clinicId,
+      name,
+      phone: `0935${String(patientCounter).padStart(7, "0")}`,
+    },
   });
   return patient.id;
 }
@@ -103,7 +107,7 @@ describeDb("التعبئة التلقائية للفجوات من قائمة ا�
       clinicId,
       name: user.name,
       lockEnabled: false,
-role: "DENTIST",
+      role: "DENTIST",
     });
   });
 
@@ -133,7 +137,11 @@ role: "DENTIST",
       priority: 10,
     });
 
-    const result = await changeAppointmentStatus(ctx, appointmentId, "CANCELLED");
+    const result = await changeAppointmentStatus(
+      ctx,
+      appointmentId,
+      "CANCELLED",
+    );
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -202,7 +210,11 @@ role: "DENTIST",
       preferredWindow: "مساء",
     });
 
-    const result = await changeAppointmentStatus(ctx, appointmentId, "CANCELLED");
+    const result = await changeAppointmentStatus(
+      ctx,
+      appointmentId,
+      "CANCELLED",
+    );
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -225,9 +237,16 @@ role: "DENTIST",
       durationMin: 15,
     });
     const waitingPatient = await createPatient("منتظر لفجوة قصيرة");
-    await createWaitlistEntry({ patientId: waitingPatient, preferredWindow: "أي وقت" });
+    await createWaitlistEntry({
+      patientId: waitingPatient,
+      preferredWindow: "أي وقت",
+    });
 
-    const result = await changeAppointmentStatus(ctx, appointmentId, "CANCELLED");
+    const result = await changeAppointmentStatus(
+      ctx,
+      appointmentId,
+      "CANCELLED",
+    );
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -253,7 +272,11 @@ role: "DENTIST",
       durationMin: 30,
     });
 
-    const result = await changeAppointmentStatus(ctx, appointmentId, "CANCELLED");
+    const result = await changeAppointmentStatus(
+      ctx,
+      appointmentId,
+      "CANCELLED",
+    );
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -277,7 +300,11 @@ role: "DENTIST",
       preferredWindow: "أي وقت",
     });
 
-    const fillResult = await changeAppointmentStatus(ctx, appointmentId, "CANCELLED");
+    const fillResult = await changeAppointmentStatus(
+      ctx,
+      appointmentId,
+      "CANCELLED",
+    );
     expect(fillResult.ok).toBe(true);
     const fill = fillResult.ok ? fillResult.waitlistFill : null;
     expect(fill).not.toBeNull();

@@ -6,14 +6,17 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/components/ui/cn";
 import { BrandMark } from "@/components/auth/BrandMark";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import {
   activeBadgeEntries,
   badgeTotal,
   breadcrumbsFromPath,
   navItemByHref,
+  segmentLabelKey,
   type BadgeKey,
 } from "./nav-items";
 import { ThemeToggle } from "./ThemeToggle";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 /** مسار بحث المرضى القائم — وجهة حقل البحث ولمحة ⌘K */
 const PATIENTS_SEARCH_HREF = "/patients";
@@ -21,6 +24,7 @@ const PATIENTS_SEARCH_HREF = "/patients";
 /** زر رجوع ذكي: يعود للتاريخ إن وُجد، وإلا للرئيسية — ويختفي في الرئيسية */
 function SmartBack({ pathname }: { pathname: string }) {
   const router = useRouter();
+  const { t } = useI18n();
   if (pathname === "/dashboard") return null;
 
   function onBack() {
@@ -35,8 +39,8 @@ function SmartBack({ pathname }: { pathname: string }) {
     <button
       type="button"
       onClick={onBack}
-      aria-label="رجوع"
-      className="rounded-field p-1.5 text-warm-600 hover:bg-surface-hover hover:text-ink-900"
+      aria-label={t("common.back")}
+      className="rounded-field text-warm-600 hover:bg-surface-hover hover:text-ink-900 p-1.5"
     >
       <ArrowRight size={20} aria-hidden />
     </button>
@@ -44,11 +48,16 @@ function SmartBack({ pathname }: { pathname: string }) {
 }
 
 function Breadcrumbs({ pathname }: { pathname: string }) {
-  const crumbs = breadcrumbsFromPath(pathname);
+  const { t } = useI18n();
+  const crumbs = breadcrumbsFromPath(pathname).map((crumb) => {
+    // التسمية المترجمة حسب اللغة — والمفتاح الغائب يبقي العربية الافتراضية
+    const key = segmentLabelKey(crumb.href.split("/").pop() ?? "");
+    return { ...crumb, label: key ? t(key) : crumb.label };
+  });
 
   return (
-    <nav aria-label="مسار الصفحة" className="min-w-0">
-      <ol className="flex items-center gap-1 text-xs text-warm-500">
+    <nav aria-label={t("shell.pagePath")} className="min-w-0">
+      <ol className="text-warm-500 flex items-center gap-1 text-xs">
         {crumbs.map((crumb, index) => {
           const isLast = index === crumbs.length - 1;
           return (
@@ -59,14 +68,14 @@ function Breadcrumbs({ pathname }: { pathname: string }) {
               {isLast ? (
                 <span
                   aria-current="page"
-                  className="truncate font-semibold text-ink-900"
+                  className="text-ink-900 truncate font-semibold"
                 >
                   {crumb.label}
                 </span>
               ) : (
                 <Link
                   href={crumb.href}
-                  className="truncate hover:text-ink-900 hover:underline"
+                  className="hover:text-ink-900 truncate hover:underline"
                 >
                   {crumb.label}
                 </Link>
@@ -81,17 +90,16 @@ function Breadcrumbs({ pathname }: { pathname: string }) {
 
 /** حقل البحث الدائري — يفتح بحث المرضى القائم، لا بحثاً جديداً */
 function SearchPill() {
+  const { t } = useI18n();
   return (
     <Link
       href={PATIENTS_SEARCH_HREF}
-      aria-label="ابحث عن مريض، موعد، فاتورة"
-      className="hidden max-w-80 flex-1 items-center gap-2 rounded-full border border-warm-200 bg-surface-raised px-4 py-1.5 text-xs text-warm-500 transition-colors hover:border-primary-300 hover:text-primary-600 md:flex"
+      aria-label={t("shell.searchAria")}
+      className="border-warm-200 bg-surface-raised text-warm-500 hover:border-primary-300 hover:text-primary-600 hidden max-w-80 flex-1 items-center gap-2 rounded-full border px-4 py-1.5 text-xs transition-colors md:flex"
     >
       <Search size={14} aria-hidden className="shrink-0" />
-      <span className="flex-1 truncate">
-        ابحث عن مريض، موعد، فاتورة…
-      </span>
-      <kbd className="numeric shrink-0 rounded border border-primary-200 bg-primary-50 px-1.5 py-0.5 text-[9px] text-primary-600">
+      <span className="flex-1 truncate">{t("shell.searchPlaceholder")}</span>
+      <kbd className="numeric border-primary-200 bg-primary-50 text-primary-600 shrink-0 rounded border px-1.5 py-0.5 text-[9px]">
         ⌘K
       </kbd>
     </Link>
@@ -123,6 +131,7 @@ function NotificationsBell({
 }: {
   badges?: Partial<Record<BadgeKey, number>>;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const entries = activeBadgeEntries(badges ?? {});
   const total = badgeTotal(badges ?? {});
@@ -142,26 +151,30 @@ function NotificationsBell({
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
-        aria-label={`التنبيهات${total > 0 ? ` (${total})` : ""}`}
-        title="التنبيهات"
-        className="relative rounded-field p-1.5 text-warm-600 transition-colors hover:bg-surface-hover hover:text-ink-900"
+        aria-label={
+          total > 0
+            ? t("shell.notificationsWithCount", { count: total })
+            : t("shell.notifications")
+        }
+        title={t("shell.notifications")}
+        className="rounded-field text-warm-600 hover:bg-surface-hover hover:text-ink-900 relative p-1.5 transition-colors"
       >
         <Bell size={18} aria-hidden />
         {total > 0 && (
-          <span className="numeric absolute -end-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full bg-danger-500 px-1 text-[9px] font-bold text-white">
+          <span className="numeric bg-danger-500 absolute -end-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full px-1 text-[9px] font-bold text-white">
             {total}
           </span>
         )}
       </button>
       {open && (
         <div
-          className="absolute end-0 top-full z-40 mt-2 w-60 rounded-panel border border-warm-200 bg-surface-raised p-2 shadow-md"
+          className="rounded-panel border-warm-200 bg-surface-raised absolute end-0 top-full z-40 mt-2 w-60 border p-2 shadow-md"
           role="dialog"
-          aria-label="قائمة التنبيهات"
+          aria-label={t("shell.notificationsList")}
         >
           {entries.length === 0 ? (
-            <p className="px-2 py-3 text-center text-xs text-warm-500">
-              لا تنبيهات قائمة — كل شيء هادئ
+            <p className="text-warm-500 px-2 py-3 text-center text-xs">
+              {t("shell.noNotifications")}
             </p>
           ) : (
             <ul className="flex flex-col">
@@ -170,11 +183,15 @@ function NotificationsBell({
                   <Link
                     href={entry.href}
                     onClick={() => setOpen(false)}
-                    className="flex items-center gap-2 rounded-field px-2.5 py-2 text-sm text-ink-900 transition-colors hover:bg-surface-hover"
+                    className="rounded-field text-ink-900 hover:bg-surface-hover flex items-center gap-2 px-2.5 py-2 text-sm transition-colors"
                   >
-                    <entry.icon size={16} aria-hidden className="text-warm-500" />
-                    <span className="flex-1 truncate">{entry.label}</span>
-                    <span className="numeric grid min-w-5 place-items-center rounded-full bg-danger-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    <entry.icon
+                      size={16}
+                      aria-hidden
+                      className="text-warm-500"
+                    />
+                    <span className="flex-1 truncate">{t(entry.labelKey)}</span>
+                    <span className="numeric bg-danger-500 grid min-w-5 place-items-center rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white">
                       {entry.count}
                     </span>
                   </Link>
@@ -191,6 +208,7 @@ function NotificationsBell({
 /** زر القفل اليدوي — يحذف كوكي فتح القفل فتعود شاشة القفل فوراً */
 function ManualLock() {
   const router = useRouter();
+  const { t } = useI18n();
   const [locking, setLocking] = useState(false);
 
   async function onLock() {
@@ -211,9 +229,9 @@ function ManualLock() {
       type="button"
       onClick={onLock}
       disabled={locking}
-      aria-label="قفل التطبيق"
-      title="قفل التطبيق"
-      className="ms-auto rounded-field p-1.5 text-warm-600 hover:bg-surface-hover hover:text-ink-900 disabled:opacity-50"
+      aria-label={t("shell.lockApp")}
+      title={t("shell.lockApp")}
+      className="rounded-field text-warm-600 hover:bg-surface-hover hover:text-ink-900 ms-auto p-1.5 disabled:opacity-50"
     >
       <Lock size={18} aria-hidden />
     </button>
@@ -232,6 +250,7 @@ export function Topbar({
   /** شارات التنبيه القائمة — عدّاد الجرس من انتظار/مستحقات/مخزون */
   badges?: Partial<Record<BadgeKey, number>>;
 }) {
+  const { t } = useI18n();
   const pathname = usePathname() ?? "/";
   const current = navItemByHref(pathname);
   usePatientsSearchShortcut();
@@ -239,12 +258,16 @@ export function Topbar({
   return (
     <div
       className={cn(
-        "sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-warm-200 bg-surface/90 px-4 backdrop-blur-sm",
+        "border-warm-200 bg-surface/90 sticky top-0 z-30 flex h-14 items-center gap-3 border-b px-4 backdrop-blur-sm",
         className,
       )}
     >
       {/* بلاطة DENTIQ المصغّرة — على الموبايل فقط، حيث يغيب السايدبار وترويسته */}
-      <span aria-hidden data-testid="topbar-brand" className="shrink-0 md:hidden">
+      <span
+        aria-hidden
+        data-testid="topbar-brand"
+        className="shrink-0 md:hidden"
+      >
         <BrandMark size={32} />
       </span>
       <SearchPill />
@@ -252,10 +275,11 @@ export function Topbar({
       <Breadcrumbs pathname={pathname} />
       <div className="ms-auto flex items-center gap-1">
         <NotificationsBell badges={badges} />
+        <LanguageSwitcher />
         <ThemeToggle />
         {current && !lockEnabled && (
-          <span className="hidden truncate text-sm font-semibold text-warm-500 sm:inline">
-            {current.label}
+          <span className="text-warm-500 hidden truncate text-sm font-semibold sm:inline">
+            {t(current.labelKey)}
           </span>
         )}
         {lockEnabled && <ManualLock />}

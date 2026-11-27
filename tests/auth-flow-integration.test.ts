@@ -56,9 +56,9 @@ describeDb("createClinicWithOwner", () => {
       where: { userId: user.id },
     });
     expect(sessions).toHaveLength(1);
-    expect(
-      sessions[0].expiresAt.getTime() - Date.now(),
-    ).toBeGreaterThan(29 * 24 * 60 * 60 * 1000);
+    expect(sessions[0].expiresAt.getTime() - Date.now()).toBeGreaterThan(
+      29 * 24 * 60 * 60 * 1000,
+    );
   });
 });
 

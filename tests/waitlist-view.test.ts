@@ -47,9 +47,14 @@ describe("بيانات عرض قائمة الانتظار — تسميات ال�
   it("لكل حالة تسمية عربية ونبرة شارة", () => {
     for (const [status, meta] of Object.entries(WAITLIST_STATUS_META)) {
       expect(meta.label.length).toBeGreaterThan(0);
-      expect(["neutral", "success", "warning", "danger", "info", "plum"]).toContain(
-        meta.tone,
-      );
+      expect([
+        "neutral",
+        "success",
+        "warning",
+        "danger",
+        "info",
+        "plum",
+      ]).toContain(meta.tone);
       expect(WAITLIST_STATUS_META).toHaveProperty(status);
     }
   });

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/components/ui/cn";
 import { Drawer } from "@/components/ui/Drawer";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import {
   mobileBarNav,
   navGroups,
@@ -30,16 +31,19 @@ function MoreButton({
   total: number;
   onOpen: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <button
       type="button"
       onClick={onOpen}
       aria-expanded={expanded}
-      aria-label={total > 0 ? `المزيد — لديك ${total} تنبيه` : "المزيد"}
+      aria-label={
+        total > 0 ? t("shell.moreWithCount", { count: total }) : t("shell.more")
+      }
       className={cn(
-        "flex flex-1 flex-col items-center gap-0.5 rounded-field px-2 py-1 text-[11px] transition-colors",
+        "rounded-field flex flex-1 flex-col items-center gap-0.5 px-2 py-1 text-[11px] transition-colors",
         active
-          ? "bg-primary-50 font-semibold text-primary-700"
+          ? "bg-primary-50 text-primary-700 font-semibold"
           : "text-warm-500 hover:text-ink-900",
       )}
     >
@@ -48,11 +52,11 @@ function MoreButton({
         {total > 0 && (
           <span
             aria-hidden
-            className="absolute -end-1 -top-0.5 size-2 rounded-full bg-danger-500"
+            className="bg-danger-500 absolute -end-1 -top-0.5 size-2 rounded-full"
           />
         )}
       </span>
-      المزيد
+      {t("shell.more")}
     </button>
   );
 }
@@ -82,9 +86,9 @@ function BarEntry({
       href={href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex flex-1 flex-col items-center gap-0.5 rounded-field px-2 py-1 text-[11px] transition-colors",
+        "rounded-field flex flex-1 flex-col items-center gap-0.5 px-2 py-1 text-[11px] transition-colors",
         active
-          ? "bg-primary-50 font-semibold text-primary-700"
+          ? "bg-primary-50 text-primary-700 font-semibold"
           : "text-warm-500 hover:text-ink-900",
       )}
     >
@@ -118,9 +122,9 @@ function DrawerEntry({
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex items-center gap-3 rounded-field px-3 py-2.5 text-sm",
+        "rounded-field flex items-center gap-3 px-3 py-2.5 text-sm",
         active
-          ? "bg-primary-50 font-semibold text-primary-700"
+          ? "bg-primary-50 text-primary-700 font-semibold"
           : "text-ink-900 hover:bg-surface-hover",
       )}
     >
@@ -147,6 +151,7 @@ function DrawerEntry({
  * ودرج «المزيد» يجمع بقية الأقسام بنفس تجميع السايدبار وشاراته الرقمية.
  */
 export function BottomNav({ badges }: BottomNavProps) {
+  const { t } = useI18n();
   const pathname = usePathname() ?? "/";
   const [moreOpen, setMoreOpen] = useState(false);
   const barActive = (href: string) => isItemActive(pathname, href);
@@ -157,14 +162,14 @@ export function BottomNav({ badges }: BottomNavProps) {
   return (
     <>
       <nav
-        aria-label="تنقل الموبايل"
-        className="fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around border-t border-warm-200 bg-surface-raised px-2 shadow-sm md:hidden"
+        aria-label={t("shell.mobileNav")}
+        className="border-warm-200 bg-surface-raised fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around border-t px-2 shadow-sm md:hidden"
       >
         {mobileBarNav.map((item) => (
           <BarEntry
             key={item.href}
             href={item.href}
-            label={item.label}
+            label={t(item.labelKey)}
             icon={item.icon}
             active={barActive(item.href)}
           />
@@ -177,7 +182,11 @@ export function BottomNav({ badges }: BottomNavProps) {
         />
       </nav>
 
-      <Drawer open={moreOpen} onClose={() => setMoreOpen(false)} title="المزيد">
+      <Drawer
+        open={moreOpen}
+        onClose={() => setMoreOpen(false)}
+        title={t("shell.more")}
+      >
         <ul className="flex flex-col gap-2">
           {navGroups.map((group) => {
             const groupActive = group.items.some((item) =>
@@ -187,18 +196,18 @@ export function BottomNav({ badges }: BottomNavProps) {
               <li key={group.key}>
                 <p
                   className={cn(
-                    "px-3 pb-1 pt-2 text-[11px] font-semibold",
+                    "px-3 pt-2 pb-1 text-[11px] font-semibold",
                     groupActive ? "text-primary-700" : "text-warm-500",
                   )}
                 >
-                  {group.label}
+                  {t(group.labelKey)}
                 </p>
                 <ul className="flex flex-col gap-0.5">
                   {group.items.map((item) => (
                     <li key={item.href}>
                       <DrawerEntry
                         href={item.href}
-                        label={item.label}
+                        label={t(item.labelKey)}
                         icon={item.icon}
                         active={isItemActive(pathname, item.href)}
                         count={item.badge ? badges[item.badge] : undefined}

@@ -2,6 +2,7 @@
 
 import { Clock, Users } from "lucide-react";
 import { cn } from "@/components/ui/cn";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { useMoney } from "@/components/ui/CurrencyContext";
 
 // شريط أرقام اليوم — تسلسل بصري مقصود: الصافي هو الرقم المرجعي الأكبر،
@@ -28,11 +29,12 @@ export function DailySummaryStrip({
   waitlistCount,
 }: DailySummaryStripProps) {
   const money = useMoney();
+  const { t } = useI18n();
   const netNegative = netUsd < 0;
 
   return (
     <section
-      aria-label="أرقام اليوم"
+      aria-label={t("strip.numbersAria")}
       className="grid grid-cols-2 gap-3 lg:grid-cols-4"
     >
       {/* الرقم المرجعي — يمتد صفاً كاملاً بأولوية بصرية أعلى */}
@@ -45,7 +47,7 @@ export function DailySummaryStrip({
         )}
       >
         <span className="text-warm-600 text-xs font-medium">
-          صافي اليوم
+          {t("strip.netToday")}
         </span>
         <span
           className={cn(
@@ -55,20 +57,18 @@ export function DailySummaryStrip({
         >
           {money(netUsd)}
         </span>
-        <span className="text-warm-500 text-xs">
-          التحصيل − المصاريف − الاستردادات
-        </span>
+        <span className="text-warm-500 text-xs">{t("strip.netFormula")}</span>
       </div>
 
       <div className={secondaryCell}>
-        <span className="text-warm-500 text-xs">التحصيل</span>
+        <span className="text-warm-500 text-xs">{t("strip.collected")}</span>
         <span className="numeric text-ink-900 text-lg font-semibold">
           {money(collectedUsd)}
         </span>
       </div>
 
       <div className={secondaryCell}>
-        <span className="text-warm-500 text-xs">المصاريف</span>
+        <span className="text-warm-500 text-xs">{t("strip.expenses")}</span>
         <span className="numeric text-ink-900 text-lg font-semibold">
           {money(expensesUsd)}
         </span>
@@ -82,7 +82,7 @@ export function DailySummaryStrip({
         )}
       >
         <span className="text-warm-500 flex items-center gap-1.5 text-xs">
-          <Users size={16} aria-hidden /> مرضى اليوم
+          <Users size={16} aria-hidden /> {t("strip.patientsToday")}
         </span>
         <span className="numeric text-ink-900 text-lg font-semibold">
           {patientsToday}
@@ -97,7 +97,7 @@ export function DailySummaryStrip({
         )}
       >
         <span className="text-warm-500 flex items-center gap-1.5 text-xs">
-          <Clock size={16} aria-hidden /> منتظرو الانتظار
+          <Clock size={16} aria-hidden /> {t("strip.waiting")}
         </span>
         <span className="numeric text-ink-900 text-lg font-semibold">
           {waitlistCount}

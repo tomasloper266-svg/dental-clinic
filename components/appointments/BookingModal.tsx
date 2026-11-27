@@ -4,11 +4,15 @@ import { useEffect, useState } from "react";
 import type { StaffMemberDto } from "@/lib/services/staff";
 import { doctorDisplayName } from "@/lib/staff-name";
 import { STATUS_META } from "@/lib/appointment-ui";
-import { APPOINTMENT_STATUSES, type AppointmentStatus } from "@/lib/appointment-state";
+import {
+  APPOINTMENT_STATUSES,
+  type AppointmentStatus,
+} from "@/lib/appointment-state";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 // نافذة «موعد جديد» على شكل المرجع: المريض والطبيب، التاريخ والوقت، المدة
 // ونوع الخدمة، ثم الحالة والملاحظات. كل الحقول مرتبطة بواجهة برمجة العيادة:
@@ -61,10 +65,17 @@ export default function BookingModal({
   onBooked,
 }: BookingModalProps) {
   const { toast } = useToast();
-  const [form, setForm] = useState<FormState>(() => initialForm(dateValue, initialTime));
+  const { t } = useI18n();
+  const [form, setForm] = useState<FormState>(() =>
+    initialForm(dateValue, initialTime),
+  );
   const [patients, setPatients] = useState<PatientOption[]>([]);
   const [doctors, setDoctors] = useState<StaffMemberDto[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // الحقول المستهدفة برسالة الخطأ — رسائل الخادم بلا هدف فتُعرض تحت النموذج.
+  const [errorFields, setErrorFields] = useState<
+    ReadonlyArray<"patient" | "date" | "time">
+  >([]);
   const [saving, setSaving] = useState(false);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -82,7 +93,9 @@ export default function BookingModal({
           fetch("/api/staff"),
         ]);
         if (patientsRes.ok) {
-          const data = (await patientsRes.json()) as { patients: PatientOption[] };
+          const data = (await patientsRes.json()) as {
+            patients: PatientOption[];
+          };
           if (alive) setPatients(data.patients);
         }
         if (staffRes.ok) {
@@ -108,20 +121,24 @@ export default function BookingModal({
     if (open) {
       setForm(initialForm(dateValue, initialTime));
       setError(null);
+      setErrorFields([]);
     }
   }, [open, dateValue, initialTime]);
 
   async function submit() {
     if (!form.patientId) {
-      setError("اختر مريضاً أولاً");
+      setError(t("booking.error.patient"));
+      setErrorFields(["patient"]);
       return;
     }
     if (!form.date || !form.time) {
-      setError("حدّد تاريخاً ووقتاً للموعد");
+      setError(t("booking.error.datetime"));
+      setErrorFields(["date", "time"]);
       return;
     }
     setSaving(true);
     setError(null);
+    setErrorFields([]);
     try {
       const res = await fetch("/api/appointments", {
         method: "POST",
@@ -138,14 +155,14 @@ export default function BookingModal({
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
-        setError(data.error ?? "تعذر حفظ الموعد");
+        setError(data.error ?? t("booking.error.save"));
         return;
       }
-      toast("تم حفظ الموعد بنجاح");
+      toast(t("booking.savedToast"));
       onBooked();
       onClose();
     } catch {
-      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+      setError(t("common.error.network"));
     } finally {
       setSaving(false);
     }
@@ -155,15 +172,15 @@ export default function BookingModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="موعد جديد"
+      title={t("appt.new")}
       titleClassName="font-display text-xl font-normal"
       footer={
         <>
           <Button onClick={submit} loading={saving}>
-            {saving ? "جارٍ الحفظ…" : "حفظ"}
+            {saving ? t("common.loading") : t("common.save")}
           </Button>
           <Button variant="secondary" onClick={onClose} disabled={saving}>
-            إلغاء
+            {t("common.cancel")}
           </Button>
         </>
       }
@@ -171,16 +188,18 @@ export default function BookingModal({
       <div className="flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-3">
           <Field
-            label="المريض *"
+            label={t("booking.patient")}
             htmlFor="booking-patient"
-            error={error?.includes("مريض") ? error : undefined}
+            error={
+              errorFields.includes("patient") ? (error ?? undefined) : undefined
+            }
           >
             <Select
               id="booking-patient"
               value={form.patientId}
               onChange={(e) => set("patientId", e.target.value)}
             >
-              <option value="">— اختر —</option>
+              <option value="">{t("booking.choose")}</option>
               {patients.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -188,13 +207,13 @@ export default function BookingModal({
               ))}
             </Select>
           </Field>
-          <Field label="الطبيب" htmlFor="booking-staff">
+          <Field label={t("booking.doctor")} htmlFor="booking-staff">
             <Select
               id="booking-staff"
               value={form.staffId}
               onChange={(e) => set("staffId", e.target.value)}
             >
-              <option value="">— حدد —</option>
+              <option value="">{t("booking.pick")}</option>
               {doctors.map((d) => (
                 <option key={d.id} value={d.id}>
                   {doctorDisplayName(d.name)}
@@ -206,9 +225,11 @@ export default function BookingModal({
 
         <div className="grid grid-cols-2 gap-3">
           <Field
-            label="التاريخ *"
+            label={t("booking.date")}
             htmlFor="booking-date"
-            error={error?.includes("تاريخاً") ? error : undefined}
+            error={
+              errorFields.includes("date") ? (error ?? undefined) : undefined
+            }
           >
             <Input
               id="booking-date"
@@ -218,9 +239,11 @@ export default function BookingModal({
             />
           </Field>
           <Field
-            label="الوقت *"
+            label={t("booking.time")}
             htmlFor="booking-time"
-            error={error?.includes("وقتاً") ? error : undefined}
+            error={
+              errorFields.includes("time") ? (error ?? undefined) : undefined
+            }
           >
             <Input
               id="booking-time"
@@ -232,7 +255,7 @@ export default function BookingModal({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="المدة (دقائق)" htmlFor="booking-duration">
+          <Field label={t("booking.duration")} htmlFor="booking-duration">
             <Select
               id="booking-duration"
               value={form.duration}
@@ -240,23 +263,23 @@ export default function BookingModal({
             >
               {DURATION_OPTIONS.map((d) => (
                 <option key={d} value={d}>
-                  {d} دقيقة
+                  {t("timeline.duration", { minutes: d })}
                 </option>
               ))}
             </Select>
           </Field>
-          <Field label="نوع الخدمة" htmlFor="booking-reason">
+          <Field label={t("booking.serviceType")} htmlFor="booking-reason">
             <Input
               id="booking-reason"
               type="text"
               value={form.reason}
               onChange={(e) => set("reason", e.target.value)}
-              placeholder="حشو تجميلي…"
+              placeholder={t("booking.servicePlaceholder")}
             />
           </Field>
         </div>
 
-        <Field label="الحالة" htmlFor="booking-status">
+        <Field label={t("booking.status")} htmlFor="booking-status">
           <Select
             id="booking-status"
             value={form.status}
@@ -264,13 +287,13 @@ export default function BookingModal({
           >
             {APPOINTMENT_STATUSES.map((s) => (
               <option key={s} value={s}>
-                {STATUS_META[s].label}
+                {t(STATUS_META[s].labelKey)}
               </option>
             ))}
           </Select>
         </Field>
 
-        <Field label="ملاحظات" htmlFor="booking-note">
+        <Field label={t("booking.notes")} htmlFor="booking-note">
           <Textarea
             id="booking-note"
             value={form.note}
@@ -278,10 +301,10 @@ export default function BookingModal({
           />
         </Field>
 
-        {error && !error.includes("مريض") && !error.includes("تاريخاً") && !error.includes("وقتاً") && (
+        {error && errorFields.length === 0 && (
           <p
             role="alert"
-            className="rounded-field border border-danger-300 bg-danger-50 px-3 py-2 text-xs text-danger-700"
+            className="rounded-field border-danger-300 bg-danger-50 text-danger-700 border px-3 py-2 text-xs"
           >
             {error}
           </p>

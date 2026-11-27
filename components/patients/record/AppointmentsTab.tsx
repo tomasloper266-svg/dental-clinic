@@ -4,13 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarDays, CalendarPlus, Pencil } from "lucide-react";
 import type { AppointmentDto } from "@/lib/services/appointments";
-import {
-  STATUS_META as APPT_STATUS_META,
-  formatDayLabel,
-  formatTime,
-} from "@/lib/appointment-ui";
+import { STATUS_META as APPT_STATUS_META } from "@/lib/appointment-ui";
+import { formatDate, formatTime } from "@/lib/i18n/format";
 import type { AppointmentJson } from "@/components/appointments/AppointmentDetailsDrawer";
 import { AppointmentDetailsDrawer } from "@/components/appointments/AppointmentDetailsDrawer";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Table, THead, TRow, TH, TD } from "@/components/ui/Table";
@@ -37,6 +35,7 @@ export default function AppointmentsTab({
   onNewAppointment,
 }: Props) {
   const router = useRouter();
+  const { t, locale } = useI18n();
   const [editing, setEditing] = useState<AppointmentJson | null>(null);
 
   return (
@@ -44,30 +43,30 @@ export default function AppointmentsTab({
       <CardHeader className="flex items-center justify-between gap-2">
         <CardTitle className="flex items-center gap-2">
           <CalendarDays size={16} aria-hidden className="text-warm-400" />
-          كافة المواعيد
+          {t("apptTab.all")}
           <span className="text-warm-400 numeric text-xs font-normal">
             ({appointments.length})
           </span>
         </CardTitle>
         <Button onClick={onNewAppointment} className="h-8 px-3 text-xs">
           <CalendarPlus size={14} aria-hidden />
-          موعد جديد
+          {t("appt.new")}
         </Button>
       </CardHeader>
       {appointments.length === 0 ? (
-        <p className="text-warm-500 p-5 text-sm">
-          لا مواعيد مسجلة — احجز موعداً من زر «موعد جديد».
-        </p>
+        <p className="text-warm-500 p-5 text-sm">{t("apptTab.empty")}</p>
       ) : (
         <Table>
           <THead>
             <TRow>
-              <TH>التاريخ</TH>
-              <TH>الوقت</TH>
-              <TH className="hidden md:table-cell">الخدمة أو الطبيب</TH>
-              <TH>القيمة</TH>
-              <TH>الحالة</TH>
-              <TH aria-label="إجراءات" />
+              <TH>{t("apptTab.col.date")}</TH>
+              <TH>{t("apptTab.col.time")}</TH>
+              <TH className="hidden md:table-cell">
+                {t("apptTab.col.service")}
+              </TH>
+              <TH>{t("apptTab.col.value")}</TH>
+              <TH>{t("apptTab.col.status")}</TH>
+              <TH aria-label={t("patients.col.actions")} />
             </TRow>
           </THead>
           <tbody>
@@ -77,15 +76,19 @@ export default function AppointmentsTab({
                 <TRow key={a.id}>
                   <TD>
                     <span className="text-ink-900 text-sm font-medium">
-                      {formatDayLabel(a.startsAt)}
+                      {formatDate(a.startsAt, locale, {
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                      })}
                     </span>
                   </TD>
                   <TD>
                     <span className="numeric text-warm-700 text-sm">
-                      {formatTime(a.startsAt)}
+                      {formatTime(a.startsAt, locale)}
                       <span className="text-warm-400 text-xs">
                         {" "}
-                        · {a.durationMin}د
+                        · {t("record.minShort", { minutes: a.durationMin })}
                       </span>
                     </span>
                   </TD>
@@ -101,13 +104,13 @@ export default function AppointmentsTab({
                     <span
                       className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${meta.chip}`}
                     >
-                      {meta.label}
+                      {t(meta.labelKey)}
                     </span>
                   </TD>
                   <TD>
                     <IconAction
                       icon={Pencil}
-                      label="تعديل الموعد"
+                      label={t("apptTab.editAria")}
                       onClick={() =>
                         setEditing({
                           id: a.id,

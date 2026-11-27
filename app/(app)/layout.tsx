@@ -2,18 +2,12 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, getSessionUser } from "@/lib/auth/session";
 import { UNLOCK_COOKIE, isUnlocked } from "@/lib/auth/app-lock";
-import {
-  getSubscriptionState,
-  shouldWarnExpiring,
-} from "@/lib/billing/state";
+import { getSubscriptionState, shouldWarnExpiring } from "@/lib/billing/state";
 import { tenantContextFromSession } from "@/lib/tenant/context";
 import { listWaitlist } from "@/lib/services/waitlist";
 import { lowStockMaterials } from "@/lib/services/inventory";
 import { listClinicLedgerEntries } from "@/lib/services/ledger";
-import {
-  outstandingDuesUsd,
-  patientsWithDuesCount,
-} from "@/lib/finance-view";
+import { outstandingDuesUsd, patientsWithDuesCount } from "@/lib/finance-view";
 import {
   getClinicCurrency,
   getClinicName,
@@ -45,27 +39,29 @@ export default async function AppLayout({
   }
 
   const ctx = tenantContextFromSession(session);
-  const [waitlist, lowStock, ledgerEntries, usdRate, clinicName, logoLetter, currency] =
-    await Promise.all([
-      listWaitlist(ctx),
-      lowStockMaterials(ctx),
-      listClinicLedgerEntries(ctx),
-      getClinicUsdRate(ctx),
-      getClinicName(ctx),
-      getClinicLogoLetter(ctx),
-      getClinicCurrency(ctx),
-    ]);
+  const [
+    waitlist,
+    lowStock,
+    ledgerEntries,
+    usdRate,
+    clinicName,
+    logoLetter,
+    currency,
+  ] = await Promise.all([
+    listWaitlist(ctx),
+    lowStockMaterials(ctx),
+    listClinicLedgerEntries(ctx),
+    getClinicUsdRate(ctx),
+    getClinicName(ctx),
+    getClinicLogoLetter(ctx),
+    getClinicCurrency(ctx),
+  ]);
 
   const locked =
     session.lockEnabled &&
     !isUnlocked(sessionToken, cookieStore.get(UNLOCK_COOKIE)?.value);
   if (locked) {
-    return (
-      <LockScreen
-        userName={session.name}
-        clinicName={clinicName}
-      />
-    );
+    return <LockScreen userName={session.name} clinicName={clinicName} />;
   }
 
   return (

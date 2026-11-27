@@ -1,8 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  planByTooth,
-  planTotals,
-} from "@/lib/treatment-plan-view";
+import { planByTooth, planTotals } from "@/lib/treatment-plan-view";
 import { splitAppointments } from "@/lib/patient-profile";
 import type { PlanItemDto } from "@/lib/services/treatment-plan";
 import type { AppointmentDto } from "@/lib/services/appointments";
@@ -67,7 +64,10 @@ describe("planByTooth", () => {
   });
 
   it("لا يغيّر المصفوفة الأصلية", () => {
-    const list = [item({ id: "a", toothFdi: 26 }), item({ id: "b", toothFdi: 16 })];
+    const list = [
+      item({ id: "a", toothFdi: 26 }),
+      item({ id: "b", toothFdi: 16 }),
+    ];
     planByTooth(list);
     expect(list.map((i) => i.id)).toEqual(["a", "b"]);
   });

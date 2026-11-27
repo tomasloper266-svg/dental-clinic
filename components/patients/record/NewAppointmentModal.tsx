@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 // حجز موعد لمريض معروف من ملفه — المريض ثابت (يأتي من المسار) والنموذج
 // للتاريخ والوقت والمدة والسبب فقط. خطأ التعارض (409) يظهر داخلياً،
@@ -34,6 +35,7 @@ export default function NewAppointmentModal({
 }: Props) {
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useI18n();
   const [date, setDate] = useState(todayIso);
   const [time, setTime] = useState("09:00");
   const [duration, setDuration] = useState<number>(30);
@@ -68,24 +70,24 @@ export default function NewAppointmentModal({
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
-        setError(data.error ?? "تعذر حجز الموعد");
+        setError(data.error ?? t("newAppt.error"));
         return;
       }
-      toast("تم حجز الموعد بنجاح");
+      toast(t("newAppt.savedToast"));
       router.refresh();
       onClose();
     } catch {
-      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+      setError(t("common.error.network"));
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="موعد جديد">
+    <Modal open={open} onClose={onClose} title={t("appt.new")}>
       <div className="flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-3">
-          <Field label="التاريخ" htmlFor="patient-appt-date">
+          <Field label={t("newAppt.date")} htmlFor="patient-appt-date">
             <Input
               id="patient-appt-date"
               type="date"
@@ -93,7 +95,7 @@ export default function NewAppointmentModal({
               onChange={(e) => setDate(e.target.value)}
             />
           </Field>
-          <Field label="الوقت" htmlFor="patient-appt-time">
+          <Field label={t("newAppt.time")} htmlFor="patient-appt-time">
             <Input
               id="patient-appt-time"
               type="time"
@@ -101,7 +103,7 @@ export default function NewAppointmentModal({
               onChange={(e) => setTime(e.target.value)}
             />
           </Field>
-          <Field label="المدة (دقيقة)" htmlFor="patient-appt-duration">
+          <Field label={t("newAppt.duration")} htmlFor="patient-appt-duration">
             <Select
               id="patient-appt-duration"
               value={duration}
@@ -114,13 +116,13 @@ export default function NewAppointmentModal({
               ))}
             </Select>
           </Field>
-          <Field label="السبب (اختياري)" htmlFor="patient-appt-reason">
+          <Field label={t("newAppt.reason")} htmlFor="patient-appt-reason">
             <Input
               id="patient-appt-reason"
               type="text"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="كشف، حشو…"
+              placeholder={t("newAppt.reasonPlaceholder")}
             />
           </Field>
         </div>
@@ -128,7 +130,7 @@ export default function NewAppointmentModal({
         {error && (
           <p
             role="alert"
-            className="rounded-field border border-danger-300 bg-danger-50 px-3 py-2 text-xs text-danger-700"
+            className="rounded-field border-danger-300 bg-danger-50 text-danger-700 border px-3 py-2 text-xs"
           >
             {error}
           </p>
@@ -137,10 +139,10 @@ export default function NewAppointmentModal({
         <div className="flex gap-2">
           <Button onClick={submit} loading={saving}>
             <CalendarPlus size={16} aria-hidden />
-            {saving ? "جارٍ الحجز…" : "تأكيد الحجز"}
+            {saving ? t("newAppt.saving") : t("newAppt.booking")}
           </Button>
           <Button variant="secondary" onClick={onClose} disabled={saving}>
-            إلغاء
+            {t("common.cancel")}
           </Button>
         </div>
       </div>

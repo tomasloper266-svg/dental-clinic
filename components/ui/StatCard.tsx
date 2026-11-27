@@ -43,7 +43,7 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-4 rounded-panel border border-warm-200/60 bg-surface-raised px-5 py-4 shadow-md",
+        "rounded-panel border-warm-200/60 bg-surface-raised flex items-center justify-between gap-4 border px-5 py-4 shadow-md",
         className,
       )}
     >
@@ -57,9 +57,9 @@ export function StatCard({
         >
           {value}
         </p>
-        <p className="mt-0.5 truncate text-xs text-warm-500">{label}</p>
+        <p className="text-warm-500 mt-0.5 truncate text-xs">{label}</p>
         {subLabel && (
-          <p className="numeric mt-0.5 truncate text-[11px] text-warm-400">
+          <p className="numeric text-warm-400 mt-0.5 truncate text-[11px]">
             {subLabel}
           </p>
         )}

@@ -26,10 +26,26 @@ describe("توزيع السلسلة اليومية", () => {
   it("يجمع الدفعات والمصاريف في يومها الصحيح وبنفس قواعد summarizePeriod", () => {
     const points = bucketDailySeries(
       [
-        { type: "PAYMENT", amountUsd: -200_000, createdAt: new Date("2026-01-04T10:00:00Z") },
-        { type: "PAYMENT", amountUsd: -100_000, createdAt: new Date("2026-01-05T09:00:00Z") },
-        { type: "REFUND", amountUsd: 50_000, createdAt: new Date("2026-01-05T11:00:00Z") },
-        { type: "CHARGE", amountUsd: 900_000, createdAt: new Date("2026-01-05T12:00:00Z") },
+        {
+          type: "PAYMENT",
+          amountUsd: -200_000,
+          createdAt: new Date("2026-01-04T10:00:00Z"),
+        },
+        {
+          type: "PAYMENT",
+          amountUsd: -100_000,
+          createdAt: new Date("2026-01-05T09:00:00Z"),
+        },
+        {
+          type: "REFUND",
+          amountUsd: 50_000,
+          createdAt: new Date("2026-01-05T11:00:00Z"),
+        },
+        {
+          type: "CHARGE",
+          amountUsd: 900_000,
+          createdAt: new Date("2026-01-05T12:00:00Z"),
+        },
       ],
       [{ amountUsd: 75_000, spentAt: new Date("2026-01-04T08:00:00Z") }],
       2,
@@ -53,7 +69,13 @@ describe("توزيع السلسلة اليومية", () => {
 
   it("قيود خارج النطاق الزمني تُتجاهل بلا خطأ", () => {
     const points = bucketDailySeries(
-      [{ type: "PAYMENT", amountUsd: -1, createdAt: new Date("2025-01-01T00:00:00Z") }],
+      [
+        {
+          type: "PAYMENT",
+          amountUsd: -1,
+          createdAt: new Date("2025-01-01T00:00:00Z"),
+        },
+      ],
       [],
       2,
       endDate,
@@ -64,7 +86,12 @@ describe("توزيع السلسلة اليومية", () => {
 
 describe("تسميات الفئات", () => {
   it("الفئات الثابتة بأسمائها العربية", () => {
-    expect(EXPENSE_CATEGORIES).toEqual(["RENT", "SALARIES", "MATERIALS", "OTHER"]);
+    expect(EXPENSE_CATEGORIES).toEqual([
+      "RENT",
+      "SALARIES",
+      "MATERIALS",
+      "OTHER",
+    ]);
     expect(expenseCategoryLabel("RENT")).toBe("إيجار");
     expect(expenseCategoryLabel("UNKNOWN")).toBe("UNKNOWN");
   });

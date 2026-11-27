@@ -4,12 +4,17 @@ import { Plus, ReceiptText, Wallet } from "lucide-react";
 import type { LedgerEntryDto } from "@/lib/services/ledger";
 import {
   INVOICE_STATUS_CHIP,
-  INVOICE_STATUS_LABELS,
   buildPaymentLog,
   deriveInvoicesDetailed,
 } from "@/lib/patient-finance";
 import { formatDateCell } from "@/lib/dates";
-import { useMoney, useDisplayCurrency, useUsdRate } from "@/components/ui/CurrencyContext";
+import { useI18n } from "@/components/i18n/I18nProvider";
+import type { TranslationKey } from "@/lib/i18n/core";
+import {
+  useMoney,
+  useDisplayCurrency,
+  useUsdRate,
+} from "@/components/ui/CurrencyContext";
 import { formatPrimaryCostFromUsd } from "@/lib/currency";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -43,6 +48,7 @@ export default function LedgerTab({
   materialRows,
   onNewEntry,
 }: Props) {
+  const { t } = useI18n();
   const money = useMoney();
   const currency = useDisplayCurrency();
   const usdRate = useUsdRate();
@@ -55,11 +61,11 @@ export default function LedgerTab({
   return (
     <div className="space-y-4">
       {/* ملخص الرصيد — المستحق الجاري من الدفتر دائماً */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-warm-200 bg-surface-raised px-5 py-3">
+      <div className="rounded-panel border-warm-200 bg-surface-raised flex flex-wrap items-center justify-between gap-3 border px-5 py-3">
         <div className="flex items-center gap-2">
           <Wallet size={16} aria-hidden className="text-warm-400" />
           <span className="text-warm-600 text-sm font-medium">
-            الرصيد الجاري
+            {t("ledger.balance")}
           </span>
           <span
             className={cn(
@@ -72,7 +78,7 @@ export default function LedgerTab({
         </div>
         <Button onClick={onNewEntry} className="h-8 px-3 text-xs">
           <Plus size={14} aria-hidden />
-          سجل عملية
+          {t("record.newLedger")}
         </Button>
       </div>
 
@@ -82,7 +88,7 @@ export default function LedgerTab({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ReceiptText size={16} aria-hidden className="text-warm-400" />
-              الفواتير
+              {t("ledger.invoices")}
               <span className="text-warm-400 numeric text-xs font-normal">
                 ({invoices.length})
               </span>
@@ -90,19 +96,19 @@ export default function LedgerTab({
           </CardHeader>
           {invoices.length === 0 ? (
             <p className="text-warm-500 p-5 text-sm">
-              لا فواتير بعد — كل قيد رسوم يُعرض هنا كفاتورة.
+              {t("ledger.noInvoices")}
             </p>
           ) : (
             <Table>
               <THead>
                 <TRow>
-                  <TH>الرقم</TH>
-                  <TH>التاريخ</TH>
-                  <TH>الإجمالي</TH>
-                  <TH>المدفوع</TH>
-                  <TH>الخصم</TH>
-                  <TH>المتبقي</TH>
-                  <TH>حالة الدفع</TH>
+                  <TH>{t("ledger.col.no")}</TH>
+                  <TH>{t("ledger.col.date")}</TH>
+                  <TH>{t("ledger.col.total")}</TH>
+                  <TH>{t("ledger.col.paid")}</TH>
+                  <TH>{t("ledger.col.discount")}</TH>
+                  <TH>{t("ledger.col.remaining")}</TH>
+                  <TH>{t("ledger.col.paymentStatus")}</TH>
                 </TRow>
               </THead>
               <tbody>
@@ -133,7 +139,9 @@ export default function LedgerTab({
                     <TD
                       className={cn(
                         "numeric text-sm",
-                        inv.remainingUsd > 0 ? "text-danger-600" : "text-warm-400",
+                        inv.remainingUsd > 0
+                          ? "text-danger-600"
+                          : "text-warm-400",
                       )}
                     >
                       {money(inv.remainingUsd)}
@@ -142,7 +150,7 @@ export default function LedgerTab({
                       <span
                         className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${INVOICE_STATUS_CHIP[inv.status]}`}
                       >
-                        {INVOICE_STATUS_LABELS[inv.status]}
+                        {t(`invoice.${inv.status}` as TranslationKey)}
                       </span>
                     </TD>
                   </TRow>
@@ -157,24 +165,22 @@ export default function LedgerTab({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wallet size={16} aria-hidden className="text-warm-400" />
-              سجل الدفعات/المخزون
+              {t("ledger.paymentsLog")}
               <span className="text-warm-400 numeric text-xs font-normal">
                 ({paymentLog.length})
               </span>
             </CardTitle>
           </CardHeader>
           {paymentLog.length === 0 ? (
-            <p className="text-warm-500 p-5 text-sm">
-              لا دفعات ولا استهلاك مواد بعد.
-            </p>
+            <p className="text-warm-500 p-5 text-sm">{t("ledger.noEntries")}</p>
           ) : (
             <Table>
               <THead>
                 <TRow>
-                  <TH>التاريخ</TH>
-                  <TH>الوصف</TH>
-                  <TH>المبلغ</TH>
-                  <TH>النوع</TH>
+                  <TH>{t("ledger.col.date")}</TH>
+                  <TH>{t("ledger.col.desc")}</TH>
+                  <TH>{t("ledger.col.amount")}</TH>
+                  <TH>{t("ledger.col.type")}</TH>
                 </TRow>
               </THead>
               <tbody>
@@ -207,7 +213,9 @@ export default function LedgerTab({
                       <span
                         className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${row.kind === "PAYMENT" ? PAYMENT_CHIP : MATERIAL_CHIP}`}
                       >
-                        {row.kind === "PAYMENT" ? "دفعة" : "مخزون"}
+                        {row.kind === "PAYMENT"
+                          ? t("ledger.kindPayment")
+                          : t("ledger.kindInventory")}
                       </span>
                     </TD>
                   </TRow>

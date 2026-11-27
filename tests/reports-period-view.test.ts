@@ -54,14 +54,18 @@ describe("حدود الأيام المحلية للنطاقات", () => {
     const preset = rangeWindow(presetRange("30d", DAY, "2020-01-01"));
     const custom = rangeWindow({ from: DAY, to: DAY });
     for (const window of [preset, custom]) {
-      expect(new Date(AT_0030_NEXT).getTime()).toBeGreaterThanOrEqual(window.to);
+      expect(new Date(AT_0030_NEXT).getTime()).toBeGreaterThanOrEqual(
+        window.to,
+      );
     }
   });
 
   it("حركة 00:30 من اليوم السابق خارجة عن النافذة المخصصة لليوم X", () => {
     const custom = rangeWindow({ from: DAY, to: DAY });
     // 00:30 دمشق يوم 14 = 21:30 يوم 13 بتوقيت UTC
-    expect(new Date("2026-11-13T21:30:00.000Z").getTime()).toBeLessThan(custom.from);
+    expect(new Date("2026-11-13T21:30:00.000Z").getTime()).toBeLessThan(
+      custom.from,
+    );
   });
 });
 
@@ -141,9 +145,16 @@ describe("monthlyRevenue", () => {
       // قيد خارج النطاق — الخدمة تُقصّه قبل التجميع فلا يصل إلى هنا
       { amountUsd: 999, createdAt: "2025-01-01T10:00:00Z" },
     ];
-    const months = monthlyRevenue(charges, { from: "2026-08-16", to: "2026-10-14" });
+    const months = monthlyRevenue(charges, {
+      from: "2026-08-16",
+      to: "2026-10-14",
+    });
     expect(months.map((m) => m.chargesUsd)).toEqual([400, 1710, 1205]);
-    expect(months.map((m) => m.month)).toEqual(["2026-08", "2026-09", "2026-10"]);
+    expect(months.map((m) => m.month)).toEqual([
+      "2026-08",
+      "2026-09",
+      "2026-10",
+    ]);
   });
 
   it("قيد منتصف الليل المحلي (00:30 دمشق من أول الشهر) يقع في شهره المحلي", () => {

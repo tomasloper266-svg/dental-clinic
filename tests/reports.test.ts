@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  dayRange,
-  monthRange,
-  summarizePeriod,
-} from "@/lib/services/reports";
+import { dayRange, monthRange, summarizePeriod } from "@/lib/services/reports";
 
 // اختبارات وحدة تجميع التقرير — نقية بلا قاعدة بيانات.
 

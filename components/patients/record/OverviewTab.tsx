@@ -9,8 +9,8 @@ import {
   Users,
 } from "lucide-react";
 import type { PatientDto } from "@/lib/services/patients";
-import { genderLabel } from "@/lib/patients-view";
 import { parseMedicalNotes } from "@/lib/medical-notes";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import PatientEditModal from "@/components/patients/PatientEditModal";
 import PeriodontalSummaryCard from "./PeriodontalSummaryCard";
@@ -61,6 +61,7 @@ export default function OverviewTab({
   periodontal?: PeriodontalSummary;
 }) {
   // الحقول المهيكلة أولاً — والسطور المركّبة القديمة احتياطاً للبيانات السابقة
+  const { t } = useI18n();
   const notes = parseMedicalNotes(patient.medicalNotes);
   const allergies = patient.allergies ?? notes.allergies;
   const chronic = patient.chronicDiseases ?? notes.conditions;
@@ -73,42 +74,42 @@ export default function OverviewTab({
   }> = [
     {
       icon: Phone,
-      label: "الهاتف الرئيسي",
+      label: t("form.phone"),
       value: patient.phone ?? "—",
       ltr: true,
     },
     {
       icon: PhoneCall,
-      label: "هاتف إضافي",
+      label: t("form.secondaryPhone"),
       value: patient.secondaryPhone ?? "—",
       ltr: true,
     },
     {
       icon: Phone,
-      label: "هاتف المنزل",
+      label: t("form.homePhone"),
       value: patient.homePhone ?? "—",
       ltr: true,
     },
     {
       icon: Mail,
-      label: "البريد الإلكتروني",
+      label: t("form.email"),
       value: patient.email ?? "—",
       ltr: true,
     },
     {
       icon: MapPin,
-      label: "العنوان",
+      label: t("form.address"),
       value: patient.address ?? "—",
     },
     {
       icon: ShieldAlert,
-      label: "الرقم الوطني / الهوية",
+      label: t("form.nationalId"),
       value: patient.nationalId ?? "—",
       ltr: true,
     },
     {
       icon: Users,
-      label: "جهات اتصال الطوارئ",
+      label: t("form.emergency"),
       value: patient.emergencyContacts ?? "—",
     },
   ];
@@ -118,17 +119,23 @@ export default function OverviewTab({
       {/* ─── البيانات الشخصية ─────────────────────────────────────── */}
       <Card>
         <CardHeader>
-          <CardTitle>البيانات الشخصية</CardTitle>
+          <CardTitle>{t("overview.personalInfo")}</CardTitle>
         </CardHeader>
         <div className="grid gap-4 p-5 sm:grid-cols-2">
           <DataItem
             icon={Users}
-            label="الجنس"
-            value={genderLabel(patient.gender) ?? "—"}
+            label={t("form.gender")}
+            value={
+              patient.gender === "MALE"
+                ? t("gender.male")
+                : patient.gender === "FEMALE"
+                  ? t("gender.female")
+                  : "—"
+            }
           />
           <DataItem
             icon={Mail}
-            label="سنة الميلاد"
+            label={t("form.birthYear")}
             value={patient.birthYear !== null ? String(patient.birthYear) : "—"}
           />
           {personal.map((item) => (
@@ -140,26 +147,28 @@ export default function OverviewTab({
       {/* ─── السجل الطبي والملاحظات ───────────────────────────────── */}
       <Card>
         <CardHeader className="flex items-center justify-between gap-2">
-          <CardTitle>السجل الطبي والملاحظات</CardTitle>
+          <CardTitle>{t("overview.medicalRecord")}</CardTitle>
           <PatientEditModal patient={patient} />
         </CardHeader>
         <div className="space-y-5 p-5">
           <div>
             <p className="text-danger-700 flex items-center gap-1.5 text-xs font-semibold">
               <ShieldAlert size={13} aria-hidden />
-              تحذيرات
+              {t("overview.warnings")}
             </p>
             {allergies ? (
               <p className="text-ink-900 mt-1.5 text-sm leading-6 whitespace-pre-line">
                 {allergies}
               </p>
             ) : (
-              <p className="text-warm-400 mt-1.5 text-sm">لا حساسيات مسجلة</p>
+              <p className="text-warm-400 mt-1.5 text-sm">
+                {t("overview.noAllergies")}
+              </p>
             )}
           </div>
           <div>
             <p className="text-warning-700 text-xs font-semibold">
-              الأمراض المزمنة
+              {t("form.chronic")}
             </p>
             {chronic ? (
               <p className="text-ink-900 mt-1.5 text-sm leading-6 whitespace-pre-line">
@@ -167,23 +176,22 @@ export default function OverviewTab({
               </p>
             ) : (
               <p className="text-warm-400 mt-1.5 text-sm">
-                لا أمراض مزمنة مسجلة
+                {t("overview.noChronic")}
               </p>
             )}
           </div>
           {patient.medicalNotes && (
             <div>
-              <p className="text-warm-600 text-xs font-semibold">ملاحظات</p>
+              <p className="text-warm-600 text-xs font-semibold">
+                {t("form.notes")}
+              </p>
               <p className="text-ink-900 mt-1.5 text-sm leading-6 whitespace-pre-line">
                 {patient.medicalNotes}
               </p>
             </div>
           )}
           {!allergies && !chronic && !patient.medicalNotes && (
-            <p className="text-warm-400 text-sm">
-              لا سجل طبي بعد — أضف التحذيرات والأمراض المزمنة من «تعديل
-              البيانات».
-            </p>
+            <p className="text-warm-400 text-sm">{t("overview.noRecord")}</p>
           )}
         </div>
       </Card>

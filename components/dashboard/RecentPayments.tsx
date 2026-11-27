@@ -3,7 +3,8 @@
 import { HandCoins } from "lucide-react";
 import Link from "next/link";
 import type { ClinicLedgerEntryDto } from "@/lib/services/ledger";
-import { formatEntryDate } from "@/lib/finance-view";
+import { formatDate } from "@/lib/i18n/format";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { useMoney } from "@/components/ui/CurrencyContext";
 import { EntityCell } from "@/components/ui/EntityCell";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -17,24 +18,34 @@ export function RecentPayments({
   entries: ClinicLedgerEntryDto[];
 }) {
   const money = useMoney();
+  const { t, locale } = useI18n();
   if (entries.length === 0) {
     return (
       <EmptyState
         icon={HandCoins}
-        title="لا مدفوعات بعد"
-        description="أول دفعة تُسجَّل في الدفتر المالي ستظهر هنا."
+        title={t("payments.emptyTitle")}
+        description={t("payments.emptyDesc")}
       />
     );
   }
   return (
-    <ul className="flex flex-col divide-y divide-warm-100">
+    <ul className="divide-warm-100 flex flex-col divide-y">
       {entries.map((entry) => (
-        <li key={entry.id} className="flex items-center justify-between gap-3 py-2.5">
+        <li
+          key={entry.id}
+          className="flex items-center justify-between gap-3 py-2.5"
+        >
           <EntityCell
             name={entry.patientName}
-            subtitle={formatEntryDate(entry.createdAt)}
+            subtitle={formatDate(entry.createdAt, locale, {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
           />
-          <span className="numeric shrink-0 text-sm font-bold text-primary-700">
+          <span className="numeric text-primary-700 shrink-0 text-sm font-bold">
             +{money(Math.abs(entry.amountUsd))}
           </span>
         </li>
@@ -42,9 +53,9 @@ export function RecentPayments({
       <li className="py-2.5 text-end">
         <Link
           href="/invoices"
-          className="text-xs font-medium text-primary-700 hover:text-primary-800"
+          className="text-primary-700 hover:text-primary-800 text-xs font-medium"
         >
-          فتح الدفتر المالي
+          {t("payments.openLedger")}
         </Link>
       </li>
     </ul>

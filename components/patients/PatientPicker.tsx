@@ -8,6 +8,7 @@ import {
   pickLastKnownPatient,
   saveLastPatientId,
 } from "@/lib/patients/last-patient";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { cn } from "@/components/ui/cn";
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -31,34 +32,35 @@ export function PatientPicker({
   className,
 }: PatientPickerProps) {
   const router = useRouter();
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
   const [patients, setPatients] = useState<PatientDto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   // التوجيه الافتراضي مرة واحدة فقط — بعد أول قائمة ناجحة.
   const redirectAttempted = useRef(false);
 
-  const load = useCallback(async (search: string) => {
-    setError(null);
-    try {
-      const res = await fetch(
-        `/api/patients${search ? `?q=${encodeURIComponent(search)}` : ""}`,
-      );
-      if (!res.ok) {
-        setError("تعذر تحميل قائمة المرضى، حاول مرة أخرى");
-        return;
+  const load = useCallback(
+    async (search: string) => {
+      setError(null);
+      try {
+        const res = await fetch(
+          `/api/patients${search ? `?q=${encodeURIComponent(search)}` : ""}`,
+        );
+        if (!res.ok) {
+          setError(t("picker.error.load"));
+          return;
+        }
+        const data = (await res.json()) as { patients: PatientDto[] };
+        setPatients(data.patients);
+      } catch {
+        setError(t("common.error.network"));
       }
-      const data = (await res.json()) as { patients: PatientDto[] };
-      setPatients(data.patients);
-    } catch {
-      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
-    }
-  }, []);
+    },
+    [t],
+  );
 
   useEffect(() => {
-    const timer = setTimeout(
-      () => void load(query.trim()),
-      SEARCH_DEBOUNCE_MS,
-    );
+    const timer = setTimeout(() => void load(query.trim()), SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [query, load]);
 
@@ -79,42 +81,44 @@ export function PatientPicker({
 
   return (
     <section
-      aria-label="اختيار المريض"
+      aria-label={t("picker.aria")}
       className={cn(
-        "rounded-panel border border-warm-200 bg-surface-raised shadow-xs",
+        "rounded-panel border-warm-200 bg-surface-raised border shadow-xs",
         className,
       )}
     >
-      <div className="flex items-center gap-2 border-b border-warm-200 px-4 py-3">
+      <div className="border-warm-200 flex items-center gap-2 border-b px-4 py-3">
         <Search size={18} className="text-steel-500" aria-hidden />
         <input
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="ابحث بالاسم أو الهاتف…"
-          aria-label="بحث في المرضى"
-          className="focus-ring w-full rounded-field bg-transparent py-1.5 text-sm text-ink-900 outline-none placeholder:text-steel-400"
+          placeholder={t("picker.placeholder")}
+          aria-label={t("picker.searchAria")}
+          className="focus-ring rounded-field text-ink-900 placeholder:text-steel-400 w-full bg-transparent py-1.5 text-sm outline-none"
         />
       </div>
 
       {error && (
-        <p role="alert" className="px-4 py-3 text-sm text-danger-700">
+        <p role="alert" className="text-danger-700 px-4 py-3 text-sm">
           {error}
         </p>
       )}
 
       {patients === null && !error && (
-        <p className="px-4 py-3 text-sm text-steel-500">جارٍ تحميل المرضى…</p>
+        <p className="text-steel-500 px-4 py-3 text-sm">
+          {t("picker.loading")}
+        </p>
       )}
 
       {patients !== null && patients.length === 0 && (
-        <p className="px-4 py-3 text-sm text-steel-500">
-          لا مرضى مطابقين للبحث.
+        <p className="text-steel-500 px-4 py-3 text-sm">
+          {t("picker.noMatches")}
         </p>
       )}
 
       {patients !== null && patients.length > 0 && (
-        <ul className="max-h-72 divide-y divide-warm-100 overflow-y-auto">
+        <ul className="divide-warm-100 max-h-72 divide-y overflow-y-auto">
           {patients.map((patient) => {
             const active = patient.id === selectedPatientId;
             return (
@@ -124,14 +128,14 @@ export function PatientPicker({
                   onClick={() => selectPatient(patient)}
                   aria-current={active ? "true" : undefined}
                   className={cn(
-                    "flex w-full items-center justify-between gap-3 px-4 py-2.5 text-start text-sm transition-colors hover:bg-surface-hover",
+                    "hover:bg-surface-hover flex w-full items-center justify-between gap-3 px-4 py-2.5 text-start text-sm transition-colors",
                     active
-                      ? "bg-primary-50 font-semibold text-primary-800"
+                      ? "bg-primary-50 text-primary-800 font-semibold"
                       : "text-ink-900",
                   )}
                 >
                   <span className="truncate">{patient.name}</span>
-                  <span className="numeric text-xs text-steel-500">
+                  <span className="numeric text-steel-500 text-xs">
                     {patient.phone ?? "—"}
                   </span>
                 </button>

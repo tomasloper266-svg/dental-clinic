@@ -1,7 +1,14 @@
 import { Users } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusPill } from "@/components/ui/Badge";
-import { STATUS_META, formatDayLabel, formatTime } from "@/lib/appointment-ui";
+import { STATUS_META } from "@/lib/appointment-ui";
+import {
+  formatDate,
+  formatTime,
+  getLocale,
+  getServerT,
+  getT,
+} from "@/lib/i18n";
 import type { AppointmentDto } from "@/lib/services/appointments";
 import type { MaterialDto } from "@/lib/services/inventory";
 import type { PatientDto } from "@/lib/services/patients";
@@ -9,7 +16,7 @@ import type { PatientDto } from "@/lib/services/patients";
 // عمود التنبيهات في لوحة الطبيب — ثلاث بطاقات صغيرة: المواعيد القادمة،
 // تنبيهات نقص المخزون، وآخر المرضى المسجلين. لكل بطاقة حالة فراغ مصممة.
 
-function PanelShell({
+async function PanelShell({
   title,
   href,
   children,
@@ -18,6 +25,7 @@ function PanelShell({
   href: string;
   children: React.ReactNode;
 }) {
+  const t = await getServerT();
   return (
     <section className="rounded-panel border-warm-200 bg-surface-raised border">
       <a
@@ -26,7 +34,7 @@ function PanelShell({
       >
         {title}
         <span aria-hidden className="text-primary-700 text-xs">
-          فتح الصفحة
+          {t("dashboard.openPage")}
         </span>
       </a>
       <div className="px-4 py-3">{children}</div>
@@ -35,16 +43,22 @@ function PanelShell({
 }
 
 /** المواعيد القادمة — المحجوز والمؤكد من الآن فصاعداً */
-export function UpcomingAppointmentsPanel({
+export async function UpcomingAppointmentsPanel({
   appointments,
 }: {
   appointments: AppointmentDto[];
 }) {
+  const locale = await getLocale();
+  const t = getT(locale);
+  const dateOpts = { weekday: "long", day: "numeric", month: "long" } as const;
   return (
-    <PanelShell title="المواعيد القادمة" href="/appointments">
+    <PanelShell
+      title={t("dashboard.upcomingAppointments")}
+      href="/appointments"
+    >
       {appointments.length === 0 ? (
         <p className="text-warm-500 py-2 text-center text-xs">
-          لا مواعيد قادمة هذا الأسبوع.
+          {t("dashboard.noUpcoming")}
         </p>
       ) : (
         <ul className="flex flex-col gap-2.5">
@@ -58,11 +72,12 @@ export function UpcomingAppointmentsPanel({
                   {appt.patientName}
                 </p>
                 <p className="text-warm-500 text-xs">
-                  {formatDayLabel(appt.startsAt)} — {formatTime(appt.startsAt)}
+                  {formatDate(appt.startsAt, locale, dateOpts)} —{" "}
+                  {formatTime(appt.startsAt, locale)}
                 </p>
               </div>
               <StatusPill tone={statusPillTone[appt.status]}>
-                {STATUS_META[appt.status].label}
+                {t(STATUS_META[appt.status].labelKey)}
               </StatusPill>
             </li>
           ))}
@@ -82,12 +97,17 @@ const statusPillTone = {
 } as const;
 
 /** تنبيهات المخزون — مواد وصلت حد التنبيه أو نزلت تحته */
-export function LowStockPanel({ materials }: { materials: MaterialDto[] }) {
+export async function LowStockPanel({
+  materials,
+}: {
+  materials: MaterialDto[];
+}) {
+  const t = await getServerT();
   return (
-    <PanelShell title="تنبيهات المخزون" href="/inventory">
+    <PanelShell title={t("dashboard.inventoryAlerts")} href="/inventory">
       {materials.length === 0 ? (
         <p className="text-warm-500 py-2 text-center text-xs">
-          المخزون بحالة جيدة — لا مواد تحت الحد.
+          {t("dashboard.stockHealthy")}
         </p>
       ) : (
         <ul className="flex flex-col gap-2.5">
@@ -110,20 +130,21 @@ export function LowStockPanel({ materials }: { materials: MaterialDto[] }) {
 }
 
 /** آخر المرضى المسجلين — أحدث خمسة من قائمة المرضى (مرتبة بالأحدث) */
-export function RecentPatientsPanel({
+export async function RecentPatientsPanel({
   patients,
   limit = 5,
 }: {
   patients: PatientDto[];
   limit?: number;
 }) {
+  const t = await getServerT();
   return (
-    <PanelShell title="آخر المرضى المسجلين" href="/patients">
+    <PanelShell title={t("dashboard.recentPatients")} href="/patients">
       {patients.length === 0 ? (
         <EmptyState
           icon={Users}
-          title="لم تسجل مرضى بعد"
-          description="أضف أول مريض من صفحة المرضى."
+          title={t("dashboard.noPatientsTitle")}
+          description={t("dashboard.noPatientsDesc")}
           className="px-4 py-6"
         />
       ) : (

@@ -81,7 +81,9 @@ describe("ترقيم FDI", () => {
 
 describe("حالات السن وأنواع القيد", () => {
   it("كل حالة لها لون وأيقونة نصية مختلفة", () => {
-    const icons = new Set(TOOTH_STATUS_KEYS.map((k) => TOOTH_STATUS_META[k].icon));
+    const icons = new Set(
+      TOOTH_STATUS_KEYS.map((k) => TOOTH_STATUS_META[k].icon),
+    );
     expect(icons.size).toBe(TOOTH_STATUS_KEYS.length);
     for (const key of TOOTH_STATUS_KEYS) {
       expect(TOOTH_STATUS_META[key].labelAr.length).toBeGreaterThan(0);
@@ -109,7 +111,13 @@ describe("عرض سجل المشاهدات (إلحاقي)", () => {
   it("آخر مشاهدة لكل سن هي الأحدث زمنياً — والقديمة تبقى في السجل", () => {
     const findings = [
       { id: "1", toothFdi: 26, ...base, recordedAt: "2026-01-01T10:00:00Z" },
-      { id: "2", toothFdi: 26, kind: "TREATMENT_DONE", status: "FILLED", recordedAt: "2026-02-01T10:00:00Z" },
+      {
+        id: "2",
+        toothFdi: 26,
+        kind: "TREATMENT_DONE",
+        status: "FILLED",
+        recordedAt: "2026-02-01T10:00:00Z",
+      },
       { id: "3", toothFdi: 16, ...base, recordedAt: "2026-02-02T10:00:00Z" },
     ];
     const latest = latestFindingByTooth(findings);
@@ -117,14 +125,22 @@ describe("عرض سجل المشاهدات (إلحاقي)", () => {
     expect(latest.get(16)?.id).toBe("3");
     // السجل الكامل لم يُمح — التخطيط لا يستبدل المشاهدة القائمة.
     expect(findings).toHaveLength(3);
-    expect(findings.some((f) => f.status === "DECAYED" && f.toothFdi === 26)).toBe(true);
+    expect(
+      findings.some((f) => f.status === "DECAYED" && f.toothFdi === 26),
+    ).toBe(true);
   });
 
   it("عند تساوي الزمن يفوز القيد الأحدث دخولاً بالقائمة", () => {
     const at = "2026-03-01T08:00:00Z";
     const latest = latestFindingByTooth([
       { id: "a", toothFdi: 36, ...base, recordedAt: at },
-      { id: "b", toothFdi: 36, kind: "EXISTING", status: "FILLED", recordedAt: at },
+      {
+        id: "b",
+        toothFdi: 36,
+        kind: "EXISTING",
+        status: "FILLED",
+        recordedAt: at,
+      },
     ]);
     expect(latest.get(36)?.id).toBe("b");
   });
@@ -156,7 +172,8 @@ describe("parseCreateFinding", () => {
 
   it("يرفض رقم سن غير صالح", () => {
     expect(
-      parseCreateFinding({ toothFdi: 55, kind: "EXISTING", status: "DECAYED" }).ok,
+      parseCreateFinding({ toothFdi: 55, kind: "EXISTING", status: "DECAYED" })
+        .ok,
     ).toBe(false);
   });
 
@@ -186,17 +203,19 @@ describe("التحقق النقي لخطة العلاج", () => {
       parseCreatePlanItem({ toothFdi: 36, procedure: "حشو", priceUsd: -1 }).ok,
     ).toBe(false);
     expect(
-      parseCreatePlanItem({ toothFdi: 36, procedure: "حشو", priceUsd: 12.505 }).ok,
+      parseCreatePlanItem({ toothFdi: 36, procedure: "حشو", priceUsd: 12.505 })
+        .ok,
     ).toBe(false);
     expect(
-      parseCreatePlanItem({ toothFdi: 36, procedure: "حشو", priceUsd: 12.5 }).ok,
+      parseCreatePlanItem({ toothFdi: 36, procedure: "حشو", priceUsd: 12.5 })
+        .ok,
     ).toBe(true);
   });
 
   it("يرفض إجراءً قصيراً أو سناً غير صالحة", () => {
-    expect(parseCreatePlanItem({ toothFdi: 36, procedure: "ح", priceUsd: 1 }).ok).toBe(
-      false,
-    );
+    expect(
+      parseCreatePlanItem({ toothFdi: 36, procedure: "ح", priceUsd: 1 }).ok,
+    ).toBe(false);
     expect(
       parseCreatePlanItem({ toothFdi: 99, procedure: "حشو", priceUsd: 1 }).ok,
     ).toBe(false);

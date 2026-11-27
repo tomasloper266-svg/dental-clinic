@@ -23,7 +23,9 @@ describe("معادلة الرصيد", () => {
       { amountUsd: 100_000 }, // استرداد
       { amountUsd: -175_000 }, // دفعة
     ]);
-    expect(balance).toBe(500_000 - 200_000 + 300_000 - 50_000 + 25_000 + 100_000 - 175_000);
+    expect(balance).toBe(
+      500_000 - 200_000 + 300_000 - 50_000 + 25_000 + 100_000 - 175_000,
+    );
   });
 
   it("دفتر مدفوع بالكامل يعطي رصيداً صفراً", () => {
@@ -77,15 +79,13 @@ describe("تحقق جسم طلب إنشاء قيد", () => {
   });
 
   it("يرفض نوعاً غير معروف", () => {
-    expect(
-      parseCreateLedgerEntry({ ...valid, type: "GIFT" }).ok,
-    ).toBe(false);
+    expect(parseCreateLedgerEntry({ ...valid, type: "GIFT" }).ok).toBe(false);
   });
 
   it("يرفض مبلغاً مخالفاً لإشارة النوع", () => {
-    expect(
-      parseCreateLedgerEntry({ ...valid, amountUsd: 100_000 }).ok,
-    ).toBe(false);
+    expect(parseCreateLedgerEntry({ ...valid, amountUsd: 100_000 }).ok).toBe(
+      false,
+    );
   });
 
   it("يرفض غير الكائنات", () => {
@@ -195,7 +195,10 @@ describe("تحقق بنود الفاتورة — مجموع البنود = مب�
 
   it("مجموع مخالف يُرفض", () => {
     expect(
-      validateLedgerEntryItems([{ description: "حشو", amountUsd: 50_000 }], 100_000),
+      validateLedgerEntryItems(
+        [{ description: "حشو", amountUsd: 50_000 }],
+        100_000,
+      ),
     ).not.toBeNull();
   });
 
@@ -204,7 +207,10 @@ describe("تحقق بنود الفاتورة — مجموع البنود = مب�
       validateLedgerEntryItems([{ description: "  ", amountUsd: 100 }], 100),
     ).not.toBeNull();
     expect(
-      validateLedgerEntryItems([{ description: "حشو", amountUsd: 10.505 }], 10.505),
+      validateLedgerEntryItems(
+        [{ description: "حشو", amountUsd: 10.505 }],
+        10.505,
+      ),
     ).not.toBeNull();
   });
 });

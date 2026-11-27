@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { archPositions } from "@/lib/odontogram/arch-positions";
-import {
-  lowerRowLeftToRight,
-  upperRowLeftToRight,
-} from "@/lib/odontogram/fdi";
+import { lowerRowLeftToRight, upperRowLeftToRight } from "@/lib/odontogram/fdi";
 
 // مواضع القوس البيضوي للمخطط البانورامي — الدالة نقية فتُضبط نتائجها هنا:
 // الترتيب، القواطع المركزية قرب خط المنتصف بأدوار متعاكسة، والأضراس عند الطرفين.

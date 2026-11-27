@@ -21,7 +21,10 @@ describe("تجميع الأقسام", () => {
 
   it("«مخطط الأسنان وخطط العلاج» في المجموعة العلاجية بعد المرضى — دون /plans", () => {
     const clinical = navGroups.find((g) => g.key === "clinical");
-    expect(clinical?.items.map((i) => i.href)).toEqual(["/patients", "/dental"]);
+    expect(clinical?.items.map((i) => i.href)).toEqual([
+      "/patients",
+      "/dental",
+    ]);
     expect(clinical?.items.map((i) => i.label)).toEqual([
       "المرضى",
       "مخطط الأسنان وخطط العلاج",

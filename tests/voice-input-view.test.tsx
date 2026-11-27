@@ -1,12 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { mount } from "./ui";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MicButton } from "@/components/ui/MicButton";
 import { useVoiceInput } from "@/lib/use-voice-input";
-import type {
-  RecognitionLike,
-  SpeechEventLike,
-} from "@/lib/voice-input";
+import type { RecognitionLike, SpeechEventLike } from "@/lib/voice-input";
 
 // محاكاة دنيا لكائن التعرف الصوتي — نفس دورة الحياة التي يستهلكها hook.
 class FakeRecognition implements RecognitionLike {
@@ -59,7 +57,12 @@ function Harness({
   const [value, setValue] = useState(initial);
   return (
     <div>
-      <input id="clinical-field" value={value} onChange={(e) => setValue(e.target.value)} readOnly={false} />
+      <input
+        id="clinical-field"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        readOnly={false}
+      />
       {getCtor === null ? null : (
         <MicButton
           targetId="clinical-field"
@@ -80,7 +83,7 @@ beforeEach(() => {
 describe("MicButton", () => {
   it("يُخفى كلياً حين لا يدعم المتصفح Web Speech API", () => {
     const { instances } = makeCtor();
-    render(<Harness getCtor={null} initial="حشو" />);
+    mount(<Harness getCtor={null} initial="حشو" />);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     // الحقل نفسه لا يتأثر إطلاقاً — بلا كسر.
     expect(screen.getByTestId("value")).toHaveTextContent("حشو");
@@ -89,7 +92,7 @@ describe("MicButton", () => {
 
   it("يظهر بعد التركيب حين يدعم المتصفح التعرف الصوتي", async () => {
     const { getCtor, instances } = makeCtor();
-    render(<Harness getCtor={getCtor} />);
+    mount(<Harness getCtor={getCtor} />);
     await waitFor(() =>
       expect(
         screen.getByRole("button", { name: /بدء الإدخال الصوتي/ }),
@@ -101,7 +104,7 @@ describe("MicButton", () => {
 
   it("يغير حالته أثناء التسجيل (نص ولون و aria-pressed)", async () => {
     const { getCtor, instances } = makeCtor();
-    render(<Harness getCtor={getCtor} />);
+    mount(<Harness getCtor={getCtor} />);
     const button = await screen.findByRole("button", {
       name: /بدء الإدخال الصوتي/,
     });
@@ -120,7 +123,7 @@ describe("MicButton", () => {
 
   it("يُدرج النص المنقول في موضع المؤشر داخل الحقل", async () => {
     const { getCtor, instances } = makeCtor();
-    render(<Harness getCtor={getCtor} initial="حشو سابق" />);
+    mount(<Harness getCtor={getCtor} initial="حشو سابق" />);
     const button = await screen.findByRole("button", {
       name: /بدء الإدخال الصوتي/,
     });
@@ -137,7 +140,7 @@ describe("MicButton", () => {
 
   it("يُلحق النص المنقول بالنص الموجود بلا مؤشر", async () => {
     const { getCtor, instances } = makeCtor();
-    render(<Harness getCtor={getCtor} initial="حشو" />);
+    mount(<Harness getCtor={getCtor} initial="حشو" />);
     const button = await screen.findByRole("button", {
       name: /بدء الإدخال الصوتي/,
     });
@@ -151,7 +154,7 @@ describe("MicButton", () => {
 
   it("يتجاهل النتائج المؤقتة حتى لا يُدرج الكلام مرتين", async () => {
     const { getCtor, instances } = makeCtor();
-    render(<Harness getCtor={getCtor} />);
+    mount(<Harness getCtor={getCtor} />);
     const button = await screen.findByRole("button", {
       name: /بدء الإدخال الصوتي/,
     });
@@ -160,7 +163,7 @@ describe("MicButton", () => {
     instances[0].onresult?.({
       resultIndex: 0,
       results: {
-        0: { isFinal: false, 0: { transcript: "تسو", }, length: 1 },
+        0: { isFinal: false, 0: { transcript: "تسو" }, length: 1 },
         length: 1,
       },
     });
@@ -169,7 +172,7 @@ describe("MicButton", () => {
 
   it("يوقف التسجيل بالنقر الثاني ويعيد الحالة", async () => {
     const { getCtor, instances } = makeCtor();
-    render(<Harness getCtor={getCtor} />);
+    mount(<Harness getCtor={getCtor} />);
     fireEvent.click(
       await screen.findByRole("button", { name: /بدء الإدخال الصوتي/ }),
     );
@@ -186,7 +189,7 @@ describe("MicButton", () => {
 
   it("يعرض رسالة خطأ عربية عند رفض إذن المايكروفون", async () => {
     const { getCtor, instances } = makeCtor();
-    render(<Harness getCtor={getCtor} />);
+    mount(<Harness getCtor={getCtor} />);
     fireEvent.click(
       await screen.findByRole("button", { name: /بدء الإدخال الصوتي/ }),
     );
@@ -201,7 +204,7 @@ describe("MicButton", () => {
 
   it("يحتفظ بالنص قابل للتعديل بعد الإدراج — الكتابة اليدوية تعمل", async () => {
     const { getCtor, instances } = makeCtor();
-    render(<Harness getCtor={getCtor} />);
+    mount(<Harness getCtor={getCtor} />);
     fireEvent.click(
       await screen.findByRole("button", { name: /بدء الإدخال الصوتي/ }),
     );
@@ -229,7 +232,7 @@ describe("useVoiceInput — بلا حقن (متصفح الاختبار)", () => 
   }
 
   it("يعيد supported=false في jsdom الذي لا يدعم التعرف الصوتي", async () => {
-    render(<Probe />);
+    mount(<Probe />);
     await waitFor(() =>
       expect(screen.getByTestId("probe")).toHaveTextContent("false-false"),
     );

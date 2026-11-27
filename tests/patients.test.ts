@@ -3,10 +3,7 @@ import {
   parseCreatePatient,
   parseUpdatePatient,
 } from "@/lib/services/patients";
-import {
-  composeMedicalNotes,
-  parseMedicalNotes,
-} from "@/lib/medical-notes";
+import { composeMedicalNotes, parseMedicalNotes } from "@/lib/medical-notes";
 
 describe("parseCreatePatient", () => {
   it("يقبل بيانات صحيحة", () => {

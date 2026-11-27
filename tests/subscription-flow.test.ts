@@ -18,7 +18,11 @@ import {
 } from "@/lib/billing/manual-activation";
 import { getSubscriptionState } from "@/lib/billing/state";
 import { SUBSCRIPTION_PLANS } from "@/lib/billing/plans";
-import { verifyPlatformAdminKey, isAdminSession, adminSessionCookieValue } from "@/lib/auth/admin";
+import {
+  verifyPlatformAdminKey,
+  isAdminSession,
+  adminSessionCookieValue,
+} from "@/lib/auth/admin";
 
 // اختبارات تكامل دورة حياة الاشتراك كاملة — تحتاج قاعدة بيانات حقيقية،
 // تُتخطى بدون DATABASE_URL (نمط باقي اختبارات التكامل).
@@ -36,7 +40,9 @@ async function cleanDb(): Promise<void> {
     select: { id: true },
   });
   for (const clinic of clinics) {
-    await prisma.subscriptionPayment.deleteMany({ where: { clinicId: clinic.id } });
+    await prisma.subscriptionPayment.deleteMany({
+      where: { clinicId: clinic.id },
+    });
     await prisma.user.deleteMany({ where: { clinicId: clinic.id } });
     await prisma.clinic.delete({ where: { id: clinic.id } });
   }
@@ -64,7 +70,9 @@ describeDb("التسجيل يمنح تجربة 15 يوماً", () => {
       select: { trialEndsAt: true, subscriptionEndsAt: true },
     });
     const expected = Date.now() + 15 * DAY;
-    expect(Math.abs(clinic.trialEndsAt!.getTime() - expected)).toBeLessThan(60_000);
+    expect(Math.abs(clinic.trialEndsAt!.getTime() - expected)).toBeLessThan(
+      60_000,
+    );
     expect(clinic.subscriptionEndsAt).toBeNull();
   });
 });
@@ -170,7 +178,10 @@ describeDb("طلبات التفعيل وقراراتها", () => {
       where: { clinicId, transferRef: "TR-FLOW-004" },
     });
 
-    const rejected = await rejectPaymentRequest(payment.id, "الحوالة غير موجودة");
+    const rejected = await rejectPaymentRequest(
+      payment.id,
+      "الحوالة غير موجودة",
+    );
     expect(rejected.ok).toBe(true);
 
     const updated = await prisma.subscriptionPayment.findUniqueOrThrow({
@@ -210,7 +221,9 @@ describeDb("الدفع المبكر والتفعيل اليدوي الإداري
       select: { id: true },
     });
     for (const clinic of clinics) {
-      await prisma.subscriptionPayment.deleteMany({ where: { clinicId: clinic.id } });
+      await prisma.subscriptionPayment.deleteMany({
+        where: { clinicId: clinic.id },
+      });
       await prisma.user.deleteMany({ where: { clinicId: clinic.id } });
       await prisma.clinic.delete({ where: { id: clinic.id } });
     }
@@ -300,10 +313,18 @@ describeDb("الدفع المبكر والتفعيل اليدوي الإداري
   });
 
   it("إدخال التفعيل اليدوي — يرفض باقة خاطئة وعدداً غير صحيح", () => {
-    expect(parseManualActivationInput({ plan: "WEEKLY", count: 1 }).ok).toBe(false);
-    expect(parseManualActivationInput({ plan: "MONTHLY", count: 0 }).ok).toBe(false);
-    expect(parseManualActivationInput({ plan: "MONTHLY", count: 2.5 }).ok).toBe(false);
-    expect(parseManualActivationInput({ plan: "MONTHLY", count: 999 }).ok).toBe(false);
+    expect(parseManualActivationInput({ plan: "WEEKLY", count: 1 }).ok).toBe(
+      false,
+    );
+    expect(parseManualActivationInput({ plan: "MONTHLY", count: 0 }).ok).toBe(
+      false,
+    );
+    expect(parseManualActivationInput({ plan: "MONTHLY", count: 2.5 }).ok).toBe(
+      false,
+    );
+    expect(parseManualActivationInput({ plan: "MONTHLY", count: 999 }).ok).toBe(
+      false,
+    );
     const ok = parseManualActivationInput({ plan: "YEARLY", count: 2 });
     expect(ok.ok).toBe(true);
   });
@@ -322,8 +343,12 @@ describeDb("الدفع المبكر والتفعيل اليدوي الإداري
       data: { trialEndsAt: new Date(Date.now() - DAY) },
     });
 
-    expect((await getSubscriptionState(expired.clinicId))?.status).toBe("EXPIRED");
-    expect((await getSubscriptionState(expired.clinicId))?.status).toBe("EXPIRED");
+    expect((await getSubscriptionState(expired.clinicId))?.status).toBe(
+      "EXPIRED",
+    );
+    expect((await getSubscriptionState(expired.clinicId))?.status).toBe(
+      "EXPIRED",
+    );
 
     await prisma.user.deleteMany({ where: { clinicId: expired.clinicId } });
     await prisma.clinic.delete({ where: { id: expired.clinicId } });
@@ -347,9 +372,27 @@ describe("parsePaymentRequestInput", () => {
 
   it("يرفض الأنواع الخاطئة والأرقام غير المالية", () => {
     expect(parsePaymentRequestInput(null).ok).toBe(false);
-    expect(parsePaymentRequestInput({ plan: "WEEKLY", transferRef: "1", amountUsd: 15 }).ok).toBe(false);
-    expect(parsePaymentRequestInput({ plan: "MONTHLY", transferRef: "", amountUsd: 15 }).ok).toBe(false);
-    expect(parsePaymentRequestInput({ plan: "MONTHLY", transferRef: "1", amountUsd: 0 }).ok).toBe(false);
+    expect(
+      parsePaymentRequestInput({
+        plan: "WEEKLY",
+        transferRef: "1",
+        amountUsd: 15,
+      }).ok,
+    ).toBe(false);
+    expect(
+      parsePaymentRequestInput({
+        plan: "MONTHLY",
+        transferRef: "",
+        amountUsd: 15,
+      }).ok,
+    ).toBe(false);
+    expect(
+      parsePaymentRequestInput({
+        plan: "MONTHLY",
+        transferRef: "1",
+        amountUsd: 0,
+      }).ok,
+    ).toBe(false);
   });
 });
 
@@ -368,7 +411,9 @@ describe("حماية لوحة إدارة المنصة", () => {
     expect(verifyPlatformAdminKey("wrong")).toBe(false);
     expect(verifyPlatformAdminKey("platform-secret-123")).toBe(true);
 
-    const cookies = { get: (name: string) => ({ name, value: adminSessionCookieValue() }) };
+    const cookies = {
+      get: (name: string) => ({ name, value: adminSessionCookieValue() }),
+    };
     expect(isAdminSession(cookies)).toBe(true);
     expect(isAdminSession({ get: () => ({ value: "forged" }) })).toBe(false);
   });
@@ -388,7 +433,13 @@ describe("حماية لوحة إدارة المنصة", () => {
 // أنفسهما مغطيان بحارس موحّد (requireGate) اختُبر سلوكه في الوحدات.
 describe("لا مسار محمي بلا بوابة الاشتراك", () => {
   // مسار الدعم المقصود قبله: قنوات استعادة الملكية للعيادات المقفلة خارجها
-  const EXEMPT = ["app/api/auth/", "app/api/lock/", "app/api/subscription/", "app/api/admin/", "app/api/support/"];
+  const EXEMPT = [
+    "app/api/auth/",
+    "app/api/lock/",
+    "app/api/subscription/",
+    "app/api/admin/",
+    "app/api/support/",
+  ];
 
   function walkRoutes(dir: string): string[] {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -399,7 +450,9 @@ describe("لا مسار محمي بلا بوابة الاشتراك", () => {
   }
 
   it("كل route.ts محمي يستدعي requireGate — بلا استثناء منسي", () => {
-    const routes = walkRoutes("app/api").filter((file) => file.endsWith("route.ts"));
+    const routes = walkRoutes("app/api").filter((file) =>
+      file.endsWith("route.ts"),
+    );
     expect(routes.length).toBeGreaterThan(10);
 
     const unguarded = routes.filter((file) => {

@@ -99,9 +99,7 @@ describe("recognitionErrorMessage", () => {
   });
 
   it("لأي خطأ غير معروف رسالة عامة", () => {
-    expect(recognitionErrorMessage("unknown-code")).toBe(
-      "تعذر الإدخال الصوتي",
-    );
+    expect(recognitionErrorMessage("unknown-code")).toBe("تعذر الإدخال الصوتي");
     expect(recognitionErrorMessage(undefined)).toBe("تعذر الإدخال الصوتي");
   });
 });
@@ -109,9 +107,9 @@ describe("recognitionErrorMessage", () => {
 describe("getRecognitionCtor", () => {
   it("يقرأ webkitSpeechRecognition — كروم", () => {
     function Fake() {}
-    expect(
-      getRecognitionCtor({ webkitSpeechRecognition: Fake }) !== null,
-    ).toBe(true);
+    expect(getRecognitionCtor({ webkitSpeechRecognition: Fake }) !== null).toBe(
+      true,
+    );
   });
 
   it("يعيد null بلا دعم — فايرفوكس", () => {

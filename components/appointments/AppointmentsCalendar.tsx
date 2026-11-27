@@ -7,7 +7,6 @@ import { doctorDisplayName } from "@/lib/staff-name";
 import { STATUS_META, formatTime, timeRangeLabel } from "@/lib/appointment-ui";
 import { addDays, toDateInputValue } from "@/lib/dates";
 import {
-  WEEKDAY_HEADERS,
   dayDateLabel,
   groupByDay,
   groupByStartHour,
@@ -16,11 +15,14 @@ import {
   timeGridWindow,
   weekDays,
   weekRangeLabel,
+  weekdayHeaders,
 } from "@/lib/calendar-view";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Field";
 import { StatusPill } from "@/components/ui/Badge";
+import { useI18n } from "@/components/i18n/I18nProvider";
+import type { Locale, TranslationKey } from "@/lib/i18n/core";
 import { cn } from "@/components/ui/cn";
 import BookingModal from "./BookingModal";
 import {
@@ -39,9 +41,9 @@ type LoadState =
   | { kind: "error" }
   | { kind: "loaded"; appointments: AppointmentJson[] };
 
-const VIEW_LABELS: Record<CalendarView, string> = {
-  day: "يومي",
-  week: "أسبوعي",
+const VIEW_LABELS: Record<CalendarView, TranslationKey> = {
+  day: "appt.viewDay",
+  week: "appt.viewWeek",
 };
 
 export default function AppointmentsCalendar({
@@ -49,6 +51,7 @@ export default function AppointmentsCalendar({
 }: {
   initialDate: string;
 }) {
+  const { t, locale } = useI18n();
   const [view, setView] = useState<CalendarView>("day");
   const [dateValue, setDateValue] = useState(initialDate);
   const [staffFilter, setStaffFilter] = useState("");
@@ -63,7 +66,9 @@ export default function AppointmentsCalendar({
   const load = useCallback(async (date: string, currentView: CalendarView) => {
     setState({ kind: "loading" });
     try {
-      const res = await fetch(`/api/appointments?date=${date}&view=${currentView}`);
+      const res = await fetch(
+        `/api/appointments?date=${date}&view=${currentView}`,
+      );
       if (res.status === 401) {
         window.location.href = "/login";
         return;
@@ -90,7 +95,9 @@ export default function AppointmentsCalendar({
         const data = (await res.json()) as { staff: StaffMemberDto[] };
         // الأطباء فقط — فلتر «كل الأطباء» كما في المرجع.
         if (alive) {
-          setStaff(data.staff.filter((s) => s.isActive && s.role === "DENTIST"));
+          setStaff(
+            data.staff.filter((s) => s.isActive && s.role === "DENTIST"),
+          );
         }
       } catch {
         // بلا قائمة أطباء تبقى الصفحة تعمل بلا تصفية ولا تلوين حواف.
@@ -114,7 +121,12 @@ export default function AppointmentsCalendar({
   /** التنقل: يوم ±1، أسبوع ±7. */
   function navigate(direction: 1 | -1) {
     setDateValue((d) =>
-      toDateInputValue(addDays(new Date(`${d}T00:00:00`), direction * (view === "week" ? 7 : 1))),
+      toDateInputValue(
+        addDays(
+          new Date(`${d}T00:00:00`),
+          direction * (view === "week" ? 7 : 1),
+        ),
+      ),
     );
   }
 
@@ -125,8 +137,8 @@ export default function AppointmentsCalendar({
   const today = toDateInputValue(new Date());
   const rangeLabel = useMemo(() => {
     if (view === "week") return weekRangeLabel(weekDays(dateValue));
-    return dayDateLabel(dateValue, today);
-  }, [view, dateValue, today]);
+    return dayDateLabel(dateValue, today, locale);
+  }, [view, dateValue, today, locale]);
 
   // لون حافة الطبيب — من لون التمييز إن وُجد، وإلا حدّ أساسي هادئ.
   const staffColor = useCallback(
@@ -138,12 +150,12 @@ export default function AppointmentsCalendar({
   return (
     <>
       <PageHeader
-        title="المواعيد"
-        description={headerDateLabel(dateValue)}
+        title={t("appt.title")}
+        description={headerDateLabel(dateValue, locale)}
         actions={
           <Button shape="pill" onClick={() => openBooking()}>
             <Plus size={16} aria-hidden />
-            موعد جديد
+            {t("appt.new")}
           </Button>
         }
       />
@@ -155,7 +167,7 @@ export default function AppointmentsCalendar({
             variant="secondary"
             size="sm"
             onClick={() => navigate(-1)}
-            aria-label="الفترة السابقة"
+            aria-label={t("appt.prevPeriod")}
           >
             <ChevronRight size={16} aria-hidden />
           </Button>
@@ -164,23 +176,27 @@ export default function AppointmentsCalendar({
             size="sm"
             onClick={() => setDateValue(toDateInputValue(new Date()))}
           >
-            اليوم
+            {t("appt.today")}
           </Button>
           <Button
             variant="secondary"
             size="sm"
             onClick={() => navigate(1)}
-            aria-label="الفترة التالية"
+            aria-label={t("appt.nextPeriod")}
           >
             <ChevronLeft size={16} aria-hidden />
           </Button>
-          <span className="min-w-40 text-sm font-semibold text-ink-900">
+          <span className="text-ink-900 min-w-40 text-sm font-semibold">
             {rangeLabel}
           </span>
         </div>
 
         <div className="flex flex-1 flex-wrap items-center gap-3 md:justify-end">
-          <div role="group" aria-label="نمط العرض" className="flex gap-1">
+          <div
+            role="group"
+            aria-label={t("appt.viewMode")}
+            className="flex gap-1"
+          >
             {(Object.keys(VIEW_LABELS) as CalendarView[]).map((v) => {
               const active = view === v;
               return (
@@ -191,25 +207,25 @@ export default function AppointmentsCalendar({
                   onClick={() => setView(v)}
                   className={cn(
                     "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-                    "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
+                    "focus-visible:outline-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2",
                     active
-                      ? "border-primary-600 bg-primary-600/10 font-semibold text-primary-800"
+                      ? "border-primary-600 bg-primary-600/10 text-primary-800 font-semibold"
                       : "border-warm-200 bg-surface-raised text-warm-600 hover:bg-surface-hover",
                   )}
                 >
-                  {VIEW_LABELS[v]}
+                  {t(VIEW_LABELS[v])}
                 </button>
               );
             })}
           </div>
 
           <Select
-            aria-label="تصفية الطبيب"
+            aria-label={t("appt.doctorFilter")}
             value={staffFilter}
             onChange={(e) => setStaffFilter(e.target.value)}
             className="w-36"
           >
-            <option value="">كل الأطباء</option>
+            <option value="">{t("appt.allDoctors")}</option>
             {staff.map((d) => (
               <option key={d.id} value={d.id}>
                 {doctorDisplayName(d.name)}
@@ -230,17 +246,17 @@ export default function AppointmentsCalendar({
         {state.kind === "error" ? (
           <div
             role="alert"
-            className="flex flex-col items-center gap-3 rounded-panel border border-danger-300 bg-danger-50 px-6 py-10 text-center"
+            className="rounded-panel border-danger-300 bg-danger-50 flex flex-col items-center gap-3 border px-6 py-10 text-center"
           >
-            <p className="text-sm font-medium text-danger-700">
-              تعذر تحميل المواعيد — تحقق من الاتصال ثم أعد المحاولة.
+            <p className="text-danger-700 text-sm font-medium">
+              {t("appt.loadError")}
             </p>
             <Button
               variant="secondary"
               size="sm"
               onClick={() => void load(dateValue, view)}
             >
-              إعادة المحاولة
+              {t("common.retry")}
             </Button>
           </div>
         ) : filtered === null ? (
@@ -313,11 +329,13 @@ function WeekStrip({
   const days = useMemo(() => weekDays(dateValue), [dateValue]);
   const counts = useMemo(() => groupByDay(appointments), [appointments]);
   const today = toDateInputValue(new Date());
+  const { t, locale } = useI18n();
+  const headers = weekdayHeaders(locale);
 
   return (
     <div
       role="group"
-      aria-label="أيام الأسبوع"
+      aria-label={t("appt.weekStrip")}
       className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-7"
     >
       {days.map((day, i) => {
@@ -330,28 +348,32 @@ function WeekStrip({
             aria-pressed={active}
             onClick={() => onSelect(day)}
             className={cn(
-              "flex flex-col items-center gap-0.5 rounded-panel border bg-surface-raised px-1 py-2.5 transition-colors",
-              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
+              "rounded-panel bg-surface-raised flex flex-col items-center gap-0.5 border px-1 py-2.5 transition-colors",
+              "focus-visible:outline-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2",
               active
-                ? "border-primary-600 ring-1 ring-primary-600"
+                ? "border-primary-600 ring-primary-600 ring-1"
                 : "border-warm-200 hover:bg-surface-hover active:bg-surface-sunken",
             )}
           >
-            <span className="text-[11px] text-warm-500">{WEEKDAY_HEADERS[i]}</span>
+            <span className="text-warm-500 text-[11px]">{headers[i]}</span>
             <span
               className={cn(
                 "numeric text-lg font-bold",
-                active ? "text-primary-800" : day === today ? "text-primary-700" : "text-ink-900",
+                active
+                  ? "text-primary-800"
+                  : day === today
+                    ? "text-primary-700"
+                    : "text-ink-900",
               )}
             >
               {day.slice(8)}
             </span>
             {count > 0 ? (
-              <span className="numeric text-[11px] text-warm-600">
-                {count} موعد
+              <span className="numeric text-warm-600 text-[11px]">
+                {t("appt.count", { count })}
               </span>
             ) : (
-              <span aria-hidden className="text-[11px] text-warm-300">
+              <span aria-hidden className="text-warm-300 text-[11px]">
                 —
               </span>
             )}
@@ -374,7 +396,9 @@ function AppointmentCard({
   onSelect: (a: AppointmentJson) => void;
 }) {
   const meta = STATUS_META[appointment.status];
-  const settled = appointment.status === "COMPLETED" || appointment.status === "CANCELLED";
+  const { t, locale } = useI18n();
+  const settled =
+    appointment.status === "COMPLETED" || appointment.status === "CANCELLED";
   // سطر الطبيب وسطر الخدمة منفصلان كما في المرجع، وكل منهما اختياري.
   const doctorLine = appointment.staffName
     ? doctorDisplayName(appointment.staffName)
@@ -384,33 +408,41 @@ function AppointmentCard({
     <button
       type="button"
       onClick={() => onSelect(appointment)}
-      title={`${appointment.patientName} · ${meta.label}`}
+      title={`${appointment.patientName} · ${t(meta.labelKey)}`}
       className={cn(
-        "w-full rounded-field border border-s-4 border-warm-200 bg-surface px-2.5 py-2 text-start transition-colors",
-        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
+        "rounded-field border-warm-200 bg-surface w-full border border-s-4 px-2.5 py-2 text-start transition-colors",
+        "focus-visible:outline-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2",
         "hover:bg-surface-hover",
         settled && "opacity-70",
       )}
-      style={accentColor ? { borderInlineStartColor: accentColor } : { borderInlineStartColor: "var(--color-primary-300)" }}
+      style={
+        accentColor
+          ? { borderInlineStartColor: accentColor }
+          : { borderInlineStartColor: "var(--color-primary-300)" }
+      }
     >
       <span className="flex items-center justify-between gap-2">
-        <span className="numeric text-xs font-bold text-ink-900">
-          {timeRangeLabel(appointment.startsAt, appointment.durationMin)}
+        <span className="numeric text-ink-900 text-xs font-bold">
+          {timeRangeLabel(
+            appointment.startsAt,
+            appointment.durationMin,
+            locale,
+          )}
         </span>
         <StatusPill tone={meta.tone} className="shrink-0">
-          {meta.label}
+          {t(meta.labelKey)}
         </StatusPill>
       </span>
-      <span className="mt-0.5 block truncate text-sm font-semibold text-ink-900">
+      <span className="text-ink-900 mt-0.5 block truncate text-sm font-semibold">
         {appointment.patientName}
       </span>
       {doctorLine && (
-        <span className="block truncate text-[11px] text-warm-500">
+        <span className="text-warm-500 block truncate text-[11px]">
           {doctorLine}
         </span>
       )}
       {appointment.reason && (
-        <span className="block truncate text-[11px] text-warm-500">
+        <span className="text-warm-500 block truncate text-[11px]">
           {appointment.reason}
         </span>
       )}
@@ -436,26 +468,28 @@ function DayTimeline({
   const window_ = useMemo(() => timeGridWindow(appointments), [appointments]);
   const hours = useMemo(() => {
     const rows: number[] = [];
-    for (let h = window_.startMin / 60; h < window_.endMin / 60; h++) rows.push(h);
+    for (let h = window_.startMin / 60; h < window_.endMin / 60; h++)
+      rows.push(h);
     return rows;
   }, [window_]);
   const byHour = useMemo(() => groupByStartHour(appointments), [appointments]);
+  const { t, locale } = useI18n();
 
   return (
-    <div className="overflow-hidden rounded-panel border border-warm-200 bg-surface-raised">
+    <div className="rounded-panel border-warm-200 bg-surface-raised overflow-hidden border">
       {hours.map((h) => {
         const items = byHour.get(h) ?? [];
         return (
           <div
             key={h}
-            className="flex gap-3 border-b border-warm-100 p-3 last:border-b-0"
+            className="border-warm-100 flex gap-3 border-b p-3 last:border-b-0"
           >
             {/* مربع الوقت المستدير الباهت */}
             <span
               aria-hidden
-              className="numeric grid h-9 w-14 shrink-0 place-items-center rounded-field bg-primary-500/10 text-xs font-bold text-primary-800"
+              className="numeric rounded-field bg-primary-500/10 text-primary-800 grid h-9 w-14 shrink-0 place-items-center text-xs font-bold"
             >
-              {hourLabel(date, h)}
+              {hourLabel(date, h, locale)}
             </span>
 
             <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -472,15 +506,17 @@ function DayTimeline({
                 <button
                   type="button"
                   onClick={() => onSlotClick(hourToTimeInput(h))}
-                  aria-label={`حجز موعد عند ${hourLabel(date, h)}`}
+                  aria-label={t("appt.slotAria", {
+                    time: hourLabel(date, h, locale),
+                  })}
                   className={cn(
-                    "flex flex-col items-center gap-0.5 rounded-field border border-dashed border-warm-200 py-2 text-xs text-warm-400 transition-colors",
-                    "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
+                    "rounded-field border-warm-200 text-warm-400 flex flex-col items-center gap-0.5 border border-dashed py-2 text-xs transition-colors",
+                    "focus-visible:outline-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2",
                     "hover:bg-surface-hover hover:text-warm-500",
                   )}
                 >
                   <ToothGlyph className="size-5" />
-                  — فارغ — انقر لإضافة موعد
+                  {t("appt.emptySlot")}
                 </button>
               )}
             </div>
@@ -492,8 +528,8 @@ function DayTimeline({
 }
 
 /** تسمية ساعة الشبكة — بنفس منسّق الوقت المستخدم في بقية الواجهة. */
-function hourLabel(date: string, hour: number): string {
-  return formatTime(new Date(`${date}T${hourToTimeInput(hour)}:00Z`));
+function hourLabel(date: string, hour: number, locale: Locale): string {
+  return formatTime(new Date(`${date}T${hourToTimeInput(hour)}:00Z`), locale);
 }
 
 /* ---------- عرض الأسبوع: أعمدة بطاقات مكدّسة على شكل المرجع ---------- */
@@ -512,6 +548,8 @@ function WeekBoard({
   const days = useMemo(() => weekDays(dateValue), [dateValue]);
   const byDay = useMemo(() => groupByDay(appointments), [appointments]);
   const today = toDateInputValue(new Date());
+  const { t, locale } = useI18n();
+  const headers = weekdayHeaders(locale);
 
   return (
     <div className="overflow-x-auto">
@@ -522,22 +560,22 @@ function WeekBoard({
           return (
             <section
               key={day}
-              aria-label={`${WEEKDAY_HEADERS[i]} ${day}`}
+              aria-label={`${headers[i]} ${day}`}
               className={cn(
-                "flex min-h-72 flex-col overflow-hidden rounded-panel border bg-surface-raised",
+                "rounded-panel bg-surface-raised flex min-h-72 flex-col overflow-hidden border",
                 isToday
-                  ? "border-primary-600 ring-1 ring-primary-600"
+                  ? "border-primary-600 ring-primary-600 ring-1"
                   : "border-warm-200",
               )}
             >
               {/* ترويسة العمود: اسم اليوم + الرقم + العدد */}
               <div
                 className={cn(
-                  "border-b border-warm-100 px-2 py-2 text-center",
+                  "border-warm-100 border-b px-2 py-2 text-center",
                   isToday && "bg-primary-50",
                 )}
               >
-                <p className="text-[11px] text-warm-500">{WEEKDAY_HEADERS[i]}</p>
+                <p className="text-warm-500 text-[11px]">{headers[i]}</p>
                 <p
                   className={cn(
                     "numeric text-base font-bold",
@@ -547,11 +585,11 @@ function WeekBoard({
                   {day.slice(8)}
                 </p>
                 {items.length > 0 ? (
-                  <p className="numeric text-[11px] text-warm-600">
-                    {items.length} موعد
+                  <p className="numeric text-warm-600 text-[11px]">
+                    {t("appt.count", { count: items.length })}
                   </p>
                 ) : (
-                  <p aria-hidden className="text-[11px] text-warm-300">
+                  <p aria-hidden className="text-warm-300 text-[11px]">
                     —
                   </p>
                 )}
@@ -570,10 +608,10 @@ function WeekBoard({
                 ) : (
                   <div
                     role="presentation"
-                    className="flex flex-1 flex-col items-center justify-center gap-1 py-6 text-warm-300"
+                    className="text-warm-300 flex flex-1 flex-col items-center justify-center gap-1 py-6"
                   >
                     <ToothGlyph className="size-8" />
-                    <span className="text-xs">لا مواعيد</span>
+                    <span className="text-xs">{t("appt.none")}</span>
                   </div>
                 )}
               </div>
@@ -591,12 +629,12 @@ function CalendarSkeleton() {
   return (
     <div
       aria-busy="true"
-      className="flex flex-col gap-2 rounded-panel border border-warm-200 bg-surface-raised p-4"
+      className="rounded-panel border-warm-200 bg-surface-raised flex flex-col gap-2 border p-4"
     >
       {[0, 1, 2, 3, 4].map((i) => (
         <div
           key={i}
-          className="h-14 animate-pulse rounded-field bg-warm-100"
+          className="rounded-field bg-warm-100 h-14 animate-pulse"
           aria-hidden
         />
       ))}

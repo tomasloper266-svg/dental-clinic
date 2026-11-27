@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { cn } from "./cn";
 
 type DrawerProps = {
@@ -17,7 +18,15 @@ type DrawerProps = {
  * لوحة جانبية من جهة بداية السطر (يمين في RTL) — بديل النوافذ المتكررة
  * لعرض تفاصيل عنصر (سنة أودوغرام، مريض) دون فقدان السياق.
  */
-export function Drawer({ open, onClose, title, children, footer, className }: DrawerProps) {
+export function Drawer({
+  open,
+  onClose,
+  title,
+  children,
+  footer,
+  className,
+}: DrawerProps) {
+  const { t } = useI18n();
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -34,7 +43,7 @@ export function Drawer({ open, onClose, title, children, footer, className }: Dr
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-ink-950/45 backdrop-blur-sm"
+      className="bg-ink-950/45 fixed inset-0 z-50 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -46,17 +55,17 @@ export function Drawer({ open, onClose, title, children, footer, className }: Dr
         aria-label={title}
         tabIndex={-1}
         className={cn(
-          "absolute inset-y-0 start-0 flex w-full max-w-sm flex-col rounded-e-panel bg-surface-raised shadow-lg outline-none",
+          "rounded-e-panel bg-surface-raised absolute inset-y-0 start-0 flex w-full max-w-sm flex-col shadow-lg outline-none",
           className,
         )}
       >
-        <div className="flex items-center justify-between border-b border-warm-200/60 px-5 py-3">
-          <h2 className="text-base font-bold text-ink-900">{title}</h2>
+        <div className="border-warm-200/60 flex items-center justify-between border-b px-5 py-3">
+          <h2 className="text-ink-900 text-base font-bold">{title}</h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="إغلاق"
-            className="rounded-full p-1.5 text-warm-500 hover:bg-surface-hover hover:text-ink-900"
+            aria-label={t("common.close")}
+            className="text-warm-500 hover:bg-surface-hover hover:text-ink-900 rounded-full p-1.5"
           >
             <X size={16} aria-hidden />
           </button>
@@ -65,7 +74,7 @@ export function Drawer({ open, onClose, title, children, footer, className }: Dr
           {children}
         </div>
         {footer && (
-          <div className="flex justify-start gap-2 border-t border-warm-200 px-5 py-3">
+          <div className="border-warm-200 flex justify-start gap-2 border-t px-5 py-3">
             {footer}
           </div>
         )}

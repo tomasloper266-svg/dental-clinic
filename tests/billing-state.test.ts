@@ -152,7 +152,10 @@ describe("subscriptionProgress", () => {
   });
 
   it("باقة مدفوعة — الطول من مدة الباقة لا من التجربة", () => {
-    const progress = subscriptionProgress({ daysLeft: 335, isTrial: false }, 365);
+    const progress = subscriptionProgress(
+      { daysLeft: 335, isTrial: false },
+      365,
+    );
     expect(progress.totalDays).toBe(365);
     expect(progress.elapsedDays).toBe(30);
     expect(progress.pct).toBe(8);
@@ -165,9 +168,13 @@ describe("subscriptionProgress", () => {
   });
 
   it("يقيد المستهلك بين صفر والطول — أيام سالبة أو متجاوزة لا تكسر النسبة", () => {
-    expect(subscriptionProgress({ daysLeft: -3, isTrial: true }).elapsedDays).toBe(15);
+    expect(
+      subscriptionProgress({ daysLeft: -3, isTrial: true }).elapsedDays,
+    ).toBe(15);
     expect(subscriptionProgress({ daysLeft: -3, isTrial: true }).pct).toBe(100);
-    expect(subscriptionProgress({ daysLeft: 40, isTrial: true }).elapsedDays).toBe(0);
+    expect(
+      subscriptionProgress({ daysLeft: 40, isTrial: true }).elapsedDays,
+    ).toBe(0);
     expect(subscriptionProgress({ daysLeft: 40, isTrial: true }).pct).toBe(0);
   });
 });

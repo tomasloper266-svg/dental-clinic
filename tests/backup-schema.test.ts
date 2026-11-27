@@ -29,9 +29,7 @@ function legacySnapshot(): ClinicSnapshot {
     appointments: [],
     waitlistEntries: [],
     appointmentStatusChanges: [],
-    toothFindings: [
-      { id: "tf1", surface: "المضغية+القريبة", note: null },
-    ],
+    toothFindings: [{ id: "tf1", surface: "المضغية+القريبة", note: null }],
     periodontalReadings: [],
     treatmentPlans: [],
     treatmentPlanItems: [{ id: "tpi1", priceSyp: 120_000 }],
@@ -69,9 +67,13 @@ describe("convertLegacySnapshotToUsd", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.snapshot.clinic.openingBalance).toBe(50);
-    expect(result.snapshot.ledgerEntryItems[0]).toMatchObject({ amountUsd: 4.5 });
+    expect(result.snapshot.ledgerEntryItems[0]).toMatchObject({
+      amountUsd: 4.5,
+    });
     expect(result.snapshot.expenses[0]).toMatchObject({ amountUsd: 1 });
-    expect(result.snapshot.treatmentPlanItems[0]).toMatchObject({ priceUsd: 8 });
+    expect(result.snapshot.treatmentPlanItems[0]).toMatchObject({
+      priceUsd: 8,
+    });
     const materials = result.snapshot.materials as Record<string, unknown>[];
     expect(materials[0]).toMatchObject({ costUsd: 4.5 });
     expect(materials[1].costUsd).toBeUndefined();
@@ -81,7 +83,9 @@ describe("convertLegacySnapshotToUsd", () => {
   it("الدفعة السالبة تبقى سالبة بالدولار (-12,250 بسعر 15000)", () => {
     const result = convertLegacySnapshotToUsd(legacySnapshot());
     if (!result.ok) return;
-    expect(result.snapshot.ledgerEntries[1]).toMatchObject({ amountUsd: -0.82 });
+    expect(result.snapshot.ledgerEntries[1]).toMatchObject({
+      amountUsd: -0.82,
+    });
   });
 
   it("سعر صرف تالف في اللقطة يُفشل التحويل كله — لا خلط وحدتين", () => {
@@ -148,7 +152,8 @@ describe("convertLegacySnapshotSurfaces — هجرة ترميز الأسطر ف�
     const snapshot = legacySnapshot();
     (snapshot.toothFindings[0] as Record<string, unknown>).surface =
       "المضغية+حشو خارجي";
-    (snapshot.toothFindings[0] as Record<string, unknown>).note = "ملاحظة قديمة";
+    (snapshot.toothFindings[0] as Record<string, unknown>).note =
+      "ملاحظة قديمة";
     const result = convertLegacySnapshotSurfaces(snapshot);
     expect(result.ok).toBe(true);
     if (!result.ok) return;

@@ -82,6 +82,7 @@ async function cleanDb(): Promise<void> {
   await prisma.expense.deleteMany();
   await prisma.instructionTemplate.deleteMany();
   await prisma.material.deleteMany();
+  await prisma.instructionSend.deleteMany();
   await prisma.patient.deleteMany();
   await prisma.user.deleteMany();
   await prisma.clinic.deleteMany();
@@ -119,10 +120,18 @@ describeDb("الحسابات — integration", () => {
         },
       }),
       prisma.patient.create({
-        data: { clinicId: clinicAId, name: "مريض-حسابات-أ", phone: "0903111111" },
+        data: {
+          clinicId: clinicAId,
+          name: "مريض-حسابات-أ",
+          phone: "0903111111",
+        },
       }),
       prisma.patient.create({
-        data: { clinicId: clinicBId, name: "مريض-حسابات-ب", phone: "0903222222" },
+        data: {
+          clinicId: clinicBId,
+          name: "مريض-حسابات-ب",
+          phone: "0903222222",
+        },
       }),
     ]);
     userAId = userA.id;
@@ -134,14 +143,14 @@ describeDb("الحسابات — integration", () => {
       clinicId: clinicAId,
       name: "د. فارس",
       lockEnabled: false,
-role: "DENTIST",
+      role: "DENTIST",
     });
     ctxB = tenantContextFromSession({
       userId: userB.id,
       clinicId: clinicBId,
       name: "د. هاني",
       lockEnabled: false,
-role: "DENTIST",
+      role: "DENTIST",
     });
   });
 
@@ -216,15 +225,19 @@ role: "DENTIST",
       where: { patientId: patientAId },
       select: { amountUsd: true },
     });
-    expect(body.balance).toBe(rows.reduce((s, r) => s + Number(r.amountUsd), 0));
+    expect(body.balance).toBe(
+      rows.reduce((s, r) => s + Number(r.amountUsd), 0),
+    );
   });
 
   it("لا endpoint يعدل أو يحدّث قيداً — ولا حذف إلا للفاتورة غير المخصَّصة", async () => {
     // في Next.js غياب الـ handler يعني 405 تلقائياً على مستوى الإطار؛
     // الاختبار يثبت غياب المُصدرين نفسهما فلا مسار تعديل أو تحديث أصلاً.
-    const routeModule = (await import(
-      "@/app/api/patients/[patientId]/ledger/route"
-    )) as unknown as Record<string, unknown>;
+    const routeModule =
+      (await import("@/app/api/patients/[patientId]/ledger/route")) as unknown as Record<
+        string,
+        unknown
+      >;
     expect(routeModule.PUT).toBeUndefined();
     expect(routeModule.PATCH).toBeUndefined();
     // مسار القائمة بلا حذف — الحذف الوحيد على قيد واحد فقط.
@@ -232,9 +245,11 @@ role: "DENTIST",
 
     // والخدمة بلا أي دالة تحديث — التصحيح بقيد عكسي فقط. الاستثناء الوحيد
     // هو حذف فاتورة غير مخصَّصة (بلا دفعات ولا خصم)، والحذف على قيد واحد.
-    const entryRouteModule = (await import(
-      "@/app/api/patients/[patientId]/ledger/[entryId]/route"
-    )) as unknown as Record<string, unknown>;
+    const entryRouteModule =
+      (await import("@/app/api/patients/[patientId]/ledger/[entryId]/route")) as unknown as Record<
+        string,
+        unknown
+      >;
     expect(entryRouteModule.PUT).toBeUndefined();
     expect(entryRouteModule.PATCH).toBeUndefined();
     expect(typeof entryRouteModule.DELETE).toBe("function");
@@ -334,7 +349,9 @@ role: "DENTIST",
       expenses: Array<{ category: string; amountUsd: number }>;
     };
     expect(
-      body.expenses.some((e) => e.category === "MATERIALS" && e.amountUsd === 120_000),
+      body.expenses.some(
+        (e) => e.category === "MATERIALS" && e.amountUsd === 120_000,
+      ),
     ).toBe(true);
   });
 
@@ -380,7 +397,9 @@ role: "DENTIST",
     expect(report.collectedUsd).toBeGreaterThanOrEqual(300_000);
     expect(report.expensesUsd).toBeGreaterThanOrEqual(100_000);
     expect(report.expensesUsd).toBeLessThan(777_777);
-    expect(report.netUsd).toBe(report.collectedUsd - report.refundsUsd - report.expensesUsd);
+    expect(report.netUsd).toBe(
+      report.collectedUsd - report.refundsUsd - report.expensesUsd,
+    );
   });
 
   it("التقرير الشهري عبر الـ endpoint يجمع عيادة أ حصراً", async () => {
@@ -407,7 +426,10 @@ role: "DENTIST",
 
     // القيمة المتوقعة: مجموع مصاريف عيادة أ في الشهر — من قاعدة البيانات مباشرة
     const { monthRange } = await import("@/lib/services/reports");
-    const { from, to } = monthRange(now.getUTCFullYear(), now.getUTCMonth() + 1);
+    const { from, to } = monthRange(
+      now.getUTCFullYear(),
+      now.getUTCMonth() + 1,
+    );
     const expected = Number(
       (
         await prisma.expense.aggregate({

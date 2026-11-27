@@ -145,9 +145,7 @@ describe("formatDualFromUsd", () => {
 
   it("يتعامل مع الصفر والمبالغ السالبة بوضوح", () => {
     expect(formatDualFromUsd(0, DEFAULT_USD_RATE)).toBe("$0 (0 ل.س)");
-    expect(formatDualFromUsd(-1, DEFAULT_USD_RATE)).toBe(
-      "$-1 (-15,000 ل.س)",
-    );
+    expect(formatDualFromUsd(-1, DEFAULT_USD_RATE)).toBe("$-1 (-15,000 ل.س)");
   });
 });
 

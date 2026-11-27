@@ -5,17 +5,13 @@ import { Undo2 } from "lucide-react";
 import { ALLOWED_TRANSITIONS } from "@/lib/appointment-state";
 import type { AppointmentStatus } from "@/lib/appointment-state";
 import { doctorDisplayName } from "@/lib/staff-name";
-import {
-  STATUS_LABEL,
-  STATUS_META,
-  formatDayLabel,
-  formatTime,
-} from "@/lib/appointment-ui";
+import { STATUS_META, formatDayLabel, formatTime } from "@/lib/appointment-ui";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Drawer } from "@/components/ui/Drawer";
 import { StatusPill } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 // تفاصيل الموعد في لوحة جانبية — المعلومات كاملة، وانتقالات آلة الحالات
 // فقط (المسموح بها، من lib/appointment-state). الإلغاء ولم-يحضر عمليتان
@@ -58,6 +54,7 @@ export function AppointmentDetailsDrawer({
   onChanged,
 }: AppointmentDetailsDrawerProps) {
   const { toast } = useToast();
+  const { t, locale } = useI18n();
   const [pending, setPending] = useState<AppointmentStatus | null>(null);
   const [confirming, setConfirming] = useState<AppointmentStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -82,27 +79,30 @@ export function AppointmentDetailsDrawer({
       });
       if (!res.ok) {
         const data = (await res.json()) as { error?: string };
-        setError(data.error ?? "تعذر تغيير الحالة");
+        setError(data.error ?? t("drawer.error.status"));
         return;
       }
-      const data = (await res.json()) as { waitlistFill?: WaitlistFillJson | null };
+      const data = (await res.json()) as {
+        waitlistFill?: WaitlistFillJson | null;
+      };
       if (data.waitlistFill) {
         // حجز تلقائي لمنتظر في الفجوة — تبقى اللوحة مفتوحة لعرض النتيجة
         // وزر التراجع بضغطة بدل إغلاقها فوراً.
         setFill(data.waitlistFill);
         toast(
-          `حُجز المنتظر ${data.waitlistFill.patientName} في فجوة ${formatTime(
-            data.waitlistFill.startsAt,
-          )}`,
+          t("drawer.fillToast", {
+            name: data.waitlistFill.patientName,
+            time: formatTime(data.waitlistFill.startsAt, locale),
+          }),
         );
       } else {
-        toast(`تم تحديث حالة الموعد إلى «${STATUS_LABEL(to)}»`);
+        toast(t("drawer.statusToast", { label: t(STATUS_META[to].labelKey) }));
       }
       setConfirming(null);
       onChanged();
       if (!data.waitlistFill) onClose();
     } catch {
-      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+      setError(t("common.error.network"));
     } finally {
       setPending(null);
     }
@@ -124,16 +124,19 @@ export function AppointmentDetailsDrawer({
       });
       if (!res.ok) {
         const data = (await res.json()) as { error?: string };
-        setError(data.error ?? "تعذر التراجع");
+        setError(data.error ?? t("drawer.error.undo"));
         return;
       }
       toast(
-        `تم التراجع: أُعيد موعد ${appointment?.patientName} وأُعيد ${fill.patientName} إلى قائمة الانتظار`,
+        t("drawer.undoToast", {
+          patient: appointment?.patientName ?? "",
+          name: fill.patientName,
+        }),
       );
       setFill(null);
       onChanged();
     } catch {
-      setError("تعذر الاتصال بالخادم، حاول مرة أخرى");
+      setError(t("common.error.network"));
     } finally {
       setUndoing(false);
     }
@@ -150,54 +153,58 @@ export function AppointmentDetailsDrawer({
 
   return (
     <>
-      <Drawer open onClose={onClose} title="تفاصيل الموعد">
+      <Drawer open onClose={onClose} title={t("drawer.title")}>
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-base font-semibold text-ink-900">
+            <p className="text-ink-900 text-base font-semibold">
               {appointment.patientName}
             </p>
-            <StatusPill tone={meta.tone}>{meta.label}</StatusPill>
+            <StatusPill tone={meta.tone}>{t(meta.labelKey)}</StatusPill>
           </div>
 
-          <dl className="flex flex-col gap-2 rounded-panel border border-warm-200 bg-surface px-4 py-3 text-sm">
+          <dl className="rounded-panel border-warm-200 bg-surface flex flex-col gap-2 border px-4 py-3 text-sm">
             <div className="flex items-center justify-between gap-3">
-              <dt className="text-warm-500">اليوم</dt>
-              <dd className="font-medium text-ink-900">
-                {formatDayLabel(new Date(`${appointment.startsAt.slice(0, 10)}T00:00:00`))}
+              <dt className="text-warm-500">{t("drawer.day")}</dt>
+              <dd className="text-ink-900 font-medium">
+                {formatDayLabel(
+                  new Date(`${appointment.startsAt.slice(0, 10)}T00:00:00`),
+                  locale,
+                )}
               </dd>
             </div>
             <div className="flex items-center justify-between gap-3">
-              <dt className="text-warm-500">الوقت</dt>
-              <dd className="numeric font-medium text-ink-900">
-                {formatTime(appointment.startsAt)} · {appointment.durationMin} دقيقة
+              <dt className="text-warm-500">{t("drawer.time")}</dt>
+              <dd className="numeric text-ink-900 font-medium">
+                {formatTime(appointment.startsAt, locale)} ·{" "}
+                {t("timeline.duration", { minutes: appointment.durationMin })}
               </dd>
             </div>
             <div className="flex items-center justify-between gap-3">
-              <dt className="text-warm-500">السبب</dt>
-              <dd className="font-medium text-ink-900">
-                {appointment.reason || "بدون سبب محدد"}
+              <dt className="text-warm-500">{t("drawer.reason")}</dt>
+              <dd className="text-ink-900 font-medium">
+                {appointment.reason || t("drawer.noReason")}
               </dd>
             </div>
             <div className="flex items-center justify-between gap-3">
-              <dt className="text-warm-500">الطبيب</dt>
-              <dd className="font-medium text-ink-900">
+              <dt className="text-warm-500">{t("drawer.doctor")}</dt>
+              <dd className="text-ink-900 font-medium">
                 {appointment.staffName
                   ? doctorDisplayName(appointment.staffName)
-                  : "بلا طبيب"}
+                  : t("drawer.noDoctor")}
               </dd>
             </div>
             {appointment.note && (
               <div className="flex items-start justify-between gap-3">
-                <dt className="shrink-0 text-warm-500">ملاحظة</dt>
-                <dd className="text-start text-ink-900">{appointment.note}</dd>
+                <dt className="text-warm-500 shrink-0">{t("drawer.note")}</dt>
+                <dd className="text-ink-900 text-start">{appointment.note}</dd>
               </div>
             )}
           </dl>
 
           {nexts.length > 0 && (
             <div className="flex flex-col gap-2">
-              <p className="text-xs font-semibold text-warm-600">
-                تعديل الحالة
+              <p className="text-warm-600 text-xs font-semibold">
+                {t("drawer.changeStatus")}
               </p>
               <div className="flex flex-wrap gap-2">
                 {nexts.map((to) => (
@@ -213,7 +220,7 @@ export function AppointmentDetailsDrawer({
                     disabled={pending !== null && pending !== to}
                     onClick={() => requestTransition(to)}
                   >
-                    {STATUS_LABEL(to)}
+                    {t(STATUS_META[to].labelKey)}
                   </Button>
                 ))}
               </div>
@@ -221,24 +228,22 @@ export function AppointmentDetailsDrawer({
           )}
 
           {nexts.length === 0 && (
-            <p className="rounded-field border border-warm-200 bg-surface-sunken px-3 py-2 text-xs text-warm-600">
-              هذه الحالة نهائية — لا انتقالات أخرى مسموحة.
+            <p className="rounded-field border-warm-200 bg-surface-sunken text-warm-600 border px-3 py-2 text-xs">
+              {t("drawer.finalStatus")}
             </p>
           )}
 
           {fill && (
             <div
               role="status"
-              className="flex flex-col gap-2 rounded-field border border-primary-200 bg-primary-50 px-3 py-2.5 text-sm"
+              className="rounded-field border-primary-200 bg-primary-50 flex flex-col gap-2 border px-3 py-2.5 text-sm"
             >
               <p className="text-primary-800">
-                حُجز المنتظر{" "}
-                <span className="font-semibold">{fill.patientName}</span> في
-                فجوة{" "}
-                <span className="numeric font-semibold">
-                  {formatTime(fill.startsAt)}
-                </span>{" "}
-                تلقائياً ({fill.durationMin} دقيقة).
+                {t("drawer.fillNotice", {
+                  name: fill.patientName,
+                  time: formatTime(fill.startsAt, locale),
+                  minutes: fill.durationMin,
+                })}
               </p>
               <div className="flex gap-2">
                 <Button
@@ -249,7 +254,7 @@ export function AppointmentDetailsDrawer({
                   onClick={() => void undoFill()}
                 >
                   <Undo2 size={14} aria-hidden />
-                  تراجع عن الحجز التلقائي
+                  {t("drawer.undoFill")}
                 </Button>
                 <Button
                   size="sm"
@@ -259,7 +264,7 @@ export function AppointmentDetailsDrawer({
                   }}
                   disabled={undoing}
                 >
-                  موافق
+                  {t("drawer.ok")}
                 </Button>
               </div>
             </div>
@@ -268,7 +273,7 @@ export function AppointmentDetailsDrawer({
           {error && (
             <p
               role="alert"
-              className="rounded-field border border-danger-300 bg-danger-50 px-3 py-2 text-xs text-danger-700"
+              className="rounded-field border-danger-300 bg-danger-50 text-danger-700 border px-3 py-2 text-xs"
             >
               {error}
             </p>
@@ -282,16 +287,22 @@ export function AppointmentDetailsDrawer({
           onClose={() => setConfirming(null)}
           title={
             confirmedTarget === "CANCELLED"
-              ? "تأكيد إلغاء الموعد"
-              : "تأكيد تسجيل عدم الحضور"
+              ? t("drawer.confirmCancelTitle")
+              : t("drawer.confirmNoShowTitle")
           }
           description={
             confirmedTarget === "CANCELLED"
-              ? `سيُلغى موعد ${appointment.patientName} ويُفتح وقته في الجدول. إن وُجد منتظر مناسب سيُحجز في الفجوة تلقائياً مع إمكانية التراجع بضغطة.`
-              : `سيُسجَّل أن ${appointment.patientName} لم يحضر هذا الموعد، ويُفتح وقته في الجدول. إن وُجد منتظر مناسب سيُحجز في الفجوة تلقائياً مع إمكانية التراجع بضغطة.`
+              ? t("drawer.confirmCancelDesc", {
+                  patient: appointment.patientName,
+                })
+              : t("drawer.confirmNoShowDesc", {
+                  patient: appointment.patientName,
+                })
           }
           confirmLabel={
-            confirmedTarget === "CANCELLED" ? "تأكيد الإلغاء" : "تأكيد عدم الحضور"
+            confirmedTarget === "CANCELLED"
+              ? t("drawer.confirmCancel")
+              : t("drawer.confirmNoShow")
           }
           loading={pending === confirmedTarget}
           onConfirm={() => void transition(confirmedTarget)}

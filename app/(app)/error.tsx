@@ -2,15 +2,17 @@
 
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 // حدّ الخطأ على مستوى مجموعة التطبيق — أي استثناء في صفحة خادمية يعرض
-// بطاقة إعادة محاولة بالعربية بدل شاشة الانهيار الافتراضية غير المنسقة.
+// بطاقة إعادة محاولة بلغة الجلسة بدل شاشة الانهيار الافتراضية غير المنسقة.
 export default function AppError({
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 px-6 text-center">
       <AlertTriangle
@@ -20,15 +22,13 @@ export default function AppError({
         strokeWidth={1.3}
       />
       <div className="space-y-1">
-        <p className="font-display text-lg font-semibold text-ink-900">
-          حدث خطأ غير متوقع
+        <p className="font-display text-ink-900 text-lg font-semibold">
+          {t("common.error.unexpected")}
         </p>
-        <p className="text-sm text-warm-500">
-          تعذر عرض الصفحة — أعد المحاولة، فإن استمر الخطأ تواصل مع الدعم.
-        </p>
+        <p className="text-warm-500 text-sm">{t("error.desc")}</p>
       </div>
       <Button variant="primary" onClick={reset}>
-        إعادة المحاولة
+        {t("common.retry")}
       </Button>
     </div>
   );

@@ -1,4 +1,5 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
+import { mount } from "./ui";
 import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
 import { AppShell } from "@/components/shell/AppShell";
 import { emitLedgerChanged } from "@/lib/ledger-events";
@@ -14,7 +15,10 @@ vi.mock("next/navigation", () => ({
 // في الدفتر (حدث ledger:changed) فتعكس البطاقة آخر عملية فوراً.
 
 function summaryResponse(outstandingDuesUsd: number, patientsWithDues: number) {
-  return { ok: true, json: async () => ({ outstandingDuesUsd, patientsWithDues }) };
+  return {
+    ok: true,
+    json: async () => ({ outstandingDuesUsd, patientsWithDues }),
+  };
 }
 
 describe("شارة المستحقات تتجدد بعد كل كتابة في الدفتر", () => {
@@ -28,7 +32,7 @@ describe("شارة المستحقات تتجدد بعد كل كتابة في ا�
   afterEach(() => vi.unstubAllGlobals());
 
   function renderShell() {
-    render(
+    mount(
       <AppShell
         userName="د. سامر"
         clinicName="عيادة النور"

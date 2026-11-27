@@ -6,34 +6,32 @@ type TableProps = React.TableHTMLAttributes<HTMLTableElement> & {
   wrapperClassName?: string;
 };
 
-export const Table = forwardRef<HTMLTableElement, TableProps>(
-  function Table({ className, wrapperClassName, ...rest }, ref) {
-    return (
-      <div
-        className={cn(
-          "w-full overflow-x-auto rounded-panel bg-surface-raised shadow-md",
-          wrapperClassName,
-        )}
-      >
-        <table
-          ref={ref}
-          className={cn("w-full border-collapse text-sm", className)}
-          {...rest}
-        />
-      </div>
-    );
-  },
-);
+export const Table = forwardRef<HTMLTableElement, TableProps>(function Table(
+  { className, wrapperClassName, ...rest },
+  ref,
+) {
+  return (
+    <div
+      className={cn(
+        "rounded-panel bg-surface-raised w-full overflow-x-auto shadow-md",
+        wrapperClassName,
+      )}
+    >
+      <table
+        ref={ref}
+        className={cn("w-full border-collapse text-sm", className)}
+        {...rest}
+      />
+    </div>
+  );
+});
 
 export function THead({
   className,
   ...rest
 }: React.HTMLAttributes<HTMLTableSectionElement>) {
   return (
-    <thead
-      className={cn("bg-warm-100 text-ink-900", className)}
-      {...rest}
-    />
+    <thead className={cn("bg-warm-100 text-ink-900", className)} {...rest} />
   );
 }
 
@@ -44,7 +42,7 @@ export function TRow({
   return (
     <tr
       className={cn(
-        "border-t border-warm-200 transition-colors hover:bg-surface-hover",
+        "border-warm-200 hover:bg-surface-hover border-t transition-colors",
         className,
       )}
       {...rest}
@@ -60,7 +58,7 @@ export function TH({
     <th
       scope="col"
       className={cn(
-        "border-b border-primary-500/20 px-4 py-3 text-start text-[11px] font-bold text-primary-800",
+        "border-primary-500/20 text-primary-800 border-b px-4 py-3 text-start text-[11px] font-bold",
         className,
       )}
       {...rest}
@@ -72,7 +70,5 @@ export function TD({
   className,
   ...rest
 }: React.TdHTMLAttributes<HTMLTableCellElement>) {
-  return (
-    <td className={cn("px-4 py-3.5 text-ink-900", className)} {...rest} />
-  );
+  return <td className={cn("text-ink-900 px-4 py-3.5", className)} {...rest} />;
 }

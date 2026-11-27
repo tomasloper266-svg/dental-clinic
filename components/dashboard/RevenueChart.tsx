@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useMoney } from "@/components/ui/CurrencyContext";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { cn } from "@/components/ui/cn";
 import { FilterPills } from "@/components/ui/Toolbar";
+import { formatDate } from "@/lib/i18n/format";
 import { monthLabel } from "@/lib/reports-period-view";
 import type { RevenueDualPoint } from "@/lib/revenue-views";
 
@@ -21,15 +23,29 @@ export function shortDayLabel(dateKey: string): string {
   return DAY_FMT.format(new Date(dateKey + "T00:00:00Z"));
 }
 
-/** خيارات نافذة الرسم و مقياسه — ثابتة الترتيب */
+/** تسمية اليوم القصيرة حسب اللغة — العربية على صيغة المرجع نفسها */
+function xLabelDay(dateKey: string, locale: "ar" | "en"): string {
+  return locale === "ar"
+    ? shortDayLabel(dateKey)
+    : formatDate(dateKey + "T00:00:00Z", "en", { weekday: "short" });
+}
+
+/** تسمية الشهر القصيرة حسب اللغة — العربية عبر monthLabel المرجعية */
+function xLabelMonth(dateKey: string, locale: "ar" | "en"): string {
+  return locale === "ar"
+    ? monthLabel(dateKey)
+    : formatDate(dateKey + "T00:00:00Z", "en", { month: "short" });
+}
+
+/** خيارات نافذة الرسم و مقياسه — تُترجم عند الرسم حسب اللغة */
 const WINDOW_OPTIONS = [
-  { value: "7d", label: "آخر 7 أيام" },
-  { value: "6m", label: "آخر 6 أشهر" },
+  { value: "7d", labelKey: "chart.last7Days" },
+  { value: "6m", labelKey: "chart.last6Months" },
 ] as const;
 
 const SCALE_OPTIONS = [
-  { value: "charges", label: "رسوم صادرة" },
-  { value: "collected", label: "تحصيل" },
+  { value: "charges", labelKey: "chart.charges" },
+  { value: "collected", labelKey: "chart.collected" },
 ] as const;
 
 type WindowChoice = (typeof WINDOW_OPTIONS)[number]["value"];
@@ -41,7 +57,9 @@ type ScaleChoice = (typeof SCALE_OPTIONS)[number]["value"];
  */
 export function barHeights(values: ReadonlyArray<number>): number[] {
   const max = Math.max(...values, 0);
-  return values.map((value) => (max > 0 ? Math.max((value / max) * 100, 4) : 4));
+  return values.map((value) =>
+    max > 0 ? Math.max((value / max) * 100, 4) : 4,
+  );
 }
 
 /** قيمة العمود حسب المقياس المختار — لا خلط بين التعريفين أبداً */
@@ -61,29 +79,40 @@ export function RevenueChart({
   monthly: RevenueDualPoint[];
 }) {
   const money = useMoney();
+  const { t, locale } = useI18n();
   const [windowChoice, setWindowChoice] = useState<WindowChoice>("7d");
   const [scaleChoice, setScaleChoice] = useState<ScaleChoice>("charges");
 
   const points = windowChoice === "7d" ? daily : monthly;
   const values = points.map((point) => pointValue(point, scaleChoice));
   const heights = barHeights(values);
-  const scaleLabel = scaleChoice === "charges" ? "رسوم صادرة" : "تحصيل";
-  const windowLabel = windowChoice === "7d" ? "آخر 7 أيام" : "آخر 6 أشهر";
+  const scaleLabel = t(
+    scaleChoice === "charges" ? "chart.charges" : "chart.collected",
+  );
+  const windowLabel = t(
+    windowChoice === "7d" ? "chart.last7Days" : "chart.last6Months",
+  );
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
         <FilterPills
-          ariaLabel="نافذة رسم الإيراد"
+          ariaLabel={t("chart.windowAria")}
           value={windowChoice}
           onChange={setWindowChoice}
-          options={WINDOW_OPTIONS}
+          options={WINDOW_OPTIONS.map(({ value, labelKey }) => ({
+            value,
+            label: t(labelKey),
+          }))}
         />
         <FilterPills
-          ariaLabel="مقياس الإيراد"
+          ariaLabel={t("chart.scaleAria")}
           value={scaleChoice}
           onChange={setScaleChoice}
-          options={SCALE_OPTIONS}
+          options={SCALE_OPTIONS.map(({ value, labelKey }) => ({
+            value,
+            label: t(labelKey),
+          }))}
         />
       </div>
       <div
@@ -96,20 +125,20 @@ export function RevenueChart({
             key={point.key}
             className="flex h-full flex-1 flex-col items-center justify-end gap-1.5"
           >
-            <span className="numeric text-[10px] text-warm-500">
+            <span className="numeric text-warm-500 text-[10px]">
               {values[index] > 0 ? money(values[index]) : ""}
             </span>
             <div
               className={cn(
-                "w-full max-w-9 rounded-t-md bg-primary-500/85",
+                "bg-primary-500/85 w-full max-w-9 rounded-t-md",
                 values[index] === 0 && "bg-primary-200",
               )}
               style={{ height: `${heights[index]}%` }}
             />
-            <span className="text-[10px] text-warm-400">
+            <span className="text-warm-400 text-[10px]">
               {windowChoice === "7d"
-                ? shortDayLabel(point.key)
-                : monthLabel(point.key)}
+                ? xLabelDay(point.key, locale)
+                : xLabelMonth(point.key, locale)}
             </span>
           </div>
         ))}

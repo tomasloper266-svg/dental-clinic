@@ -1,8 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  planBoardColumns,
-  chartToothHref,
-} from "@/lib/treatment-plan-view";
+import { planBoardColumns, chartToothHref } from "@/lib/treatment-plan-view";
 import type { PlanItemDto } from "@/lib/services/treatment-plan";
 
 function item(overrides: Partial<PlanItemDto>): PlanItemDto {
@@ -60,9 +57,7 @@ describe("planBoardColumns", () => {
 
 describe("chartToothHref", () => {
   it("يبني رابط المخطط مع المريض والسن", () => {
-    expect(chartToothHref("pat_1", 26)).toBe(
-      "/chart?patient=pat_1&tooth=26",
-    );
+    expect(chartToothHref("pat_1", 26)).toBe("/chart?patient=pat_1&tooth=26");
   });
 
   it("يشفّر معرّف المريض في الرابط", () => {

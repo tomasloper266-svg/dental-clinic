@@ -62,6 +62,7 @@ describeDb("قراءات الدواعم — integration", () => {
     await prisma.instructionTemplate.deleteMany();
     await prisma.expense.deleteMany();
     await prisma.material.deleteMany();
+    await prisma.instructionSend.deleteMany();
     await prisma.patient.deleteMany();
     await prisma.user.deleteMany();
     await prisma.clinic.deleteMany();

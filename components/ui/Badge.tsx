@@ -1,12 +1,7 @@
 import { cn } from "./cn";
 
 export type BadgeTone =
-  | "neutral"
-  | "success"
-  | "warning"
-  | "danger"
-  | "info"
-  | "plum";
+  "neutral" | "success" | "warning" | "danger" | "info" | "plum";
 
 type BadgeProps = React.HTMLAttributes<HTMLSpanElement> & {
   tone?: BadgeTone;

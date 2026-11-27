@@ -1,4 +1,7 @@
+"use client";
+
 import { ArrowUpDown, Download, Search } from "lucide-react";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { cn } from "./cn";
 
 type SearchInputProps = Omit<
@@ -21,20 +24,16 @@ export function SearchInput({
   return (
     <label
       className={cn(
-        "relative flex h-9 w-full max-w-64 items-center rounded-full border border-warm-200 bg-surface-raised transition-colors focus-within:border-primary-400",
+        "border-warm-200 bg-surface-raised focus-within:border-primary-400 relative flex h-9 w-full max-w-64 items-center rounded-full border transition-colors",
         className,
       )}
     >
-      <Search
-        size={15}
-        aria-hidden
-        className="text-warm-400 ms-3 shrink-0"
-      />
+      <Search size={15} aria-hidden className="text-warm-400 ms-3 shrink-0" />
       <input
         type="search"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="numeric h-full w-full bg-transparent px-2 text-xs text-ink-900 outline-none placeholder:text-warm-400"
+        className="numeric text-ink-900 placeholder:text-warm-400 h-full w-full bg-transparent px-2 text-xs outline-none"
         {...rest}
       />
     </label>
@@ -100,10 +99,10 @@ export function FilterPills<V extends string>({
             onClick={() => onChange(option.value)}
             className={cn(
               "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors",
-              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
+              "focus-visible:outline-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2",
               active
                 ? accentClasses.active
-                : "border border-warm-200 bg-surface-raised text-warm-600 hover:bg-surface-hover",
+                : "border-warm-200 bg-surface-raised text-warm-600 hover:bg-surface-hover border",
             )}
           >
             {option.label}
@@ -148,7 +147,7 @@ export function SortSelect<V extends string>({
   return (
     <label
       className={cn(
-        "inline-flex h-8 items-center gap-1.5 rounded-full border border-warm-200 bg-surface-raised px-3 text-xs text-warm-600 transition-colors focus-within:border-primary-400",
+        "border-warm-200 bg-surface-raised text-warm-600 focus-within:border-primary-400 inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs transition-colors",
         className,
       )}
     >
@@ -157,7 +156,7 @@ export function SortSelect<V extends string>({
         value={value}
         onChange={(event) => onChange(event.target.value as V)}
         aria-label={ariaLabel}
-        className="cursor-pointer bg-transparent text-xs text-ink-900 outline-none"
+        className="text-ink-900 cursor-pointer bg-transparent text-xs outline-none"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -173,18 +172,19 @@ type ExportButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement>;
 
 /** زر تصدير بشكل حبة محددة — بند شريط الأدوات عند الحاجة (CSV مثلاً) */
 export function ExportButton({ className, ...rest }: ExportButtonProps) {
+  const { t } = useI18n();
   return (
     <button
       type="button"
       className={cn(
-        "inline-flex h-8 items-center gap-1.5 rounded-full border border-warm-200 bg-surface-raised px-3 text-xs font-medium text-warm-600 transition-colors hover:bg-surface-hover active:bg-surface-sunken",
-        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
+        "border-warm-200 bg-surface-raised text-warm-600 hover:bg-surface-hover active:bg-surface-sunken inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
+        "focus-visible:outline-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2",
         className,
       )}
       {...rest}
     >
       <Download size={14} aria-hidden />
-      تصدير CSV
+      {t("ui.exportCsv")}
     </button>
   );
 }

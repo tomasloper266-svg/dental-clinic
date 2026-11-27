@@ -3,6 +3,8 @@
 // weekRange. المنسّقات صريحة بـ timeZone: "UTC" حتى لا ينزاح التسميل في
 // بيئة متصفح بمنطقة سالبة.
 
+import type { Locale } from "@/lib/i18n/core";
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type CalendarCell = {
@@ -12,16 +14,15 @@ export type CalendarCell = {
   inMonth: boolean;
 };
 
-/** عناوين أعمدة التقويم — السبت أول الأسبوع، بنفس ترتيب weekRange */
-export const WEEKDAY_HEADERS = [
-  "السبت",
-  "الأحد",
-  "الاثنين",
-  "الثلاثاء",
-  "الأربعاء",
-  "الخميس",
-  "الجمعة",
-] as const;
+/** رؤوس أعمدة الأسبوع حسب اللغة — السبت أول الأسبوع بنفس ترتيب weekDays. */
+export function weekdayHeaders(locale: Locale = "ar"): string[] {
+  const fmt = weekdayFmt(locale);
+  // 2024-01-06 سبت — مرجع ثابت لنمذجة الأسبوع دون اعتماد على يوم اليوم.
+  const saturday = Date.UTC(2024, 0, 6);
+  return Array.from({ length: 7 }, (_, i) =>
+    fmt.format(new Date(saturday + i * DAY_MS)),
+  );
+}
 
 function parseIsoDate(date: string): Date {
   return new Date(`${date}T00:00:00Z`);
@@ -59,7 +60,9 @@ export function monthGrid(date: string): CalendarCell[][] {
   const month = day.getUTCMonth();
   const monthEnd = new Date(Date.UTC(day.getUTCFullYear(), month + 1, 0));
   const first = new Date(Date.UTC(day.getUTCFullYear(), month, 1));
-  const gridStart = new Date(first.getTime() - daysSinceSaturday(first) * DAY_MS);
+  const gridStart = new Date(
+    first.getTime() - daysSinceSaturday(first) * DAY_MS,
+  );
 
   const weeks: CalendarCell[][] = [];
   let cursor = gridStart.getTime();
@@ -67,7 +70,10 @@ export function monthGrid(date: string): CalendarCell[][] {
     const week: CalendarCell[] = [];
     for (let i = 0; i < 7; i++) {
       const cell = new Date(cursor + i * DAY_MS);
-      week.push({ date: toIsoDate(cell), inMonth: cell.getUTCMonth() === month });
+      week.push({
+        date: toIsoDate(cell),
+        inMonth: cell.getUTCMonth() === month,
+      });
     }
     weeks.push(week);
     cursor += 7 * DAY_MS;
@@ -90,21 +96,29 @@ export function weekRangeLabel(days: string[]): string {
   return `${numericDate(days[0])} — ${numericDate(days[days.length - 1])}`;
 }
 
-// «الجمعة 2026/11/13» — اسم اليوم + التاريخ الرقمي بنمط المرجع (سنة/شهر/يوم).
-const WEEKDAY_FMT = new Intl.DateTimeFormat("ar-SY-u-nu-latn", {
-  weekday: "long",
-  timeZone: "UTC",
-});
+/** منسّق أسماء أيام الأسبوع — العربية بنمط المرجع، الإنجليزية LTR. */
+function weekdayFmt(locale: Locale): Intl.DateTimeFormat {
+  return new Intl.DateTimeFormat(
+    locale === "en" ? "en-US" : "ar-SY-u-nu-latn",
+    { weekday: "long", timeZone: "UTC" },
+  );
+}
 
 /** تسمية ترويسة الصفحة — «السبت، 2026/11/14» باسم اليوم والتاريخ الرقمي. */
-export function headerDateLabel(date: string): string {
-  return `${WEEKDAY_FMT.format(parseIsoDate(date))}، ${numericDate(date)}`;
+export function headerDateLabel(date: string, locale: Locale = "ar"): string {
+  const sep = locale === "en" ? ", " : "، ";
+  return `${weekdayFmt(locale).format(parseIsoDate(date))}${sep}${numericDate(date)}`;
 }
 
 /** تسمية اليوم المفرد بأسلوب المرجع، مع لاحقة (اليوم) إذا كان تاريخ اليوم. */
-export function dayDateLabel(date: string, today: string): string {
-  const base = `${WEEKDAY_FMT.format(parseIsoDate(date))} ${numericDate(date)}`;
-  return date === today ? `${base} (اليوم)` : base;
+export function dayDateLabel(
+  date: string,
+  today: string,
+  locale: Locale = "ar",
+): string {
+  const base = `${weekdayFmt(locale).format(parseIsoDate(date))} ${numericDate(date)}`;
+  const todaySuffix = locale === "en" ? " (today)" : " (اليوم)";
+  return date === today ? `${base}${todaySuffix}` : base;
 }
 
 /** «2026/11/08» — تاريخ رقمي صريح بحدود UTC بترتيب المرجع. */

@@ -1,7 +1,4 @@
-import {
-  displayPartsFromUsd,
-  displayCostPartsFromUsd,
-} from "@/lib/currency";
+import { displayPartsFromUsd, displayCostPartsFromUsd } from "@/lib/currency";
 import { cn } from "./cn";
 import { useDisplayCurrency } from "./CurrencyContext";
 
@@ -39,7 +36,9 @@ export function DualAmount({
     ? displayCostPartsFromUsd(usd, usdRate, currency ?? contextCurrency)
     : displayPartsFromUsd(usd, usdRate, currency ?? contextCurrency);
   return (
-    <span className={cn("inline-flex flex-col items-end leading-tight", className)}>
+    <span
+      className={cn("inline-flex flex-col items-end leading-tight", className)}
+    >
       <span
         className={cn(
           "numeric font-semibold",
@@ -49,7 +48,9 @@ export function DualAmount({
       >
         {parts.primary}
       </span>
-      <span className="numeric text-[11px] text-warm-500">{parts.secondary}</span>
+      <span className="numeric text-warm-500 text-[11px]">
+        {parts.secondary}
+      </span>
     </span>
   );
 }

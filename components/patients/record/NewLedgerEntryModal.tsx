@@ -6,26 +6,20 @@ import { Plus } from "lucide-react";
 import type { LedgerEntryType } from "@/lib/services/ledger";
 import type { PlanItemDto } from "@/lib/services/treatment-plan";
 import { isUsdAmount } from "@/lib/currency";
-import { LEDGER_ENTRY_TYPE_META } from "@/lib/ledger-view";
 import { toothNameAr } from "@/lib/odontogram/fdi";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { emitLedgerChanged } from "@/lib/ledger-events";
+import { useI18n } from "@/components/i18n/I18nProvider";
+import type { TranslationKey } from "@/lib/i18n/core";
 
 // تسجيل قيد مالي جديد من ملف المريض — عبر مسار الدفتر القائم (POST فقط:
 // القيد غير قابل للتعديل أو الحذف، والتصحيح بقيد عكسي). إشارة المبلغ حسب
 // النوع يتحقق منها الخادم ورسالته العربية تظهر داخلياً كما هي.
 
 const ENTRY_TYPES = ["CHARGE", "PAYMENT", "ADJUSTMENT", "REFUND"] as const;
-
-const TYPE_HINTS: Record<LedgerEntryType, string> = {
-  CHARGE: "موجب — رسوم علاج تُضاف على المريض",
-  PAYMENT: "سالب — دفعة تُخصم من رصيده",
-  ADJUSTMENT: "بالاتجاهين — تصحيح يُضاف أو يُخصم",
-  REFUND: "موجب — مبلغ مسترد للمريض",
-};
 
 type Props = {
   open: boolean;
@@ -48,6 +42,7 @@ export default function NewLedgerEntryModal({
 }: Props) {
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useI18n();
   const [type, setType] = useState<LedgerEntryType>(initialType);
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -69,7 +64,7 @@ export default function NewLedgerEntryModal({
   async function submit() {
     const amountUsd = Number(amount);
     if (!isUsdAmount(amountUsd) || amountUsd === 0) {
-      setError("المبلغ يجب أن يكون رقماً غير صفري بمنزلتين عشريتين كحد أقصى");
+      setError(t("ledger.error.amount"));
       return;
     }
     setSaving(true);
@@ -90,10 +85,10 @@ export default function NewLedgerEntryModal({
       );
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
-        setError(data.error ?? "تعذر إنشاء القيد");
+        setError(data.error ?? t("ledger.error.create"));
         return;
       }
-      toast("تم تسجيل القيد بنجاح");
+      toast(t("ledger.toastCreated"));
       emitLedgerChanged();
       router.refresh();
       onClose();
@@ -105,23 +100,23 @@ export default function NewLedgerEntryModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="قيد مالي جديد">
+    <Modal open={open} onClose={onClose} title={t("ledger.newEntry")}>
       <div className="flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-3">
-          <Field label="نوع القيد" htmlFor="ledger-type">
+          <Field label={t("ledger.field.type")} htmlFor="ledger-type">
             <Select
               id="ledger-type"
               value={type}
               onChange={(e) => setType(e.target.value as LedgerEntryType)}
             >
-              {ENTRY_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {LEDGER_ENTRY_TYPE_META[t].labelAr}
+              {ENTRY_TYPES.map((entryType) => (
+                <option key={entryType} value={entryType}>
+                  {t(`ledger.type.${entryType}` as TranslationKey)}
                 </option>
               ))}
             </Select>
           </Field>
-          <Field label="المبلغ ($)" htmlFor="ledger-amount">
+          <Field label={t("ledger.field.amount")} htmlFor="ledger-amount">
             <Input
               id="ledger-amount"
               type="number"
@@ -135,31 +130,36 @@ export default function NewLedgerEntryModal({
           </Field>
         </div>
 
-        <p className="text-warm-500 -mt-2 text-[11px]">{TYPE_HINTS[type]}</p>
+        <p className="text-warm-500 -mt-2 text-[11px]">
+          {t(`ledger.hint.${type}` as TranslationKey)}
+        </p>
 
-        <Field label="العلاج المرتبط (اختياري)" htmlFor="ledger-item">
+        <Field label={t("ledger.field.linked")} htmlFor="ledger-item">
           <Select
             id="ledger-item"
             value={treatmentItemId}
             onChange={(e) => setTreatmentItemId(e.target.value)}
           >
-            <option value="">بلا رابط بند</option>
+            <option value="">{t("ledger.option.noItem")}</option>
             {planItems.map((item) => (
               <option key={item.id} value={item.id}>
-                السن {item.toothFdi} ({toothNameAr(item.toothFdi)}) —{" "}
-                {item.procedure}
+                {t("ledger.option.tooth", {
+                  tooth: item.toothFdi,
+                  name: toothNameAr(item.toothFdi) ?? "",
+                  procedure: item.procedure,
+                })}
               </option>
             ))}
           </Select>
         </Field>
 
-        <Field label="ملاحظة (اختياري)" htmlFor="ledger-note">
+        <Field label={t("ledger.field.note")} htmlFor="ledger-note">
           <Input
             id="ledger-note"
             type="text"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="مثال: دفعة أولى على الخطة"
+            placeholder={t("ledger.notePlaceholder")}
             maxLength={300}
           />
         </Field>
@@ -167,7 +167,7 @@ export default function NewLedgerEntryModal({
         {error && (
           <p
             role="alert"
-            className="rounded-field border border-danger-300 bg-danger-50 px-3 py-2 text-xs text-danger-700"
+            className="rounded-field border-danger-300 bg-danger-50 text-danger-700 border px-3 py-2 text-xs"
           >
             {error}
           </p>
@@ -176,10 +176,10 @@ export default function NewLedgerEntryModal({
         <div className="flex gap-2">
           <Button onClick={submit} loading={saving}>
             <Plus size={16} aria-hidden />
-            {saving ? "جارٍ الحفظ…" : "تسجيل القيد"}
+            {saving ? t("common.loading") : t("ledger.submit")}
           </Button>
           <Button variant="secondary" onClick={onClose} disabled={saving}>
-            إلغاء
+            {t("common.cancel")}
           </Button>
         </div>
       </div>

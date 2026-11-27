@@ -19,24 +19,29 @@ export function firstLetter(name: string): string {
  * خلية كيان موحّدة — أفاتار دائري بالحرف الأول + اسم بارز وسطر فرعي باهت،
  * لصفوف المرضى والمدفوعات والمواد في كل الجداول.
  */
-export function EntityCell({ name, subtitle, icon, className }: EntityCellProps) {
+export function EntityCell({
+  name,
+  subtitle,
+  icon,
+  className,
+}: EntityCellProps) {
   return (
     <div className={cn("flex items-center gap-2.5", className)}>
       <span
         aria-hidden
-        className="grid size-9 shrink-0 place-items-center rounded-full bg-primary-500/10 text-sm font-bold text-primary-700"
+        className="bg-primary-500/10 text-primary-700 grid size-9 shrink-0 place-items-center rounded-full text-sm font-bold"
       >
         {firstLetter(name)}
       </span>
       <span className="min-w-0">
         <span className="flex items-center gap-1">
-          <span className="block truncate text-sm font-semibold text-ink-900">
+          <span className="text-ink-900 block truncate text-sm font-semibold">
             {name}
           </span>
           {icon}
         </span>
         {subtitle && (
-          <span className="numeric block truncate text-xs text-warm-500">
+          <span className="numeric text-warm-500 block truncate text-xs">
             {subtitle}
           </span>
         )}

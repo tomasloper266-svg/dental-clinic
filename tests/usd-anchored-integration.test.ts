@@ -4,11 +4,21 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { prisma, getBasePrisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
-import { tenantContextFromSession, type TenantContext } from "@/lib/tenant/context";
-import { createLedgerEntry, listLedgerEntries, computeBalance } from "@/lib/services/ledger";
+import {
+  tenantContextFromSession,
+  type TenantContext,
+} from "@/lib/tenant/context";
+import {
+  createLedgerEntry,
+  listLedgerEntries,
+  computeBalance,
+} from "@/lib/services/ledger";
 import { buildSnapshot, restoreSnapshot } from "@/lib/services/backup";
 import { updateProfile } from "@/lib/services/account";
-import { LEGACY_SNAPSHOT_VERSION, type ClinicSnapshot } from "@/lib/backup-schema";
+import {
+  LEGACY_SNAPSHOT_VERSION,
+  type ClinicSnapshot,
+} from "@/lib/backup-schema";
 
 // اختبارات تكامل قلب الأساس — الدولار وحدة التخزين والليرة مشتقة:
 // استعادة لقطة قديمة (ليرة)، وقبول الكسور، وتغيير السعر لا يكتب أي مبلغ
@@ -34,6 +44,7 @@ async function cleanDb(): Promise<void> {
     where: { entryId: { in: entries.map((e) => e.id) } },
   });
   await prisma.ledgerEntry.deleteMany({ where: { clinicId } });
+  await prisma.instructionSend.deleteMany({ where: { clinicId } });
   await prisma.patient.deleteMany({ where: { clinicId } });
   await prisma.user.deleteMany({ where: { clinicId } });
   await prisma.clinic.deleteMany({ where: { id: clinicId } });
@@ -72,7 +83,13 @@ describeDb("قلب الأساس إلى الدولار — integration", () => {
     });
     clinicId = clinic.id;
     const user = await prisma.user.create({
-      data: { clinicId, name: "د. أساس", phone: PHONE, passwordHash, role: "DENTIST" },
+      data: {
+        clinicId,
+        name: "د. أساس",
+        phone: PHONE,
+        passwordHash,
+        role: "DENTIST",
+      },
     });
     userId = user.id;
     const patient = await prisma.patient.create({
@@ -118,7 +135,9 @@ describeDb("قلب الأساس إلى الدولار — integration", () => {
 
     const dto = await listLedgerEntries(ctx, patientId);
     expect(dto.entries.find((e) => e.type === "CHARGE")?.amountUsd).toBe(4.5);
-    expect(dto.entries.find((e) => e.type === "PAYMENT")?.amountUsd).toBe(-12.25);
+    expect(dto.entries.find((e) => e.type === "PAYMENT")?.amountUsd).toBe(
+      -12.25,
+    );
   });
 
   it("تغيير السعر من الإعدادات لا يكتب أي مبلغ مخزن — والدولار ثابت والرصيد كذلك", async () => {
@@ -155,7 +174,13 @@ describeDb("قلب الأساس إلى الدولار — integration", () => {
     expect(Number(after[after.length - 1]!.amountUsd)).toBe(100);
 
     const dto = await listLedgerEntries(ctx, patientId);
-    expect(dto.balance).toBe(computeBalance([{ amountUsd: 4.5 }, { amountUsd: -12.25 }, { amountUsd: 100 }]));
+    expect(dto.balance).toBe(
+      computeBalance([
+        { amountUsd: 4.5 },
+        { amountUsd: -12.25 },
+        { amountUsd: 100 },
+      ]),
+    );
   });
 
   it("تسوية ودفع جزئي فوق فاتورة يبقيان الدفتر متوازناً فوق تغيّر السعر بين العمليات", async () => {
@@ -207,7 +232,9 @@ describeDb("قلب الأساس إلى الدولار — integration", () => {
       select: { amountUsd: true },
     });
     // 4.50 و12.25 و100 و-5 و-30 ليرة بسعر اللقطة 15000 — نفس الدولار المخزن
-    expect(stored.map((r) => Number(r.amountUsd))).toEqual([4.5, -12.25, 100, -5, -30]);
+    expect(stored.map((r) => Number(r.amountUsd))).toEqual([
+      4.5, -12.25, 100, -5, -30,
+    ]);
 
     const dto = await listLedgerEntries(ctx, patientId);
     expect(dto.balance).toBeCloseTo(57.25, 10);

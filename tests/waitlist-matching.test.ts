@@ -8,8 +8,7 @@ import {
 import type { WaitlistCandidate } from "@/lib/services/waitlist-matching";
 
 // ساعات العمل 07:00–14:00 UTC أي 10:00–17:00 بتوقيت دمشق (UTC+3).
-const at = (h: number, m = 0) =>
-  new Date(Date.UTC(2026, 5, 15, h, m));
+const at = (h: number, m = 0) => new Date(Date.UTC(2026, 5, 15, h, m));
 
 function candidate(overrides: Partial<WaitlistCandidate>): WaitlistCandidate {
   return {

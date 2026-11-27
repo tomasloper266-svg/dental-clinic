@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  DEFAULT_LOGO_LETTER,
-  clinicLogoLetter,
-} from "@/lib/branding";
+import { DEFAULT_LOGO_LETTER, clinicLogoLetter } from "@/lib/branding";
 
 describe("clinicLogoLetter", () => {
   it("يُرجع الحرف المخزّن كما هو", () => {
@@ -28,7 +25,6 @@ describe("clinicLogoLetter", () => {
   });
 });
 
-
 // مسح الاسم القديم — «سِنّة» لا يجوز أن يعود إلى شجرة الواجهة،
 // وDENTIQ هو الاسم المعتمد في مكوّن الهوية.
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -48,10 +44,7 @@ function collectSourceFiles(rootDir: string): string[] {
 }
 
 describe("هوية DENTIQ", () => {
-  const roots = [
-    join(process.cwd(), "app"),
-    join(process.cwd(), "components"),
-  ];
+  const roots = [join(process.cwd(), "app"), join(process.cwd(), "components")];
 
   it("لا تواجد للاسم القديم «سِنّة» في app/ وcomponents/", () => {
     const offenders = roots

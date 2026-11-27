@@ -57,9 +57,9 @@ describe("localDayWindow", () => {
 
   it("حركة 00:30 من اليوم التالي خارجة عن النافذة", () => {
     const [, to] = localDayWindow("2026-11-15");
-    expect(new Date("2026-11-15T21:30:00.000Z").getTime()).toBeGreaterThanOrEqual(
-      to.getTime(),
-    );
+    expect(
+      new Date("2026-11-15T21:30:00.000Z").getTime(),
+    ).toBeGreaterThanOrEqual(to.getTime());
   });
 });
 

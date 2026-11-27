@@ -68,6 +68,7 @@ describeDb("مشاهدات الأسنان وخطة العلاج — integration"
     await prisma.instructionTemplate.deleteMany();
     await prisma.expense.deleteMany();
     await prisma.material.deleteMany();
+    await prisma.instructionSend.deleteMany();
     await prisma.patient.deleteMany();
     await prisma.user.deleteMany();
     await prisma.clinic.deleteMany();
@@ -133,9 +134,7 @@ describeDb("مشاهدات الأسنان وخطة العلاج — integration"
 
   it("يرفض endpoints المشاهدات بدون جلسة (401)", async () => {
     const res = await findingsGET(
-      new NextRequest(
-        `http://localhost/api/patients/${patientAId}/findings`,
-      ),
+      new NextRequest(`http://localhost/api/patients/${patientAId}/findings`),
       routeParams({ patientId: patientAId }),
     );
     expect(res.status).toBe(401);
@@ -143,19 +142,15 @@ describeDb("مشاهدات الأسنان وخطة العلاج — integration"
 
   it("تسجيل مشاهدة ينجح وتبقى بعد إعادة القراءة (معيار إعادة التحميل)", async () => {
     const res = await findingsPOST(
-      authed(
-        `/api/patients/${patientAId}/findings`,
-        tokenA,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            toothFdi: 26,
-            kind: "DIAGNOSIS",
-            status: "DECAYED",
-            note: "تسوس قريب",
-          }),
-        },
-      ),
+      authed(`/api/patients/${patientAId}/findings`, tokenA, {
+        method: "POST",
+        body: JSON.stringify({
+          toothFdi: 26,
+          kind: "DIAGNOSIS",
+          status: "DECAYED",
+          note: "تسوس قريب",
+        }),
+      }),
       routeParams({ patientId: patientAId }),
     );
     expect(res.status).toBe(201);
@@ -183,7 +178,11 @@ describeDb("مشاهدات الأسنان وخطة العلاج — integration"
     const write = await findingsPOST(
       authed(`/api/patients/${patientAId}/findings`, tokenB, {
         method: "POST",
-        body: JSON.stringify({ toothFdi: 26, kind: "EXISTING", status: "FILLED" }),
+        body: JSON.stringify({
+          toothFdi: 26,
+          kind: "EXISTING",
+          status: "FILLED",
+        }),
       }),
       routeParams({ patientId: patientAId }),
     );
@@ -249,14 +248,10 @@ describeDb("مشاهدات الأسنان وخطة العلاج — integration"
     expect(item.status).toBe("PROPOSED");
 
     const edited = await planPATCH(
-      authed(
-        `/api/patients/${patientAId}/treatment-plan/${item.id}`,
-        tokenA,
-        {
-          method: "PATCH",
-          body: JSON.stringify({ priceUsd: 1600000, status: "ACCEPTED" }),
-        },
-      ),
+      authed(`/api/patients/${patientAId}/treatment-plan/${item.id}`, tokenA, {
+        method: "PATCH",
+        body: JSON.stringify({ priceUsd: 1600000, status: "ACCEPTED" }),
+      }),
       routeParams({ patientId: patientAId, itemId: item.id }),
     );
     expect(edited.status).toBe(200);
@@ -265,14 +260,10 @@ describeDb("مشاهدات الأسنان وخطة العلاج — integration"
     );
 
     const started = await planStartPOST(
-      authed(
-        `/api/patients/${patientAId}/treatment-plan/${item.id}`,
-        tokenA,
-        {
-          method: "POST",
-          body: JSON.stringify({ resultStatus: "CROWN" }),
-        },
-      ),
+      authed(`/api/patients/${patientAId}/treatment-plan/${item.id}`, tokenA, {
+        method: "POST",
+        body: JSON.stringify({ resultStatus: "CROWN" }),
+      }),
       routeParams({ patientId: patientAId, itemId: item.id }),
     );
     expect(started.status).toBe(200);
@@ -293,26 +284,18 @@ describeDb("مشاهدات الأسنان وخطة العلاج — integration"
 
     // البند المنفَّذ نهائي — لا تعديل ولا تنفيذ ثانٍ.
     const editDone = await planPATCH(
-      authed(
-        `/api/patients/${patientAId}/treatment-plan/${item.id}`,
-        tokenA,
-        {
-          method: "PATCH",
-          body: JSON.stringify({ priceUsd: 1 }),
-        },
-      ),
+      authed(`/api/patients/${patientAId}/treatment-plan/${item.id}`, tokenA, {
+        method: "PATCH",
+        body: JSON.stringify({ priceUsd: 1 }),
+      }),
       routeParams({ patientId: patientAId, itemId: item.id }),
     );
     expect(editDone.status).toBe(409);
     const startAgain = await planStartPOST(
-      authed(
-        `/api/patients/${patientAId}/treatment-plan/${item.id}`,
-        tokenA,
-        {
-          method: "POST",
-          body: JSON.stringify({ resultStatus: "CROWN" }),
-        },
-      ),
+      authed(`/api/patients/${patientAId}/treatment-plan/${item.id}`, tokenA, {
+        method: "POST",
+        body: JSON.stringify({ resultStatus: "CROWN" }),
+      }),
       routeParams({ patientId: patientAId, itemId: item.id }),
     );
     expect(startAgain.status).toBe(409);
@@ -369,14 +352,10 @@ describeDb("مشاهدات الأسنان وخطة العلاج — integration"
     expect(item.surface).toBe("O+M");
 
     const started = await planStartPOST(
-      authed(
-        `/api/patients/${patientAId}/treatment-plan/${item.id}`,
-        tokenA,
-        {
-          method: "POST",
-          body: JSON.stringify({ resultStatus: "FILLED" }),
-        },
-      ),
+      authed(`/api/patients/${patientAId}/treatment-plan/${item.id}`, tokenA, {
+        method: "POST",
+        body: JSON.stringify({ resultStatus: "FILLED" }),
+      }),
       routeParams({ patientId: patientAId, itemId: item.id }),
     );
     expect(started.status).toBe(200);

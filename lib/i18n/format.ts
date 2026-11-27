@@ -21,6 +21,11 @@ const INTL_TAG: Record<Locale, string> = {
   en: "en",
 };
 
+/** وسم Intl للغة — لمساعدة المساعدات النقية خارجها التي تبني منسّقاتها */
+export function intlTag(locale: Locale): string {
+  return INTL_TAG[locale];
+}
+
 /** خيار العرض الافتراضي للتاريخ — الخلية القصيرة الموحدة للجداول */
 const DEFAULT_DATE_OPTS: Intl.DateTimeFormatOptions = {
   day: "2-digit",
@@ -56,6 +61,25 @@ export function formatDate(
 ): string {
   return cachedFormatter(
     `date:${locale}:${JSON.stringify(opts)}`,
+    () => new Intl.DateTimeFormat(INTL_TAG[locale], opts),
+  ).format(new Date(date));
+}
+
+/** خيار العرض الافتراضي للوقت — ساعات كاملة بلا فترة ص/م «09:00» و«13:00» */
+const DEFAULT_TIME_OPTS: Intl.DateTimeFormatOptions = {
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+};
+
+/** تنسيق وقت حسب اللغة — نفس نمط المرجع بأرقام لاتينية في العربية */
+export function formatTime(
+  date: Date | string,
+  locale: Locale,
+  opts: Intl.DateTimeFormatOptions = DEFAULT_TIME_OPTS,
+): string {
+  return cachedFormatter(
+    `time:${locale}:${JSON.stringify(opts)}`,
     () => new Intl.DateTimeFormat(INTL_TAG[locale], opts),
   ).format(new Date(date));
 }

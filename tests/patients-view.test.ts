@@ -106,7 +106,6 @@ describe("PATIENT_FILTERS", () => {
   });
 });
 
-
 // ─── صفوف جدول المرضى (الهيكل المرجعي) ─────────────────────────────────────
 
 const NOW = new Date("2026-11-13T10:00:00Z");
@@ -149,10 +148,26 @@ describe("buildPatientRows", () => {
       [patients[0]],
       [],
       [
-        { patientId: "a", startsAt: "2026-11-01T09:00:00Z", status: "COMPLETED" },
-        { patientId: "a", startsAt: "2026-10-01T09:00:00Z", status: "CANCELLED" },
-        { patientId: "a", startsAt: "2026-11-20T09:00:00Z", status: "SCHEDULED" },
-        { patientId: "a", startsAt: "2026-11-25T09:00:00Z", status: "SCHEDULED" },
+        {
+          patientId: "a",
+          startsAt: "2026-11-01T09:00:00Z",
+          status: "COMPLETED",
+        },
+        {
+          patientId: "a",
+          startsAt: "2026-10-01T09:00:00Z",
+          status: "CANCELLED",
+        },
+        {
+          patientId: "a",
+          startsAt: "2026-11-20T09:00:00Z",
+          status: "SCHEDULED",
+        },
+        {
+          patientId: "a",
+          startsAt: "2026-11-25T09:00:00Z",
+          status: "SCHEDULED",
+        },
       ],
       NOW,
     );
@@ -183,18 +198,26 @@ describe("searchPatientRows و sortPatientRows", () => {
   ];
 
   it("البحث يطابق الاسم أو الهاتف أو رقم الأيوبي", () => {
-    expect(searchPatientRows(rows, "أحمد").map((r) => r.patient.id)).toEqual(["a"]);
-    expect(searchPatientRows(rows, "7").map((r) => r.patient.id)).toEqual(["b"]);
+    expect(searchPatientRows(rows, "أحمد").map((r) => r.patient.id)).toEqual([
+      "a",
+    ]);
+    expect(searchPatientRows(rows, "7").map((r) => r.patient.id)).toEqual([
+      "b",
+    ]);
     expect(searchPatientRows(rows, "  ")).toHaveLength(3);
   });
 
   it("الترتيب بالرصيد المستحق ينازلياً والأبجدي باسم المريض", () => {
-    expect(
-      sortPatientRows(rows, "balance").map((r) => r.patient.id),
-    ).toEqual(["b", "a", "c"]);
-    expect(
-      sortPatientRows(rows, "name").map((r) => r.patient.name),
-    ).toEqual(["أحمد", "خالد", "سارة"]);
+    expect(sortPatientRows(rows, "balance").map((r) => r.patient.id)).toEqual([
+      "b",
+      "a",
+      "c",
+    ]);
+    expect(sortPatientRows(rows, "name").map((r) => r.patient.name)).toEqual([
+      "أحمد",
+      "خالد",
+      "سارة",
+    ]);
   });
 });
 

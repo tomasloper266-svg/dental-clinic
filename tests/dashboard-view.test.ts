@@ -87,9 +87,7 @@ describe("selectUpcomingAppointments", () => {
 describe("greetingForDate", () => {
   // التواريخ تُبنى بالمتكلّم المحلي حتى يختبر التوقيت لا المنطقة الزمنية.
   it("يحيي بالصباح قبل الظهر", () => {
-    expect(greetingForDate(new Date(2026, 10, 12, 5, 0, 0))).toBe(
-      "صباح الخير",
-    );
+    expect(greetingForDate(new Date(2026, 10, 12, 5, 0, 0))).toBe("صباح الخير");
     expect(greetingForDate(new Date(2026, 10, 12, 11, 59, 0))).toBe(
       "صباح الخير",
     );

@@ -6,8 +6,10 @@ import { usePathname } from "next/navigation";
 import { formatDualFromUsd, DEFAULT_USD_RATE } from "@/lib/currency";
 import { BrandMark } from "@/components/auth/BrandMark";
 import LogoutButton from "@/components/LogoutButton";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { cn } from "@/components/ui/cn";
 import { navGroups, homeNav, type BadgeKey, type NavGroup } from "./nav-items";
+import type { Locale } from "@/lib/i18n/core";
 
 type SidebarProps = {
   collapsed: boolean;
@@ -46,14 +48,21 @@ const BADGE_BG = "var(--color-danger-500)";
 /**
  * نقي — اسم ترويسة السايدبار: «{اسم العيادة} لطب الأسنان» لما وُجد اسم
  * مسجل، والاسم الافتراضي للنظام عند غيابه (عيادات قديمة أو بيانات ناقصة).
+ * الإنجليزية تُلحق اللاحقة اللاتينية بنفس القاعدة.
  */
-export function clinicHeaderName(clinicName?: string): string {
+export function clinicHeaderName(
+  clinicName?: string,
+  locale: Locale = "ar",
+): string {
   const trimmed = clinicName?.trim();
-  if (!trimmed) return SYSTEM_NAME;
+  if (!trimmed) {
+    return locale === "en" ? "Dental Clinics" : SYSTEM_NAME;
+  }
+  if (locale === "en") {
+    return /\bDental$/i.test(trimmed) ? trimmed : `${trimmed} Dental`;
+  }
   // الاسم المسجل قد ينتهي بلاقة اللاحق نفسها — لا تُضف مرتين
-  return trimmed.endsWith("لطب الأسنان")
-    ? trimmed
-    : `${trimmed} لطب الأسنان`;
+  return trimmed.endsWith("لطب الأسنان") ? trimmed : `${trimmed} لطب الأسنان`;
 }
 
 function isItemActive(pathname: string, href: string): boolean {
@@ -81,9 +90,13 @@ function NavEntry({
       href={href}
       aria-current={active ? "page" : undefined}
       title={collapsed ? label : undefined}
-      style={active ? { background: ACTIVE_BG, color: ACTIVE_TEXT } : { color: MUTED_TEXT }}
+      style={
+        active
+          ? { background: ACTIVE_BG, color: ACTIVE_TEXT }
+          : { color: MUTED_TEXT }
+      }
       className={cn(
-        "relative flex items-center gap-3 rounded-[11px] px-2.5 py-2 text-[13px] font-semibold transition-colors hover:bg-warm-100 hover:text-warm-900",
+        "hover:bg-warm-100 hover:text-warm-900 relative flex items-center gap-3 rounded-[11px] px-2.5 py-2 text-[13px] font-semibold transition-colors",
         active && "shadow-[inset_0_0_0_1px_rgba(255,255,255,0.15)]",
         collapsed && "justify-center px-0",
       )}
@@ -128,6 +141,7 @@ function NavSection({
   collapsed: boolean;
   badges: Record<BadgeKey, number>;
 }) {
+  const { t } = useI18n();
   return (
     <li className="mt-1">
       {!collapsed ? (
@@ -135,7 +149,7 @@ function NavSection({
           className="flex items-center gap-2.5 px-3 pb-1 text-[10px] font-bold tracking-wide"
           style={{ color: FAINT_TEXT }}
         >
-          <span>{group.label}</span>
+          <span>{t(group.labelKey)}</span>
           <span
             aria-hidden
             className="h-px flex-1"
@@ -157,7 +171,7 @@ function NavSection({
           <li key={item.href}>
             <NavEntry
               href={item.href}
-              label={item.label}
+              label={t(item.labelKey)}
               icon={item.icon}
               active={isItemActive(pathname, item.href)}
               collapsed={collapsed}
@@ -183,6 +197,7 @@ function DuesAlertCard({
   usdRate: number;
   collapsed: boolean;
 }) {
+  const { t } = useI18n();
   if (dues <= 0) return null;
   // الوضع المطوي — البطاقة لا تتسع، فتُستبدل بنقطة حمراء (نمط شارة التنقل)
   // كي لا يختفي تنبيه المستحقات كلياً في الوضع المطوي الافتراضي.
@@ -190,9 +205,11 @@ function DuesAlertCard({
     return (
       <Link
         href="/dues"
-        aria-label="مستحقات غير مسددة"
-        title={`مستحقات غير مسددة: ${formatDualFromUsd(dues, usdRate)}`}
-        className="mx-auto grid size-8 place-items-center rounded-full border border-danger-300/40 bg-danger-500/15 transition-colors hover:bg-danger-500/25"
+        aria-label={t("shell.duesAlert")}
+        title={t("shell.duesAlertTitle", {
+          amount: formatDualFromUsd(dues, usdRate),
+        })}
+        className="border-danger-300/40 bg-danger-500/15 hover:bg-danger-500/25 mx-auto grid size-8 place-items-center rounded-full border transition-colors"
       >
         <span
           aria-hidden
@@ -205,13 +222,13 @@ function DuesAlertCard({
   return (
     <Link
       href="/dues"
-      className="block rounded-field border border-danger-300/40 bg-danger-500/10 px-3 py-2.5 transition-colors hover:bg-danger-500/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger-300"
+      className="rounded-field border-danger-300/40 bg-danger-500/10 hover:bg-danger-500/20 focus-visible:outline-danger-300 block border px-3 py-2.5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
     >
-      <p className="flex items-center gap-2 text-xs font-semibold text-danger-700">
+      <p className="text-danger-700 flex items-center gap-2 text-xs font-semibold">
         <Wallet size={14} aria-hidden className="shrink-0" />
-        مستحقات غير مسددة
+        {t("shell.duesAlert")}
       </p>
-      <p className="numeric mt-1 text-sm font-bold text-danger-900">
+      <p className="numeric text-danger-900 mt-1 text-sm font-bold">
         {formatDualFromUsd(dues, usdRate)}
       </p>
     </Link>
@@ -228,12 +245,16 @@ export function Sidebar({
   outstandingDuesUsd = 0,
   usdRate = DEFAULT_USD_RATE,
 }: SidebarProps) {
+  const { t, locale } = useI18n();
   const pathname = usePathname() ?? "/dashboard";
   const ToggleIcon = collapsed ? PanelRightOpen : PanelRightClose;
 
   return (
     <aside
-      style={{ background: SIDEBAR_BG, borderInlineEnd: `1px solid ${SIDEBAR_LINE}` }}
+      style={{
+        background: SIDEBAR_BG,
+        borderInlineEnd: `1px solid ${SIDEBAR_LINE}`,
+      }}
       className={cn(
         "fixed inset-y-0 start-0 z-40 hidden flex-col transition-[width] duration-200 md:flex",
         collapsed ? "w-16" : "w-60",
@@ -256,24 +277,27 @@ export function Sidebar({
               <span className="numeric" style={{ color: ACCENT }}>
                 DENTIQ
               </span>{" "}
-              عيادتي
+              {t("shell.myClinic")}
             </span>
             <span
               className="block truncate text-[11px]"
               style={{ color: MUTED_TEXT }}
             >
-              {clinicHeaderName(clinicName)}
+              {clinicHeaderName(clinicName, locale)}
             </span>
           </span>
         )}
       </div>
 
-      <nav aria-label="التنقل الرئيسي" className="flex-1 overflow-y-auto p-2">
+      <nav
+        aria-label={t("shell.mainNav")}
+        className="flex-1 overflow-y-auto p-2"
+      >
         <ul className="flex flex-col gap-0.5">
           <li>
             <NavEntry
               href={homeNav.href}
-              label={homeNav.label}
+              label={t(homeNav.labelKey)}
               icon={homeNav.icon}
               active={isItemActive(pathname, homeNav.href)}
               collapsed={collapsed}
@@ -304,25 +328,24 @@ export function Sidebar({
           collapsed={collapsed}
         />
         {!collapsed && (
-          <span
-            className="truncate text-xs"
-            style={{ color: MUTED_TEXT }}
-          >
+          <span className="truncate text-xs" style={{ color: MUTED_TEXT }}>
             {userName}
           </span>
         )}
         <div className={cn("flex items-center gap-2", collapsed && "flex-col")}>
           <LogoutButton
             className={cn(
-              "flex-1 rounded-field border border-warm-200 text-warm-800 hover:bg-warm-100",
+              "rounded-field border-warm-200 text-warm-800 hover:bg-warm-100 flex-1 border",
               collapsed && "w-full",
             )}
           />
           <button
             type="button"
             onClick={onToggle}
-            aria-label={collapsed ? "توسيع القائمة" : "طي القائمة"}
-            className="rounded-field p-2 text-warm-500 transition-colors hover:bg-warm-100 hover:text-warm-900"
+            aria-label={
+              collapsed ? t("shell.expandMenu") : t("shell.collapseMenu")
+            }
+            className="rounded-field text-warm-500 hover:bg-warm-100 hover:text-warm-900 p-2 transition-colors"
           >
             <ToggleIcon size={20} aria-hidden />
           </button>

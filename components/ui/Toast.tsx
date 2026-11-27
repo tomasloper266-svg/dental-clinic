@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { cn } from "./cn";
 
 export type ToastTone = "success" | "danger" | "info";
@@ -50,14 +57,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       <div
         aria-live="polite"
-        className="pointer-events-none fixed bottom-4 start-1/2 z-[60] flex w-full max-w-sm -translate-x-1/2 flex-col gap-2 px-4 rtl:translate-x-1/2"
+        className="pointer-events-none fixed start-1/2 bottom-4 z-[60] flex w-full max-w-sm -translate-x-1/2 flex-col gap-2 px-4 rtl:translate-x-1/2"
       >
         {items.map((item) => (
           <div
             key={item.id}
             role="status"
             className={cn(
-              "pointer-events-auto rounded-field border px-4 py-2.5 text-sm shadow-md",
+              "rounded-field pointer-events-auto border px-4 py-2.5 text-sm shadow-md",
               toneClasses[item.tone],
             )}
           >

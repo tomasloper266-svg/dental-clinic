@@ -40,12 +40,18 @@ async function cleanDb(): Promise<void> {
   await prisma.expense.deleteMany();
   await prisma.instructionTemplate.deleteMany();
   await prisma.material.deleteMany();
+  await prisma.instructionSend.deleteMany();
   await prisma.patient.deleteMany();
   await prisma.user.deleteMany();
   await prisma.clinic.deleteMany();
 }
 
-async function seedCharge(patientId: string, amount: number, at: Date, seq: number) {
+async function seedCharge(
+  patientId: string,
+  amount: number,
+  at: Date,
+  seq: number,
+) {
   return prisma.ledgerEntry.create({
     data: {
       clinicId,
@@ -127,6 +133,7 @@ describeDb("تقرير الفترة — حدود الأيام المحلية (in
   it("النافذة اليومية للخدمة تستبعد قيود 00:30 من اليوم المجاور", async () => {
     // تنظيف جزئي — العيادة والمستخدم يبقيان وقيد الفترة السابقة يُحذف
     await prisma.ledgerEntry.deleteMany();
+    await prisma.instructionSend.deleteMany();
     await prisma.patient.deleteMany();
     const patient = await prisma.patient.create({
       data: { clinicId, name: "مريض حدود 2", phone: "0903555556" },

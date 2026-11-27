@@ -37,6 +37,7 @@ async function cleanClinicData(): Promise<void> {
   await prisma.appointmentStatusChange.deleteMany({ where: { clinicId } });
   await prisma.appointment.deleteMany({ where: { clinicId } });
   await prisma.waitlistEntry.deleteMany({ where: { clinicId } });
+  await prisma.instructionSend.deleteMany({ where: { clinicId } });
   await prisma.patient.deleteMany({ where: { clinicId } });
   await prisma.user.deleteMany({ where: { clinicId } });
   await prisma.clinic.deleteMany({ where: { id: clinicId } });
@@ -67,7 +68,7 @@ describeDb("المواعيد وقائمة الانتظار — integration", () 
       clinicId,
       name: user.name,
       lockEnabled: false,
-role: "DENTIST",
+      role: "DENTIST",
     });
   });
 
@@ -195,7 +196,7 @@ role: "DENTIST",
       clinicId: otherClinic.id,
       name: otherUser.name,
       lockEnabled: false,
-role: "DENTIST",
+      role: "DENTIST",
     });
 
     const mine = await prisma.appointment.findFirstOrThrow({

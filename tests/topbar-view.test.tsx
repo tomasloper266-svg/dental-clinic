@@ -1,4 +1,5 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, screen, within } from "@testing-library/react";
+import { mount } from "./ui";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Topbar } from "@/components/shell/Topbar";
@@ -34,7 +35,7 @@ describe("مُجمِّعات الشارات النقية", () => {
 
 describe("الشريط العلوي على هوية المرجع", () => {
   it("يعرض حقل البحث الدائري بنص المرجع ولمحة ⌘K", () => {
-    render(<Topbar />);
+    mount(<Topbar />);
     expect(
       screen.getByRole("link", { name: "ابحث عن مريض، موعد، فاتورة" }),
     ).toHaveAttribute("href", "/patients");
@@ -42,13 +43,15 @@ describe("الشريط العلوي على هوية المرجع", () => {
   });
 
   it("يعرض جرس التنبيهات بعدّاد يلخص الشارات القائمة", () => {
-    render(<Topbar badges={{ waitlist: 2, lowStock: 1, dues: 4 }} />);
-    expect(screen.getByRole("button", { name: "التنبيهات (7)" })).toBeInTheDocument();
+    mount(<Topbar badges={{ waitlist: 2, lowStock: 1, dues: 4 }} />);
+    expect(
+      screen.getByRole("button", { name: "التنبيهات (7)" }),
+    ).toBeInTheDocument();
   });
 
   it("الجرس بلا شارات يظهر بلا عدّاد وقائمته تعرض حالة فارغة", async () => {
     const user = userEvent.setup();
-    render(<Topbar />);
+    mount(<Topbar />);
     const bell = screen.getByRole("button", { name: "التنبيهات" });
     await user.click(bell);
     const dialog = screen.getByRole("dialog", { name: "قائمة التنبيهات" });
@@ -57,7 +60,7 @@ describe("الشريط العلوي على هوية المرجع", () => {
 
   it("قائمة الجرس تسرد مداخل الشارات الموجبة فقط وتربتها على صفحاتها", async () => {
     const user = userEvent.setup();
-    render(<Topbar badges={{ waitlist: 2, lowStock: 0, dues: 4 }} />);
+    mount(<Topbar badges={{ waitlist: 2, lowStock: 0, dues: 4 }} />);
     await user.click(screen.getByRole("button", { name: "التنبيهات (6)" }));
 
     const dialog = screen.getByRole("dialog", { name: "قائمة التنبيهات" });
@@ -73,7 +76,7 @@ describe("الشريط العلوي على هوية المرجع", () => {
   });
 
   it("يعرض بلاطة DENTIQ المصغّرة على الموبايل بدل حرف الشعار", () => {
-    render(<Topbar />);
+    mount(<Topbar />);
     const brand = screen.getByTestId("topbar-brand");
     expect(brand.querySelector("svg")).not.toBeNull();
   });
@@ -81,11 +84,15 @@ describe("الشريط العلوي على هوية المرجع", () => {
   it("مهام الشريط الحالية تبقى: القفل اليدوي والثيم والعنوان الحالي", () => {
     // الثيم الداكن افتراضي في التطبيق — يحمل صنف dark على html من الخادم
     document.documentElement.classList.add("dark");
-    render(<Topbar lockEnabled badges={{ waitlist: 0, lowStock: 0, dues: 0 }} />);
+    mount(
+      <Topbar lockEnabled badges={{ waitlist: 0, lowStock: 0, dues: 0 }} />,
+    );
     expect(
       screen.getByRole("button", { name: "قفل التطبيق" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "التبديل إلى الوضع الفاتح" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "التبديل إلى الوضع الفاتح" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("الرئيسية")).toBeInTheDocument();
   });
 });

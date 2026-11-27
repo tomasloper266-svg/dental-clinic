@@ -20,11 +20,12 @@ import type { PeriodontalReadingDto } from "@/lib/services/periodontal";
 import type { PlanItemDto } from "@/lib/services/treatment-plan";
 import type { AppointmentDto } from "@/lib/services/appointments";
 import type { LedgerEntryDto } from "@/lib/services/ledger";
-import { ageFromBirthYear, genderLabel } from "@/lib/patients-view";
+import { ageFromBirthYear } from "@/lib/patients-view";
 import { parseMedicalNotes } from "@/lib/medical-notes";
 import { summarizePatientLedger } from "@/lib/ledger-view";
 import { summarizePeriodontal } from "@/lib/odontogram/periodontal-view";
 import { firstLetter } from "@/components/ui/EntityCell";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import OdontogramBoard from "@/components/odontogram/OdontogramBoard";
 import TreatmentPlanSection from "@/components/odontogram/TreatmentPlanSection";
 import OverviewTab from "./OverviewTab";
@@ -114,6 +115,7 @@ export default function PatientRecord({
   materialRows,
   usdRate,
 }: Props) {
+  const { t } = useI18n();
   const [tab, setTab] = useState<RecordTab>("overview");
   // اختيار السن مشترك بين الرسم وخطة العلاج في التبويب نفسه.
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
@@ -128,24 +130,28 @@ export default function PatientRecord({
 
   const TABS: ReadonlyArray<{
     key: RecordTab;
-    label: string;
+    labelKey:
+      | "record.tabOverview"
+      | "nav.appointments"
+      | "nav.dentalChart"
+      | "record.tabLedger";
     icon: React.ElementType;
     count?: number;
   }> = [
-    { key: "overview", label: "الملف", icon: FileText },
+    { key: "overview", labelKey: "record.tabOverview", icon: FileText },
     {
       key: "appointments",
-      label: "المواعيد",
+      labelKey: "nav.appointments",
       icon: CalendarDays,
       count: appointments.length,
     },
     {
       key: "chart",
-      label: "مخطط الأسنان وخطط العلاج",
+      labelKey: "nav.dentalChart",
       icon: Smile,
       count: planItems.length,
     },
-    { key: "ledger", label: "الحساب والسجل المالي", icon: ClipboardList },
+    { key: "ledger", labelKey: "record.tabLedger", icon: ClipboardList },
   ];
 
   const actionButtonClass =
@@ -167,7 +173,11 @@ export default function PatientRecord({
           description={
             <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
               <InfoCell icon={UserPlus}>
-                {genderLabel(patient.gender) || "—"}
+                {patient.gender === "MALE"
+                  ? t("gender.male")
+                  : patient.gender === "FEMALE"
+                    ? t("gender.female")
+                    : "—"}
               </InfoCell>
               <InfoCell icon={CalendarDays}>
                 {patient.phone ? (
@@ -175,7 +185,7 @@ export default function PatientRecord({
                     {patient.phone}
                   </span>
                 ) : (
-                  <span className="text-warm-400">لا هاتف مسجل</span>
+                  <span className="text-warm-400">{t("record.noPhone")}</span>
                 )}
               </InfoCell>
               {patient.secondaryPhone && (
@@ -194,7 +204,7 @@ export default function PatientRecord({
                       <span className="numeric">
                         {ageFromBirthYear(patient.birthYear)}
                       </span>{" "}
-                      سنة)
+                      {t("patients.yearsShort")})
                     </span>
                   )}
                 </InfoCell>
@@ -204,7 +214,9 @@ export default function PatientRecord({
               )}
               {patient.fileNo !== null && (
                 <InfoCell icon={ClipboardList}>
-                  <span className="numeric">رقم {patient.fileNo}</span>
+                  <span className="numeric">
+                    {t("patients.fileNo", { no: patient.fileNo })}
+                  </span>
                 </InfoCell>
               )}
             </span>
@@ -220,7 +232,7 @@ export default function PatientRecord({
                 )}
               >
                 <CalendarPlus size={16} aria-hidden />
-                موعد جديد
+                {t("appt.new")}
               </button>
               <button
                 type="button"
@@ -231,7 +243,7 @@ export default function PatientRecord({
                 )}
               >
                 <Plus size={16} aria-hidden />
-                سجل عملية
+                {t("record.newLedger")}
               </button>
               <Link
                 href="/patients?create=1"
@@ -241,7 +253,7 @@ export default function PatientRecord({
                 )}
               >
                 <UserPlus size={16} aria-hidden />
-                مريض جديد
+                {t("patients.newPatient")}
               </Link>
             </div>
           }
@@ -253,12 +265,12 @@ export default function PatientRecord({
           <div className="flex flex-wrap items-center gap-2">
             {dueUsd > 0 && (
               <WarningPill icon={TriangleAlert} tone="danger">
-                تنبيه مستحق
+                {t("record.dueAlert")}
               </WarningPill>
             )}
             {materialRows.length > 0 && (
               <WarningPill icon={PackageSearch} tone="warning">
-                تنبيه مخزون
+                {t("record.stockAlert")}
               </WarningPill>
             )}
             {allergies && (
@@ -275,12 +287,16 @@ export default function PatientRecord({
               materialRows.length === 0 &&
               !allergies &&
               !chronic && (
-                <span className="text-warm-400 text-xs">لا تنبيهات</span>
+                <span className="text-warm-400 text-xs">
+                  {t("record.noAlerts")}
+                </span>
               )}
           </div>
           <div className="flex flex-wrap items-end gap-6">
             <div>
-              <p className="text-warm-500 text-[11px] font-medium">مستحق</p>
+              <p className="text-warm-500 text-[11px] font-medium">
+                {t("record.due")}
+              </p>
               <DualAmount
                 usd={summary.balanceUsd}
                 usdRate={usdRate}
@@ -289,7 +305,7 @@ export default function PatientRecord({
             </div>
             <div>
               <p className="text-warm-500 text-[11px] font-medium">
-                إجمالي المدفوع
+                {t("record.totalPaid")}
               </p>
               {/* دفعات الدفتر وحدها — الخصومات ليست دفعات ولذا تُعرض ببطاقة
                   منفصلة بدل خلطها هنا تحت عنوان المدفوع (سجل art_yHnC9AAM بند 14ب) */}
@@ -298,7 +314,7 @@ export default function PatientRecord({
             {summary.discountUsd > 0 && (
               <div>
                 <p className="text-warm-500 text-[11px] font-medium">
-                  الخصومات
+                  {t("record.discounts")}
                 </p>
                 <DualAmount usd={summary.discountUsd} usdRate={usdRate} />
               </div>
@@ -312,7 +328,7 @@ export default function PatientRecord({
                     className="text-danger-600"
                   />
                   <span className="text-danger-600 text-sm font-semibold">
-                    مستحق
+                    {t("record.due")}
                   </span>
                 </>
               ) : (
@@ -324,7 +340,7 @@ export default function PatientRecord({
                     ✓
                   </span>
                   <span className="text-primary-700 text-sm font-semibold">
-                    مسدد
+                    {t("record.settled")}
                   </span>
                 </>
               )}
@@ -335,13 +351,13 @@ export default function PatientRecord({
         <HeaderDivider className="mt-4" />
 
         {/* شريط التبويبات */}
-        <nav aria-label="أقسام ملف المريض" className="mt-3">
+        <nav aria-label={t("record.sectionsAria")} className="mt-3">
           <div
             role="tablist"
-            aria-label="تبويبات ملف المريض"
+            aria-label={t("record.tabsAria")}
             className="flex gap-1 overflow-x-auto"
           >
-            {TABS.map(({ key, label, icon: Icon, count }) => {
+            {TABS.map(({ key, labelKey, icon: Icon, count }) => {
               const active = tab === key;
               return (
                 <button
@@ -361,7 +377,7 @@ export default function PatientRecord({
                   )}
                 >
                   <Icon size={15} aria-hidden />
-                  {label}
+                  {t(labelKey)}
                   {count !== undefined && count > 0 && (
                     <span
                       className={cn(

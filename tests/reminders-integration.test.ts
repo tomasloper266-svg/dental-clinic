@@ -6,7 +6,10 @@ import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { tenantContextFromSession } from "@/lib/tenant/context";
 import type { TenantContext } from "@/lib/tenant/context";
-import { listTomorrowReminders, markReminderSent } from "@/lib/services/reminders";
+import {
+  listTomorrowReminders,
+  markReminderSent,
+} from "@/lib/services/reminders";
 import {
   createTemplate,
   deleteTemplate,
@@ -70,7 +73,7 @@ describeDb("قائمة تذكير الغد — integration", () => {
       clinicId,
       name: user.name,
       lockEnabled: false,
-role: "DENTIST",
+      role: "DENTIST",
     });
   });
 
@@ -173,7 +176,7 @@ describeDb("قوالب التعليمات وتسجيل الإرسال — integr
       clinicId,
       name: user.name,
       lockEnabled: false,
-role: "DENTIST",
+      role: "DENTIST",
     });
   });
 
@@ -295,7 +298,11 @@ describeDb("تتبع حالة إرسال تذكير الغد — integration", (
     });
     trackUserId = user.id;
     const patient = await prisma.patient.create({
-      data: { clinicId: trackClinicId, name: "مريض تتبع", phone: "0966-666-666" },
+      data: {
+        clinicId: trackClinicId,
+        name: "مريض تتبع",
+        phone: "0966-666-666",
+      },
     });
     trackPatientId = patient.id;
     trackCtx = tenantContextFromSession({
@@ -303,12 +310,14 @@ describeDb("تتبع حالة إرسال تذكير الغد — integration", (
       clinicId: trackClinicId,
       name: user.name,
       lockEnabled: false,
-role: "DENTIST",
+      role: "DENTIST",
     });
   });
 
   afterAll(async () => {
-    await prisma.appointmentReminder.deleteMany({ where: { clinicId: trackClinicId } });
+    await prisma.appointmentReminder.deleteMany({
+      where: { clinicId: trackClinicId },
+    });
     await prisma.appointment.deleteMany({ where: { clinicId: trackClinicId } });
     await prisma.patient.deleteMany({ where: { clinicId: trackClinicId } });
     await prisma.user.deleteMany({ where: { clinicId: trackClinicId } });

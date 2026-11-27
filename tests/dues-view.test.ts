@@ -61,8 +61,17 @@ describe("buildDuesRows", () => {
   it("المدين الوحيد يفكك الرسوم والمسدد والمستحق", () => {
     const rows = buildDuesRows(
       [
-        entry({ id: "e1", amountUsd: 955_000, createdAt: "2026-10-07T10:00:00Z" }),
-        entry({ id: "e2", type: "PAYMENT", amountUsd: -655_000, createdAt: "2026-11-13T10:00:00Z" }),
+        entry({
+          id: "e1",
+          amountUsd: 955_000,
+          createdAt: "2026-10-07T10:00:00Z",
+        }),
+        entry({
+          id: "e2",
+          type: "PAYMENT",
+          amountUsd: -655_000,
+          createdAt: "2026-11-13T10:00:00Z",
+        }),
       ],
       NOW,
     );
@@ -80,10 +89,28 @@ describe("buildDuesRows", () => {
   it("آخر فاتورة وآخر دفعة يلتقطان الأحدث زمنياً من عدة قيود", () => {
     const rows = buildDuesRows(
       [
-        entry({ id: "e1", amountUsd: 100_000, createdAt: "2026-09-01T10:00:00Z" }),
-        entry({ id: "e2", amountUsd: 60_000, createdAt: "2026-11-10T10:00:00Z" }),
-        entry({ id: "e3", type: "PAYMENT", amountUsd: -40_000, createdAt: "2026-11-12T10:00:00Z" }),
-        entry({ id: "e4", type: "PAYMENT", amountUsd: -10_000, createdAt: "2026-10-20T10:00:00Z" }),
+        entry({
+          id: "e1",
+          amountUsd: 100_000,
+          createdAt: "2026-09-01T10:00:00Z",
+        }),
+        entry({
+          id: "e2",
+          amountUsd: 60_000,
+          createdAt: "2026-11-10T10:00:00Z",
+        }),
+        entry({
+          id: "e3",
+          type: "PAYMENT",
+          amountUsd: -40_000,
+          createdAt: "2026-11-12T10:00:00Z",
+        }),
+        entry({
+          id: "e4",
+          type: "PAYMENT",
+          amountUsd: -10_000,
+          createdAt: "2026-10-20T10:00:00Z",
+        }),
       ],
       NOW,
     );
@@ -93,7 +120,13 @@ describe("buildDuesRows", () => {
 
   it("مريض بلا دفعات يكون آخر دفعة صفراً", () => {
     const rows = buildDuesRows(
-      [entry({ id: "e1", amountUsd: 100_000, createdAt: "2026-11-01T10:00:00Z" })],
+      [
+        entry({
+          id: "e1",
+          amountUsd: 100_000,
+          createdAt: "2026-11-01T10:00:00Z",
+        }),
+      ],
       NOW,
     );
     expect(rows[0].lastPaymentAt).toBeNull();
@@ -103,8 +136,16 @@ describe("buildDuesRows", () => {
   it("آخر قيد غير مسدد هو آخر قيد رسوم بقي الرصيد بعده موجباً — وأيام التأخر تُحسب حتى الآن", () => {
     const rows = buildDuesRows(
       [
-        entry({ id: "e1", amountUsd: 100_000, createdAt: "2026-09-01T10:00:00Z" }),
-        entry({ id: "e2", amountUsd: 60_000, createdAt: "2026-11-10T10:00:00Z" }),
+        entry({
+          id: "e1",
+          amountUsd: 100_000,
+          createdAt: "2026-09-01T10:00:00Z",
+        }),
+        entry({
+          id: "e2",
+          amountUsd: 60_000,
+          createdAt: "2026-11-10T10:00:00Z",
+        }),
         // دفعة جزئية تبقي الرصيد موجباً
         entry({ id: "e3", type: "PAYMENT", amountUsd: -40_000 }),
       ],
@@ -117,9 +158,17 @@ describe("buildDuesRows", () => {
   it("قيد رسوم غُطي لاحقاً بدفعة كاملة لا يُعدّ آخر قيد غير مسدد", () => {
     const rows = buildDuesRows(
       [
-        entry({ id: "e1", amountUsd: 100_000, createdAt: "2026-09-01T10:00:00Z" }),
+        entry({
+          id: "e1",
+          amountUsd: 100_000,
+          createdAt: "2026-09-01T10:00:00Z",
+        }),
         entry({ id: "e2", type: "PAYMENT", amountUsd: -100_000 }),
-        entry({ id: "e3", amountUsd: 50_000, createdAt: "2026-11-12T10:00:00Z" }),
+        entry({
+          id: "e3",
+          amountUsd: 50_000,
+          createdAt: "2026-11-12T10:00:00Z",
+        }),
       ],
       NOW,
     );
@@ -177,10 +226,7 @@ describe("summarizeDues", () => {
   });
 
   it("يجمع الإجمالي والعدد والأعلى فردياً والمتوسط", () => {
-    const rows = [
-      { dueUsd: 300_000 },
-      { dueUsd: 120_000 },
-    ];
+    const rows = [{ dueUsd: 300_000 }, { dueUsd: 120_000 }];
     const summary = summarizeDues(rows);
     expect(summary.totalDuesUsd).toBe(420_000);
     expect(summary.debtors).toBe(2);

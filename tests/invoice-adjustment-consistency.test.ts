@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  deriveInvoices,
-  deriveInvoicesDetailed,
-} from "@/lib/patient-finance";
+import { deriveInvoices, deriveInvoicesDetailed } from "@/lib/patient-finance";
 import { deriveClinicInvoices, summarizeInvoices } from "@/lib/invoices-view";
 import { summarizeLedger } from "@/lib/finance-view";
 import { buildDuesRows } from "@/lib/dues-view";

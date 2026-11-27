@@ -4,7 +4,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { prisma, getBasePrisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
-import { tenantContextFromSession, type TenantContext } from "@/lib/tenant/context";
+import {
+  tenantContextFromSession,
+  type TenantContext,
+} from "@/lib/tenant/context";
 import { createLedgerEntry, listLedgerEntries } from "@/lib/services/ledger";
 import { buildSnapshot, restoreSnapshot } from "@/lib/services/backup";
 
@@ -37,6 +40,7 @@ async function cleanDb(): Promise<void> {
     where: { entryId: { in: entries.map((e) => e.id) } },
   });
   await prisma.ledgerEntry.deleteMany({ where: { clinicId: { in: ids } } });
+  await prisma.instructionSend.deleteMany({ where: { clinicId: { in: ids } } });
   await prisma.patient.deleteMany({ where: { clinicId: { in: ids } } });
   await prisma.user.deleteMany({ where: { clinicId: { in: ids } } });
   await prisma.clinic.deleteMany({ where: { id: { in: ids } } });
@@ -118,7 +122,11 @@ describeDb("النسخ الاحتياطي يحفظ بنود الفواتير —
       amountUsd: 100_000,
       note: "فاتورة — 2 بنود",
       items: [
-        { description: "تبييض ليزر", category: "تبييض ليزر", amountUsd: 60_000 },
+        {
+          description: "تبييض ليزر",
+          category: "تبييض ليزر",
+          amountUsd: 60_000,
+        },
         { description: "حشو عصبي", category: "حشو عصبي", amountUsd: 40_000 },
       ],
     });
@@ -127,7 +135,9 @@ describeDb("النسخ الاحتياطي يحفظ بنود الفواتير —
 
     const snapshot = await buildSnapshot(getBasePrisma(), clinicId);
     expect(snapshot.ledgerEntryItems).toHaveLength(2);
-    expect(snapshot.ledgerEntryItems.every((row) => row.entryId === charge!.id)).toBe(true);
+    expect(
+      snapshot.ledgerEntryItems.every((row) => row.entryId === charge!.id),
+    ).toBe(true);
 
     const restore = await restoreSnapshot(getBasePrisma(), clinicId, snapshot);
     expect(restore.ok).toBe(true);
@@ -140,7 +150,9 @@ describeDb("النسخ الاحتياطي يحفظ بنود الفواتير —
       where: { entryId: charge!.id },
       orderBy: { sort: "asc" },
     });
-    expect(rows.map((r) => [r.description, r.category, Number(r.amountUsd), r.sort])).toEqual([
+    expect(
+      rows.map((r) => [r.description, r.category, Number(r.amountUsd), r.sort]),
+    ).toEqual([
       ["تبييض ليزر", "تبييض ليزر", 60_000, 0],
       ["حشو عصبي", "حشو عصبي", 40_000, 1],
     ]);

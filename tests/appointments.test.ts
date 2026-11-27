@@ -3,10 +3,7 @@ import {
   appointmentsOverlap,
   parseCreateAppointment,
 } from "@/lib/services/appointments";
-import {
-  ALLOWED_TRANSITIONS,
-  canTransition,
-} from "@/lib/appointment-state";
+import { ALLOWED_TRANSITIONS, canTransition } from "@/lib/appointment-state";
 import { computeOpenGaps } from "@/lib/services/waitlist";
 import { dayRange, weekRange, addDays } from "@/lib/dates";
 import type { AppointmentStatus } from "@/lib/services/appointments";

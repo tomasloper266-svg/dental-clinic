@@ -4,6 +4,7 @@ import { useCallback, useRef } from "react";
 import { Mic, Square } from "lucide-react";
 import { useVoiceInput } from "@/lib/use-voice-input";
 import { insertDictation, type RecognitionCtor } from "@/lib/voice-input";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { cn } from "./cn";
 
 type MicButtonProps = {
@@ -19,7 +20,12 @@ type MicButtonProps = {
 // Speech API مجاناً في المتصفح. بلا دعم في المتصفح (فايرفوكس مثلاً) يُخفى
 // الزر كلياً دون أي كسر. الإدراج في موضع المؤشر إن كان الحقل مركّزاً،
 // وإلا الإلحاق بالنص الموجود — والنص بعده قابل للتعديل كأي نص مكتوب.
-export function MicButton({ targetId, value, onChange, getCtor }: MicButtonProps) {
+export function MicButton({
+  targetId,
+  value,
+  onChange,
+  getCtor,
+}: MicButtonProps) {
   const valueRef = useRef(value);
   valueRef.current = value;
   const onChangeRef = useRef(onChange);
@@ -29,7 +35,8 @@ export function MicButton({ targetId, value, onChange, getCtor }: MicButtonProps
     (text: string) => {
       const field = document.getElementById(targetId);
       const caret =
-        field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement
+        field instanceof HTMLInputElement ||
+        field instanceof HTMLTextAreaElement
           ? field.selectionStart
           : null;
       onChangeRef.current(insertDictation(valueRef.current, text, caret));
@@ -42,11 +49,11 @@ export function MicButton({ targetId, value, onChange, getCtor }: MicButtonProps
     getCtor,
   });
 
+  const { t } = useI18n();
+
   if (!supported) return null;
 
-  const label = listening
-    ? "إيقاف الإدخال الصوتي"
-    : "بدء الإدخال الصوتي (عربي)";
+  const label = listening ? t("ui.mic.stop") : t("ui.mic.start");
 
   return (
     <span className="inline-flex items-center gap-1.5">
@@ -57,7 +64,7 @@ export function MicButton({ targetId, value, onChange, getCtor }: MicButtonProps
         aria-label={label}
         title={error ?? label}
         className={cn(
-          "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-field border transition-colors",
+          "rounded-field inline-flex h-10 w-10 shrink-0 items-center justify-center border transition-colors",
           "focus-visible:outline-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2",
           listening
             ? "border-danger-300 bg-danger-50 text-danger-600 animate-pulse"
@@ -72,7 +79,7 @@ export function MicButton({ targetId, value, onChange, getCtor }: MicButtonProps
       </button>
       {listening && (
         <span role="status" className="text-danger-600 text-xs font-medium">
-          جارٍ التسجيل…
+          {t("ui.mic.recording")}
         </span>
       )}
       {error && !listening && (

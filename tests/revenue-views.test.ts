@@ -29,17 +29,33 @@ describe("monthlyRevenueDual", () => {
     ];
     const points = monthlyRevenueDual(rows, "2026-11-14", 6);
     expect(points).toHaveLength(6);
-    expect(points[5]).toEqual({ key: "2026-11", chargesUsd: 305, collectedUsd: 550 });
-    expect(points[4]).toEqual({ key: "2026-10", chargesUsd: 3050, collectedUsd: 1805 });
+    expect(points[5]).toEqual({
+      key: "2026-11",
+      chargesUsd: 305,
+      collectedUsd: 550,
+    });
+    expect(points[4]).toEqual({
+      key: "2026-10",
+      chargesUsd: 3050,
+      collectedUsd: 1805,
+    });
     // الأشهر بلا حركة صفرية لا تُحذف
-    expect(points[0]).toEqual({ key: "2026-06", chargesUsd: 0, collectedUsd: 0 });
+    expect(points[0]).toEqual({
+      key: "2026-06",
+      chargesUsd: 0,
+      collectedUsd: 0,
+    });
   });
 
   it("قيد منتصف الليل المحلي يبقى في شهره بتوقيت العيادة", () => {
     // 2026-10-31T21:00:00Z = منتصف الليل 1 تشرين الثاني بتوقيت دمشق (+03:00)
     const rows = [row("CHARGE", 100, "2026-10-31T21:00:00Z")];
     const points = monthlyRevenueDual(rows, "2026-11-14", 2);
-    expect(points[1]).toEqual({ key: "2026-11", chargesUsd: 100, collectedUsd: 0 });
+    expect(points[1]).toEqual({
+      key: "2026-11",
+      chargesUsd: 100,
+      collectedUsd: 0,
+    });
   });
 });
 
@@ -55,7 +71,11 @@ describe("dailyRevenueDual", () => {
     const points = dailyRevenueDual(rows, now, 7);
     expect(points).toHaveLength(7);
     expect(points[6].key).toBe("2026-11-14");
-    expect(points[5]).toEqual({ key: "2026-11-13", chargesUsd: 305, collectedUsd: 550 });
+    expect(points[5]).toEqual({
+      key: "2026-11-13",
+      chargesUsd: 305,
+      collectedUsd: 550,
+    });
     // الأيام بلا حركة صفرية لا تُحذف
     expect(points[0].chargesUsd).toBe(0);
     expect(points[0].collectedUsd).toBe(0);

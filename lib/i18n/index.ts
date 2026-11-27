@@ -1,6 +1,12 @@
 import { cookies } from "next/headers";
 
-import { LOCALE_COOKIE, parseLocaleCookie, createT, type Locale } from "./core";
+import {
+  LOCALE_COOKIE,
+  parseLocaleCookie,
+  createT,
+  type Locale,
+  type T,
+} from "./core";
 
 /**
  * مدخل الترجمة الخادمي — الواجهة الرسمية لمكوّنات الخادم. قراءة الكوكي
@@ -9,7 +15,7 @@ import { LOCALE_COOKIE, parseLocaleCookie, createT, type Locale } from "./core";
  */
 
 export * from "./core";
-export { formatDate, formatNumber, formatCurrency } from "./format";
+export { formatDate, formatNumber, formatCurrency, formatTime } from "./format";
 
 /** لغة الجلسة من كوكي NEXT_LOCALE — غائبة أو تالفة تعود للعربية */
 export async function getLocale(): Promise<Locale> {
@@ -20,4 +26,9 @@ export async function getLocale(): Promise<Locale> {
 /** مترجم مكوّنات الخادم — مربوط بلغة الجلسة الحالية */
 export function getT(locale: Locale) {
   return createT(locale);
+}
+
+/** مترجم خادم جاهز — يجمع قراءة اللغة من الكوكي وإنشاء المترجم في نداء واحد */
+export async function getServerT(): Promise<T> {
+  return createT(await getLocale());
 }

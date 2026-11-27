@@ -104,7 +104,11 @@ describeDb("نسيت كلمة المرور — integration", () => {
       where: { userId },
       data: { expiresAt: new Date(Date.now() - 1000) },
     });
-    const verdict = await verifyOtp({ userId, purpose: "PASSWORD_RESET", code: "123456" });
+    const verdict = await verifyOtp({
+      userId,
+      purpose: "PASSWORD_RESET",
+      code: "123456",
+    });
     expect(verdict.ok).toBe(false);
     if (!verdict.ok) expect(verdict.error.code).toBe("expired");
   });
@@ -188,7 +192,9 @@ describeDb("نسيت كلمة المرور — integration", () => {
 
 describeDb("نسيت رقم الهاتف — integration", () => {
   it("يكشف الهاتف بعد التحقق برمز البريد الموثق", async () => {
-    const issue = await requestPhoneRecoveryByEmail("recovery-test@clinic.test");
+    const issue = await requestPhoneRecoveryByEmail(
+      "recovery-test@clinic.test",
+    );
     if (!issue.ok || !issue.fallbackCode) throw new Error("no otp issued");
 
     const result = await verifyPhoneRecovery({
@@ -250,7 +256,9 @@ describeDb("نسيت رقم الهاتف — integration", () => {
     expect(updated?.passwordHash).not.toBe("old-password-1");
     expect(await authenticate(PHONE, "new-password-2")).not.toBeNull();
     expect(await authenticate(PHONE, "old-password-1")).toBeNull();
-    expect(await prisma.session.findUnique({ where: { id: session.id } })).toBeNull();
+    expect(
+      await prisma.session.findUnique({ where: { id: session.id } }),
+    ).toBeNull();
 
     const wrong = await resetPasswordByRecoveryCode({
       recoveryCode: "XXXX-XXXX-XXXX",

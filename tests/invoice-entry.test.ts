@@ -12,7 +12,11 @@ describe("buildChargeWithItemsBody", () => {
   it("يبنى قيداً واحداً بمبلغ يساوي مجموع البنود", () => {
     const body = buildChargeWithItemsBody({
       items: [
-        { description: "تبييض ليزر", category: "تبييض ليزر", amountUsd: 60_000 },
+        {
+          description: "تبييض ليزر",
+          category: "تبييض ليزر",
+          amountUsd: 60_000,
+        },
         { description: "حشو عصبي", category: "حشو عصبي", amountUsd: 40_000 },
       ],
     });
@@ -24,7 +28,11 @@ describe("buildChargeWithItemsBody", () => {
   it("يحفظ وصف البند وتصنيفه وترتيب الإدخال كما هو", () => {
     const body = buildChargeWithItemsBody({
       items: [
-        { description: "تنظيف عميق (السن 16)", category: "تنظيف عميق", amountUsd: 25_000 },
+        {
+          description: "تنظيف عميق (السن 16)",
+          category: "تنظيف عميق",
+          amountUsd: 25_000,
+        },
         { description: "حشو", amountUsd: 15_000 },
       ],
     });

@@ -79,6 +79,7 @@ describeDb("عزل العيادات — integration", () => {
     await prisma.expense.deleteMany();
     await prisma.instructionTemplate.deleteMany();
     await prisma.material.deleteMany();
+    await prisma.instructionSend.deleteMany();
     await prisma.patient.deleteMany();
     await prisma.user.deleteMany();
     await prisma.clinic.deleteMany();
@@ -128,7 +129,7 @@ describeDb("عزل العيادات — integration", () => {
       clinicId: clinicAId,
       name: "د. سليم",
       lockEnabled: false,
-role: "DENTIST",
+      role: "DENTIST",
     });
   });
 
@@ -262,7 +263,11 @@ role: "DENTIST",
     );
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      patient: { id: string; address: string | null; medicalNotes: string | null };
+      patient: {
+        id: string;
+        address: string | null;
+        medicalNotes: string | null;
+      };
     };
     expect(body.patient.address).toBe("دمشق - المزة");
     expect(body.patient.medicalNotes).toContain("بنسلين");

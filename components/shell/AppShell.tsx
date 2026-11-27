@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ToastProvider } from "@/components/ui/Toast";
 import { DEFAULT_USD_RATE } from "@/lib/currency";
 import { onLedgerChanged } from "@/lib/ledger-events";
+import { useI18n } from "@/components/i18n/I18nProvider";
 import { cn } from "@/components/ui/cn";
 import { BottomNav } from "./BottomNav";
 import { Sidebar } from "./Sidebar";
@@ -50,6 +51,7 @@ export function AppShell({
   subscriptionBanner = null,
   children,
 }: AppShellProps) {
+  const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
   // ملخص المستحقات الحي — يُهيّأ من التخطيط الخادم ويُجلب من جديد بعد كل
   // كتابة في الدفتر (قيد/دفعة/تسوية) كي تعكس بطاقة السايدبار وشارة النقل
@@ -125,13 +127,19 @@ export function AppShell({
         {subscriptionBanner && (
           <Link
             href="/subscription-expired"
-            className="focus-ring block border-b border-warning-300 bg-warning-50 px-4 py-2 text-center text-sm font-medium text-warning-900 transition-colors hover:bg-warning-100"
+            className="focus-ring border-warning-300 bg-warning-50 text-warning-900 hover:bg-warning-100 block border-b px-4 py-2 text-center text-sm font-medium transition-colors"
           >
-            {subscriptionBanner.isTrial ? "تجربتك" : "اشتراكك"} تنتهي{" "}
-            {subscriptionBanner.daysLeft === 0
-              ? "اليوم"
-              : `بعد ${subscriptionBanner.daysLeft} يوم`}
-            {" "}— جدّد الآن للحفاظ على وصولك
+            {t("shell.subBanner", {
+              plan: t(
+                subscriptionBanner.isTrial
+                  ? "shell.subPlanTrial"
+                  : "shell.subPlanPaid",
+              ),
+              when:
+                subscriptionBanner.daysLeft === 0
+                  ? t("shell.subEndsToday")
+                  : t("shell.subEndsIn", { days: subscriptionBanner.daysLeft }),
+            })}
           </Link>
         )}
         <main className="flex-1 pb-20 md:pb-8">{children}</main>

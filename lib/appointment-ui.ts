@@ -4,8 +4,11 @@ import {
   badgeToneClasses,
   type BadgeTone,
 } from "@/components/ui/Badge";
+import { formatDate, formatTime as i18nFormatTime } from "@/lib/i18n/format";
+import type { Locale, TranslationKey } from "@/lib/i18n/core";
 
-// بيانات عرض حالات الموعد — تسمية عربية + ألوان tokens موحّدة عبر النظام كله
+// بيانات عرض حالات الموعد — تسمية عربية افتراضية + مفتاح قاموس للترجمة حسب
+// اللغة عند الرسم + ألوان tokens موحّدة عبر النظام كله
 // (لوحة المواعيد، خط الزمن، ملف المريض، التذكيرات). كل حالة تحمل تسمية نصية
 // صريحة حتى لا يعتمد التمييز على اللون وحده.
 
@@ -39,7 +42,10 @@ const BLOCK_CLASSES: Record<BadgeTone, string> = {
 };
 
 export type StatusVisual = {
+  /** التسمية العربية الافتراضية — لما يبقى الرسم عربياً دون مزود سياق */
   label: string;
+  /** مفتاح القاموس — يُترجم عند الرسم حسب اللغة */
+  labelKey: TranslationKey;
   tone: BadgeTone;
   /** أصناف الشارة الدائرية — نفس أصناف Badge */
   chip: string;
@@ -57,6 +63,7 @@ export const STATUS_META: Record<AppointmentStatus, StatusVisual> =
         status,
         {
           label: STATUS_LABELS[status],
+          labelKey: `status.${status}` as TranslationKey,
           tone,
           chip: badgeToneClasses[tone],
           dot: badgeDotToneClasses[tone],
@@ -70,33 +77,37 @@ export const STATUS_META: Record<AppointmentStatus, StatusVisual> =
 export const STATUS_LABEL = (status: AppointmentStatus): string =>
   STATUS_META[status].label;
 
-const TIME_FMT = new Intl.DateTimeFormat("ar-SY-u-nu-latn", {
+const TIME_OPTS: Intl.DateTimeFormatOptions = {
   hour: "2-digit",
   minute: "2-digit",
   // ساعات كاملة بلا فترة ص/م — «09:00» و«13:00» بنمط المرجع.
   hourCycle: "h23",
-});
+};
 
-const DATE_FMT = new Intl.DateTimeFormat("ar-SY-u-nu-latn", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-});
-
-export function formatTime(date: Date | string): string {
-  return TIME_FMT.format(new Date(date));
+export function formatTime(date: Date | string, locale: Locale = "ar"): string {
+  return i18nFormatTime(date, locale, TIME_OPTS);
 }
 
 /** نطاق وقت الموعد «10:30 – 11:00» — من بدايته ومدته بالدقائق. */
 export function timeRangeLabel(
   startsAt: Date | string,
   durationMin: number,
+  locale: Locale = "ar",
 ): string {
   const start = new Date(startsAt);
   const end = new Date(start.getTime() + durationMin * 60_000);
-  return `${formatTime(start)} – ${formatTime(end)}`;
+  return `${formatTime(start, locale)} – ${formatTime(end, locale)}`;
 }
 
-export function formatDayLabel(date: Date | string): string {
-  return DATE_FMT.format(new Date(date));
+const DAY_OPTS: Intl.DateTimeFormatOptions = {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+};
+
+export function formatDayLabel(
+  date: Date | string,
+  locale: Locale = "ar",
+): string {
+  return formatDate(date, locale, DAY_OPTS);
 }

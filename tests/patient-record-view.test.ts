@@ -117,10 +117,7 @@ describe("ledgerEntriesWithPlan", () => {
         entry({ id: "e1", treatmentItemId: "t1" }),
         entry({ id: "e2", treatmentItemId: "t2", type: "PAYMENT" }),
       ],
-      [
-        planItem(),
-        planItem({ id: "t2", toothFdi: 36, procedure: "خلع" }),
-      ],
+      [planItem(), planItem({ id: "t2", toothFdi: 36, procedure: "خلع" })],
     );
     expect(rows[0].planItem?.toothFdi).toBe(24);
     expect(rows[1].planItem?.toothFdi).toBe(36);

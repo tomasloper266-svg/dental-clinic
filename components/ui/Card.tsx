@@ -10,7 +10,7 @@ export function Card({ className, as = "div", ...rest }: CardProps) {
   return (
     <Tag
       className={cn(
-        "rounded-panel border border-warm-200/60 bg-surface-raised shadow-md",
+        "rounded-panel border-warm-200/60 bg-surface-raised border shadow-md",
         className,
       )}
       {...rest}
@@ -24,7 +24,7 @@ export function CardHeader({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("border-b border-warm-200 px-5 py-4", className)}
+      className={cn("border-warm-200 border-b px-5 py-4", className)}
       {...rest}
     />
   );
@@ -36,7 +36,7 @@ export function CardTitle({
 }: React.HTMLAttributes<HTMLHeadingElement>) {
   return (
     <h2
-      className={cn("text-base font-semibold text-ink-900", className)}
+      className={cn("text-ink-900 text-base font-semibold", className)}
       {...rest}
     />
   );
