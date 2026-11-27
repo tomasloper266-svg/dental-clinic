@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Lock, User } from "lucide-react";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { SocialRow } from "@/components/auth/SocialRow";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 // صفحة الدخول — نسخة طبق الأصل من التصميم المرجعي:
 // عنوان Login أسود عريض، حقول رمادية فاتحة بنص يسار وأيقونة يمين
@@ -17,6 +18,7 @@ const INPUT_CLS =
 
 export default function LoginPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -35,13 +37,13 @@ export default function LoginPage() {
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
-        setError(data.error ?? "Sign in failed — check your phone number and password");
+        setError(data.error ?? t("auth.login.failed"));
         return;
       }
       router.push("/dashboard");
       router.refresh();
     } catch {
-      setError("Couldn't reach the server, please try again");
+      setError(t("auth.error.server"));
     } finally {
       setSubmitting(false);
     }
@@ -49,14 +51,14 @@ export default function LoginPage() {
 
   return (
     <AuthShell
-      greetingTitle="Hello, Welcome!"
-      greetingSubtitle="Don't have an account?"
-      ctaLabel="Register"
+      greetingTitle={t("auth.greeting")}
+      greetingSubtitle={t("auth.noAccount")}
+      ctaLabel={t("auth.register")}
       ctaHref="/signup"
     >
       <section aria-labelledby="login-title">
         <h1 id="login-title" className="text-center text-[32px] font-bold leading-tight text-[#16181d]">
-          Login
+          {t("auth.login.title")}
         </h1>
 
         <form onSubmit={onSubmit} className="mt-8 space-y-4">
@@ -67,10 +69,10 @@ export default function LoginPage() {
               type="tel"
               dir="ltr"
               required
-              aria-label="Username"
+              aria-label={t("auth.login.username")}
               autoComplete="username"
               className={`${INPUT_CLS} pl-4 pr-12 text-left`}
-              placeholder="Username"
+              placeholder={t("auth.login.username")}
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
             />
@@ -89,16 +91,16 @@ export default function LoginPage() {
               required
               dir="ltr"
               autoComplete="current-password"
-              aria-label="Password"
+              aria-label={t("auth.login.password")}
               className={`${INPUT_CLS} pl-12 pr-12 text-left`}
-              placeholder="Password"
+              placeholder={t("auth.login.password")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-label={showPassword ? t("auth.login.hidePassword") : t("auth.login.showPassword")}
               aria-pressed={showPassword}
               className="absolute inset-y-0 left-3 my-auto flex h-7 w-7 items-center justify-center rounded text-[#25293c] hover:text-[#16181d]"
             >
@@ -117,7 +119,7 @@ export default function LoginPage() {
 
           <p className="pt-1 text-center">
             <a href="/forgot-password" className="text-[13px] text-[#3d4152] hover:underline">
-              Forgot Password?
+              {t("auth.forgotPasswordQuestion")}
             </a>
           </p>
 
@@ -137,17 +139,17 @@ export default function LoginPage() {
             className="h-12 w-full rounded-[10px] text-[15px] font-semibold text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             style={{ background: "#5B6CE4" }}
           >
-            Login
+            {t("auth.login.title")}
           </button>
         </form>
 
-        <SocialRow caption="or login with social platforms" />
+        <SocialRow caption={t("auth.social.orLogin")} />
 
         {/* بديل لوح الترحيب على الشاشات الصغيرة — اللوح مخفي دون lg */}
         <p className="mt-6 text-center text-sm text-[#3d4152] lg:hidden">
-          Don&apos;t have an account?{" "}
+          {t("auth.noAccount")}{" "}
           <a href="/signup" className="font-semibold text-[#4a5cd9] hover:underline">
-            Register
+            {t("auth.register")}
           </a>
         </p>
       </section>

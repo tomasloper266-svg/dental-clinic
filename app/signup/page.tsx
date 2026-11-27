@@ -6,9 +6,11 @@ import { Eye, EyeOff, KeyRound } from "lucide-react";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { SocialRow } from "@/components/auth/SocialRow";
 import { SignupPlansCard } from "@/components/subscription/SignupPlansCard";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 // صفحة التسجيل — نفس بطاقة الدخول معكوسة (اللوح الأزرق يميناً مع الميلانة
-// على اليمين)، بنسخة إنكليزية وألوان ثابتة فاتحة مستقلة عن وضع الثيم.
+// على اليمين)، بنصوص القاموس حسب لغة الجلسة وألوان ثابتة فاتحة مستقلة
+// عن وضع الثيم.
 // نفس عقد الواجهة السابق: أنشئ العيادة (POST /api/auth/signup) ثم اعرض
 // رمز الاسترداد الاحتياطي مرة واحدة، ثم ادخل إلى صفحة الإعداد.
 
@@ -17,6 +19,7 @@ const INPUT_CLS =
 
 export default function SignupPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [form, setForm] = useState({
     clinicName: "",
     name: "",
@@ -44,12 +47,12 @@ export default function SignupPage() {
         recoveryCode?: string;
       };
       if (!res.ok || !data.recoveryCode) {
-        setError(data.error ?? "Sign up failed — check the entered details");
+        setError(data.error ?? t("auth.signup.failed"));
         return;
       }
       setCreated({ recoveryCode: data.recoveryCode });
     } catch {
-      setError("Couldn't reach the server, please try again");
+      setError(t("auth.error.server"));
     } finally {
       setSubmitting(false);
     }
@@ -59,9 +62,9 @@ export default function SignupPage() {
     return (
       <AuthShell
         flip
-        greetingTitle="Clinic created!"
-        greetingSubtitle="The recovery code is shown on this page only"
-        ctaLabel="Sign in"
+        greetingTitle={t("auth.signup.clinicCreated")}
+        greetingSubtitle={t("auth.signup.recoveryShownHere")}
+        ctaLabel={t("auth.signIn")}
         ctaHref="/login"
       >
         <section aria-labelledby="recovery-code-title">
@@ -69,13 +72,13 @@ export default function SignupPage() {
             id="recovery-code-title"
             className="text-center text-[28px] font-bold leading-tight text-[#16181d]"
           >
-            Your clinic is ready
+            {t("auth.signup.clinicReady")}
           </h1>
 
           <div className="mt-6 rounded-2xl border-2 border-[#c9d0f5] bg-[#eef0fb] p-6">
             <h2 className="flex items-center justify-center gap-2 text-base font-semibold text-[#3a4bc4]">
               <KeyRound size={18} aria-hidden />
-              Backup recovery code
+              {t("auth.signup.recoveryTitle")}
             </h2>
             <p
               dir="ltr"
@@ -84,10 +87,9 @@ export default function SignupPage() {
               {created.recoveryCode}
             </p>
             <p className="mt-4 text-sm leading-6 text-[#3a4bc4]">
-              Save it now somewhere safe — it is shown <strong>once only</strong>{" "}
-              and we cannot recover it for you. If you lose your phone number
-              and have no verified email, this code is your only way back into
-              the account without contacting support.
+              {t("auth.signup.recoverySaveBefore")}
+              <strong>{t("auth.signup.recoverySaveOnce")}</strong>
+              {t("auth.signup.recoverySaveAfter")}
             </p>
           </div>
 
@@ -101,13 +103,13 @@ export default function SignupPage() {
               className="h-12 w-full rounded-[10px] text-[15px] font-semibold text-white transition-colors hover:opacity-90"
               style={{ background: "#5B6CE4" }}
             >
-              Continue to clinic setup
+              {t("auth.signup.continueSetup")}
             </button>
             <a
               href="/login"
               className="text-center text-[13px] text-[#3d4152] hover:underline"
             >
-              Sign in later from the login page
+              {t("auth.signup.signinLater")}
             </a>
           </div>
         </section>
@@ -118,9 +120,9 @@ export default function SignupPage() {
   return (
     <AuthShell
       flip
-      greetingTitle="Hello, Welcome!"
-      greetingSubtitle="Already have an account?"
-      ctaLabel="Login"
+      greetingTitle={t("auth.greeting")}
+      greetingSubtitle={t("auth.haveAccount")}
+      ctaLabel={t("auth.login")}
       ctaHref="/login"
     >
       <section aria-labelledby="signup-title">
@@ -128,7 +130,7 @@ export default function SignupPage() {
           id="signup-title"
           className="text-center text-[32px] font-bold leading-tight text-[#16181d]"
         >
-          Create Your Clinic Account
+          {t("auth.signup.title")}
         </h1>
 
         <form onSubmit={onSubmit} className="mt-8 space-y-4">
@@ -137,10 +139,10 @@ export default function SignupPage() {
             name="clinicName"
             type="text"
             required
-            aria-label="Clinic Name"
+            aria-label={t("auth.signup.clinicName")}
             autoComplete="organization"
             className={INPUT_CLS}
-            placeholder="Clinic Name"
+            placeholder={t("auth.signup.clinicName")}
             value={form.clinicName}
             onChange={(e) => setForm({ ...form, clinicName: e.target.value })}
           />
@@ -150,10 +152,10 @@ export default function SignupPage() {
             name="name"
             type="text"
             required
-            aria-label="Doctor Name"
+            aria-label={t("auth.signup.doctorName")}
             autoComplete="name"
             className={INPUT_CLS}
-            placeholder="Doctor Name"
+            placeholder={t("auth.signup.doctorName")}
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
           />
@@ -164,10 +166,10 @@ export default function SignupPage() {
             type="tel"
             dir="ltr"
             required
-            aria-label="Phone Number"
+            aria-label={t("auth.signup.phone")}
             autoComplete="tel"
             className={`${INPUT_CLS} text-left`}
-            placeholder="Phone Number"
+            placeholder={t("auth.signup.phone")}
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
           />
@@ -181,10 +183,10 @@ export default function SignupPage() {
             minLength={3}
             maxLength={30}
             pattern="[A-Za-z0-9_.\-]+"
-            aria-label="Username"
+            aria-label={t("auth.signup.username")}
             autoComplete="username"
             className={`${INPUT_CLS} text-left`}
-            placeholder="Username"
+            placeholder={t("auth.signup.username")}
             value={form.username}
             onChange={(e) => setForm({ ...form, username: e.target.value })}
           />
@@ -198,16 +200,16 @@ export default function SignupPage() {
               minLength={8}
               dir="ltr"
               autoComplete="new-password"
-              aria-label="Password"
+              aria-label={t("auth.signup.password")}
               className={`${INPUT_CLS} pr-12`}
-              placeholder="Password"
+              placeholder={t("auth.signup.password")}
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
             />
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-label={showPassword ? t("auth.login.hidePassword") : t("auth.login.showPassword")}
               aria-pressed={showPassword}
               className="absolute inset-y-0 right-3 my-auto flex h-7 w-7 items-center justify-center rounded text-[#25293c] hover:text-[#16181d]"
             >
@@ -235,20 +237,20 @@ export default function SignupPage() {
             className="h-12 w-full rounded-[10px] text-[15px] font-semibold text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             style={{ background: "#5B6CE4" }}
           >
-            Create Your Clinic Account
+            {t("auth.signup.title")}
           </button>
         </form>
 
-        <SocialRow caption="or sign up with social platforms" />
+        <SocialRow caption={t("auth.social.orSignup")} />
 
         {/* العرض مرئي أثناء التسجيل نفسه — الدفع متاح من أول يوم */}
         <SignupPlansCard />
 
         {/* بديل لوح الترحيب على الشاشات الصغيرة — اللوح مخفي دون lg */}
         <p className="mt-6 text-center text-sm text-[#3d4152] lg:hidden">
-          Already have an account?{" "}
+          {t("auth.haveAccount")}{" "}
           <a href="/login" className="font-semibold text-[#4a5cd9] hover:underline">
-            Login
+            {t("auth.login")}
           </a>
         </p>
       </section>

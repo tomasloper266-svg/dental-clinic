@@ -6,13 +6,14 @@ import { Eye, EyeOff } from "lucide-react";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { FallbackCodeNotice } from "@/components/auth/FallbackCodeNotice";
 import { SupportPhoneCard } from "@/components/auth/SupportPhoneCard";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 // مسار «نسيت كلمة المرور» — ثلاثة تبويبات:
 // «Send a Code»: رمز تحقق عبر الهاتف أو البريد الموثق (ثلاث خطوات).
 // «Recovery Code»: تعيين كلمة سر جديدة بحيازة رمز الاسترداد الاحتياطي
 // (حيازته تثبت الملكية). «Support»: بطاقة رقم الدعم المشتركة.
 // التصميم مطابق لصفحات المصادقة: حقول رمادية فاتحة بنص يسار، عنوان أسود
-// عريض، زر أزرق ثابت اللون، وإنكليزي بالكامل.
+// عريض، زر أزرق ثابت اللون، والنصوص من قاموس لغة الجلسة.
 
 const INPUT_CLS =
   "h-12 w-full rounded-[10px] border-0 bg-[#f1f2f6] text-[15px] text-[#25293c] placeholder:text-[#9aa0b5] focus:outline-2 focus:outline-offset-0 focus:outline-[#5b6ce4]";
@@ -24,6 +25,7 @@ type Path = "sendCode" | "recoveryCode" | "support";
 const RESEND_SECONDS = 60;
 
 export default function ForgotPasswordPage() {
+  const { t } = useI18n();
   const [path, setPath] = useState<Path>("sendCode");
   const [step, setStep] = useState<Step>("identifier");
   const [mode, setMode] = useState<"phone" | "email">("phone");
@@ -69,7 +71,7 @@ export default function ForgotPasswordPage() {
         identifierPayload(),
       );
       if (!res.ok) {
-        setError(data.error ?? "Couldn't send the code — please try again");
+        setError(data.error ?? t("auth.error.sendCode"));
         return false;
       }
       setDestinationHint(String(data.destinationHint ?? ""));
@@ -79,7 +81,7 @@ export default function ForgotPasswordPage() {
       setResendIn(RESEND_SECONDS);
       return true;
     } catch {
-      setError("Couldn't reach the server, please try again");
+      setError(t("auth.error.server"));
       return false;
     } finally {
       setSubmitting(false);
@@ -101,12 +103,12 @@ export default function ForgotPasswordPage() {
         code,
       });
       if (!res.ok) {
-        setError(data.error ?? "Couldn't verify the code");
+        setError(data.error ?? t("auth.error.verifyCode"));
         return;
       }
       setStep("newPassword");
     } catch {
-      setError("Couldn't reach the server, please try again");
+      setError(t("auth.error.server"));
     } finally {
       setSubmitting(false);
     }
@@ -115,7 +117,7 @@ export default function ForgotPasswordPage() {
   async function onSubmitNewPassword(e: React.FormEvent) {
     e.preventDefault();
     if (newPassword !== confirm) {
-      setError("Passwords don't match");
+      setError(t("auth.error.passwordMismatch"));
       return;
     }
     setError(null);
@@ -127,12 +129,12 @@ export default function ForgotPasswordPage() {
         newPassword,
       });
       if (!res.ok) {
-        setError(data.error ?? "Couldn't set the new password");
+        setError(data.error ?? t("auth.error.setPassword"));
         return;
       }
       setStep("done");
     } catch {
-      setError("Couldn't reach the server, please try again");
+      setError(t("auth.error.server"));
     } finally {
       setSubmitting(false);
     }
@@ -140,21 +142,21 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthShell
-      greetingTitle="Hello, Welcome!"
-      greetingSubtitle="Remember your password?"
-      ctaLabel="Login"
+      greetingTitle={t("auth.greeting")}
+      greetingSubtitle={t("auth.rememberedPassword")}
+      ctaLabel={t("auth.login")}
       ctaHref="/login"
     >
       <div
         role="tablist"
-        aria-label="Recovery method"
+        aria-label={t("auth.tab.recoveryMethod")}
         className="grid grid-cols-3 gap-1 rounded-[10px] bg-[#e7e9f2] p-1"
       >
         {(
           [
-            ["sendCode", "Send a Code"],
-            ["recoveryCode", "Recovery Code"],
-            ["support", "Support"],
+            ["sendCode", t("auth.tab.sendCode")],
+            ["recoveryCode", t("auth.tab.recoveryCode")],
+            ["support", t("auth.tab.support")],
           ] as const
         ).map(([value, label]) => (
           <button
@@ -183,24 +185,23 @@ export default function ForgotPasswordPage() {
             id="forgot-title"
             className="text-center text-[32px] font-bold leading-tight text-[#16181d]"
           >
-            Forgot Password
+            {t("auth.forgotPassword.title")}
           </h1>
           <p className="mt-2 text-center text-sm text-[#6a6f83]">
-            Enter your registered phone number or verified email and we&apos;ll
-            send you a verification code.
+            {t("auth.forgotPassword.description")}
           </p>
 
           <form onSubmit={onSubmitIdentifier} className="mt-8 space-y-4">
             {/* اختيار القناة — تبويبان حقيقيان يغيّران الحقل أدناه */}
             <div
               role="tablist"
-              aria-label="Recovery channel"
+              aria-label={t("auth.tab.recoveryChannel")}
               className="grid grid-cols-2 gap-1 rounded-[10px] bg-[#e7e9f2] p-1"
             >
               {(
                 [
-                  ["phone", "Phone Number"],
-                  ["email", "Verified Email"],
+                  ["phone", t("auth.field.phone")],
+                  ["email", t("auth.field.verifiedEmail")],
                 ] as const
               ).map(([value, label]) => (
                 <button
@@ -226,7 +227,7 @@ export default function ForgotPasswordPage() {
                 type="tel"
                 dir="ltr"
                 required
-                aria-label="Phone Number"
+                aria-label={t("auth.field.phone")}
                 className={`${INPUT_CLS} px-4 text-left`}
                 placeholder="09xxxxxxxx"
                 value={phone}
@@ -238,10 +239,10 @@ export default function ForgotPasswordPage() {
                 type="email"
                 dir="ltr"
                 required
-                aria-label="Verified Email"
+                aria-label={t("auth.field.verifiedEmail")}
                 autoComplete="email"
                 className={`${INPUT_CLS} px-4 text-left`}
-                placeholder="doctor@clinic.com"
+                placeholder={t("auth.field.emailPlaceholder")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
@@ -256,16 +257,16 @@ export default function ForgotPasswordPage() {
               className="h-12 w-full rounded-[10px] text-[15px] font-semibold text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               style={{ background: "#5B6CE4" }}
             >
-              Send Verification Code
+              {t("auth.forgotPassword.sendCode")}
             </button>
           </form>
 
           <div className="mt-6 flex flex-col gap-2 text-center text-sm">
             <Link href="/forgot-phone" className="text-[13px] text-[#3d4152] hover:underline">
-              Forgot your registered phone number?
+              {t("auth.forgotPassword.forgotPhoneLink")}
             </Link>
             <Link href="/login" className="text-[13px] text-[#3d4152] hover:underline">
-              Back to login
+              {t("auth.backToLogin")}
             </Link>
           </div>
         </section>
@@ -277,13 +278,13 @@ export default function ForgotPasswordPage() {
             id="code-title"
             className="text-center text-[32px] font-bold leading-tight text-[#16181d]"
           >
-            Enter Verification Code
+            {t("auth.forgotPassword.codeTitle")}
           </h1>
           <p className="mt-2 text-center text-sm text-[#6a6f83]">
             {destinationHint
-              ? `We sent a 6-digit code to ${destinationHint}`
-              : "We sent a 6-digit code"}{" "}
-            — valid for 10 minutes.
+              ? t("auth.forgotPassword.codeSentTo", { destination: destinationHint })
+              : t("auth.forgotPassword.codeSent")}{" "}
+            {t("auth.forgotPassword.codeValidity")}
           </p>
 
           {fallbackCode && (
@@ -302,7 +303,7 @@ export default function ForgotPasswordPage() {
               dir="ltr"
               required
               maxLength={6}
-              aria-label="Verification Code"
+              aria-label={t("auth.field.verificationCode")}
               autoComplete="one-time-code"
               className={`${INPUT_CLS} text-center text-lg tracking-[0.4em]`}
               placeholder="••••••"
@@ -321,7 +322,7 @@ export default function ForgotPasswordPage() {
               className="h-12 w-full rounded-[10px] text-[15px] font-semibold text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               style={{ background: "#5B6CE4" }}
             >
-              Verify Code
+              {t("auth.forgotPassword.verifyCode")}
             </button>
 
             <div className="flex items-center justify-between text-[13px]">
@@ -332,8 +333,8 @@ export default function ForgotPasswordPage() {
                 className="font-medium text-[#4a5cd9] hover:underline disabled:text-[#9aa0b5] disabled:hover:no-underline"
               >
                 {resendIn > 0
-                  ? `Resend code in ${resendIn}s`
-                  : "Resend code"}
+                  ? t("auth.forgotPassword.resendIn", { seconds: resendIn })
+                  : t("auth.forgotPassword.resend")}
               </button>
               <button
                 type="button"
@@ -343,7 +344,7 @@ export default function ForgotPasswordPage() {
                 }}
                 className="text-[#3d4152] hover:underline"
               >
-                Edit details
+                {t("auth.forgotPassword.editDetails")}
               </button>
             </div>
           </form>
@@ -356,11 +357,10 @@ export default function ForgotPasswordPage() {
             id="newpass-title"
             className="text-center text-[32px] font-bold leading-tight text-[#16181d]"
           >
-            New Password
+            {t("auth.forgotPassword.newPasswordTitle")}
           </h1>
           <p className="mt-2 text-center text-sm text-[#6a6f83]">
-            Choose a strong password — you&apos;ll be signed out of all other
-            devices.
+            {t("auth.forgotPassword.newPasswordDescription")}
           </p>
 
           <form onSubmit={onSubmitNewPassword} className="mt-8 space-y-4">
@@ -372,16 +372,16 @@ export default function ForgotPasswordPage() {
                 minLength={8}
                 dir="ltr"
                 autoComplete="new-password"
-                aria-label="New Password (at least 8 characters)"
+                aria-label={t("auth.field.newPassword")}
                 className={`${INPUT_CLS} pl-12 pr-12 text-left`}
-                placeholder="New Password (at least 8 characters)"
+                placeholder={t("auth.field.newPassword")}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
               />
               <button
                 type="button"
                 onClick={() => setShowNewPassword((v) => !v)}
-                aria-label={showNewPassword ? "Hide password" : "Show password"}
+                aria-label={showNewPassword ? t("auth.login.hidePassword") : t("auth.login.showPassword")}
                 aria-pressed={showNewPassword}
                 className="absolute inset-y-0 left-3 my-auto flex h-7 w-7 items-center justify-center rounded text-[#25293c] hover:text-[#16181d]"
               >
@@ -401,16 +401,16 @@ export default function ForgotPasswordPage() {
                 minLength={8}
                 dir="ltr"
                 autoComplete="new-password"
-                aria-label="Confirm Password"
+                aria-label={t("auth.field.confirmPassword")}
                 className={`${INPUT_CLS} pl-12 pr-12 text-left`}
-                placeholder="Confirm Password"
+                placeholder={t("auth.field.confirmPassword")}
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
               />
               <button
                 type="button"
                 onClick={() => setShowConfirm((v) => !v)}
-                aria-label={showConfirm ? "Hide password" : "Show password"}
+                aria-label={showConfirm ? t("auth.login.hidePassword") : t("auth.login.showPassword")}
                 aria-pressed={showConfirm}
                 className="absolute inset-y-0 left-3 my-auto flex h-7 w-7 items-center justify-center rounded text-[#25293c] hover:text-[#16181d]"
               >
@@ -431,7 +431,7 @@ export default function ForgotPasswordPage() {
               className="h-12 w-full rounded-[10px] text-[15px] font-semibold text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               style={{ background: "#5B6CE4" }}
             >
-              Set New Password
+              {t("auth.forgotPassword.setPassword")}
             </button>
           </form>
         </section>
@@ -457,18 +457,17 @@ export default function ForgotPasswordPage() {
             </svg>
           </div>
           <h1 className="mt-5 text-xl font-bold text-[#16181d]">
-            Your password has been updated
+            {t("auth.forgotPassword.doneTitle")}
           </h1>
           <p className="mt-2 text-sm leading-6 text-[#6a6f83]">
-            All old sessions were signed out on every device — sign in with
-            your new password.
+            {t("auth.forgotPassword.doneDescription")}
           </p>
           <Link
             href="/login"
             className="mt-6 inline-block h-12 w-full rounded-[10px] px-4 text-[15px] font-semibold leading-[48px] text-white transition-colors hover:opacity-90"
             style={{ background: "#5B6CE4" }}
           >
-            Login
+            {t("auth.login")}
           </Link>
         </section>
       )}
@@ -495,6 +494,7 @@ function FormError({ message }: { message: string }) {
 // ─── تبويب رمز الاسترداد — تعيين كلمة سر جديدة بحيازة الرمز ──────────────
 
 function RecoveryCodeResetPath() {
+  const { t } = useI18n();
   const [recoveryCode, setRecoveryCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -507,7 +507,7 @@ function RecoveryCodeResetPath() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (newPassword !== confirm) {
-      setError("Passwords don't match");
+      setError(t("auth.error.passwordMismatch"));
       return;
     }
     setError(null);
@@ -520,12 +520,12 @@ function RecoveryCodeResetPath() {
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
-        setError(data.error ?? "Couldn't set the new password");
+        setError(data.error ?? t("auth.error.setPassword"));
         return;
       }
       setDone(true);
     } catch {
-      setError("Couldn't reach the server, please try again");
+      setError(t("auth.error.server"));
     } finally {
       setSubmitting(false);
     }
@@ -552,18 +552,17 @@ function RecoveryCodeResetPath() {
           </svg>
         </div>
         <h1 className="mt-5 text-xl font-bold text-[#16181d]">
-          Your password has been updated
+          {t("auth.forgotPassword.doneTitle")}
         </h1>
         <p className="mt-2 text-sm leading-6 text-[#6a6f83]">
-          All old sessions were signed out on every device — sign in with
-          your new password.
+          {t("auth.forgotPassword.doneDescription")}
         </p>
         <Link
           href="/login"
           className="mt-6 inline-block h-12 w-full rounded-[10px] px-4 text-[15px] font-semibold leading-[48px] text-white transition-colors hover:opacity-90"
           style={{ background: "#5B6CE4" }}
         >
-          Login
+          {t("auth.login")}
         </Link>
       </section>
     );
@@ -575,12 +574,10 @@ function RecoveryCodeResetPath() {
         id="rc-reset-title"
         className="text-center text-[32px] font-bold leading-tight text-[#16181d]"
       >
-        Recovery Code
+        {t("auth.tab.recoveryCode")}
       </h1>
       <p className="mt-2 text-center text-sm text-[#6a6f83]">
-        The 12-character backup code shown once when your clinic account was
-        created — it proves you own the account, so you can set a new
-        password directly.
+        {t("auth.forgotPassword.recoveryDescription")}
       </p>
 
       <form onSubmit={onSubmit} className="mt-6 space-y-4">
@@ -588,7 +585,7 @@ function RecoveryCodeResetPath() {
           id="rc-reset"
           dir="ltr"
           required
-          aria-label="Backup recovery code (12 characters, shown when your clinic was created)"
+          aria-label={t("auth.field.recoveryCode")}
           className={`${INPUT_CLS} px-4 text-left tracking-widest`}
           placeholder="XXXX-XXXX-XXXX"
           value={recoveryCode}
@@ -603,16 +600,16 @@ function RecoveryCodeResetPath() {
             minLength={8}
             dir="ltr"
             autoComplete="new-password"
-            aria-label="New Password (at least 8 characters)"
+            aria-label={t("auth.field.newPassword")}
             className={`${INPUT_CLS} pl-12 pr-12 text-left`}
-            placeholder="New Password (at least 8 characters)"
+            placeholder={t("auth.field.newPassword")}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
           />
           <button
             type="button"
             onClick={() => setShowNewPassword((v) => !v)}
-            aria-label={showNewPassword ? "Hide password" : "Show password"}
+            aria-label={showNewPassword ? t("auth.login.hidePassword") : t("auth.login.showPassword")}
             aria-pressed={showNewPassword}
             className="absolute inset-y-0 left-3 my-auto flex h-7 w-7 items-center justify-center rounded text-[#25293c] hover:text-[#16181d]"
           >
@@ -632,16 +629,16 @@ function RecoveryCodeResetPath() {
             minLength={8}
             dir="ltr"
             autoComplete="new-password"
-            aria-label="Confirm Password"
+            aria-label={t("auth.field.confirmPassword")}
             className={`${INPUT_CLS} pl-12 pr-12 text-left`}
-            placeholder="Confirm Password"
+            placeholder={t("auth.field.confirmPassword")}
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
           />
           <button
             type="button"
             onClick={() => setShowConfirm((v) => !v)}
-            aria-label={showConfirm ? "Hide password" : "Show password"}
+            aria-label={showConfirm ? t("auth.login.hidePassword") : t("auth.login.showPassword")}
             aria-pressed={showConfirm}
             className="absolute inset-y-0 left-3 my-auto flex h-7 w-7 items-center justify-center rounded text-[#25293c] hover:text-[#16181d]"
           >
@@ -662,7 +659,7 @@ function RecoveryCodeResetPath() {
           className="h-12 w-full rounded-[10px] text-[15px] font-semibold text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           style={{ background: "#5B6CE4" }}
         >
-          Set New Password
+          {t("auth.forgotPassword.setPassword")}
         </button>
       </form>
     </section>

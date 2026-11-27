@@ -1,12 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 // صف المنصات الاجتماعية — أزرار مربعة بيضاء بإطار فاتح، والأيقونات بألوان
 // العلامات الرسمية (جوجل رباعية الألوان، فيسبوك/لينكدإن بأزرق العلامة،
 // GitHub بأسود شعاره)، بترتيب المرجع (G, f, github, in). شكل مرجعي فقط
 // حالياً: لا يوجد تكامل OAuth في الخادم بعد، فالأزرار زخرفية (type=button
-// بلا فعل). الأيقونات SVG مضمّنة — lucide أزال أيقونات العلامات التجارية.
+// بلا فعل). التسميات من القاموس حسب لغة الجلسة.
 
 function GoogleIcon() {
   return (
@@ -65,17 +66,21 @@ const SOCIAL_ITEMS: Array<{
   { label: "LinkedIn", icon: <LinkedinIcon /> },
 ];
 
-export function SocialRow({ caption = "or login with social platforms" }: { caption?: string }) {
+export function SocialRow({ caption }: { caption?: string }) {
+  const { t } = useI18n();
+
   return (
     <div className="mt-6 text-center">
-      <p className="text-[13px] text-[#3d4152]">{caption}</p>
+      <p className="text-[13px] text-[#3d4152]">
+        {caption ?? t("auth.social.orLogin")}
+      </p>
       <div className="mt-3 flex items-center justify-center gap-3">
         {SOCIAL_ITEMS.map((item) => (
           <button
             key={item.label}
             type="button"
-            title={`${item.label} — coming soon`}
-            aria-label={`${item.label} — coming soon`}
+            title={`${item.label} — ${t("auth.social.comingSoon")}`}
+            aria-label={`${item.label} — ${t("auth.social.comingSoon")}`}
             className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-[#dfe1ec] bg-white text-[#3d4152] transition-colors hover:bg-[#f4f5fa]"
           >
             {item.icon}

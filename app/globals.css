@@ -268,6 +268,13 @@ body {
   border-end-start-radius: 110px;
 }
 
+/* المرآة المنطقية لـ rounded-hero — صفحة التسجيل (اللوح على الجهة المقابلة).
+ * الزوايا المنطقية تنعكس تلقائياً مع dir فتبقى الميلانة تحت اللوح في الاتجاهين. */
+@utility rounded-hero-flip {
+  border-radius: 28px;
+  border-end-end-radius: 110px;
+}
+
 /*
  * الأرقام والقيود المالية — تبويبي دائماً حتى لا تقفز الأعمدة
  * عند تحديث القيم. يُستخدم مع font-mono حيث يلزم (Space Grotesk).

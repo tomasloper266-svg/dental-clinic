@@ -3,18 +3,21 @@
 import { Crown, ShieldCheck, Smartphone, Sparkles } from "lucide-react";
 import { SUBSCRIPTION_PLANS, TRIAL_DAYS } from "@/lib/billing/plans";
 import { cn } from "@/components/ui/cn";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 // بطاقة عرض الاشتراك في صفحة التسجيل — تصميم فخم ثابت الألوان (بلا رموز
 // ثيم): لوح كحلي متدرج العمق، شارة ذهبية للسنة، وبلاطات زجاجية للخطتين.
 // عرض فقط بلا تفاعل: الأسعار والمدد تُقرأ من ثوابت الفوترة حصراً،
-// والنصوص إنكليزية لتطابق بقية صفحة التسجيل.
+// والنصوص من القاموس حسب لغة الجلسة.
 
 const PLAN_ORDER = ["YEARLY", "MONTHLY"] as const;
 
 export function SignupPlansCard() {
+  const { t } = useI18n();
+
   return (
     <aside
-      aria-label="Subscription offer"
+      aria-label={t("auth.plans.aria")}
       className="relative mt-6 overflow-hidden rounded-2xl p-[1.5px]"
       style={{
         background:
@@ -39,15 +42,14 @@ export function SignupPlansCard() {
       <div className="relative">
         <p className="flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-[0.14em] text-[#e8c268]">
           <Sparkles size={14} aria-hidden />
-          Limited launch offer
+          {t("auth.plans.limitedOffer")}
         </p>
 
         <h2 className="mt-1.5 text-lg font-bold leading-snug text-white">
-          Start free — {TRIAL_DAYS}-day full trial
+          {t("auth.plans.startFree", { days: TRIAL_DAYS })}
         </h2>
         <p className="mt-1 text-[13px] leading-6 text-[#aab2e0]">
-          Every feature unlocked for the full {TRIAL_DAYS}-day trial — no card,
-          no commitment.
+          {t("auth.plans.everyFeature", { days: TRIAL_DAYS })}
         </p>
 
         <ul className="mt-4 grid grid-cols-2 gap-3">
@@ -77,11 +79,11 @@ export function SignupPlansCard() {
                     }}
                   >
                     <Crown size={10} aria-hidden />
-                    Best value
+                    {t("auth.plans.bestValue")}
                   </span>
                 )}
                 <span className="block text-[11px] uppercase tracking-widest text-[#8f97c9]">
-                  {isYearly ? "Yearly" : "Monthly"}
+                  {isYearly ? t("auth.plans.yearly") : t("auth.plans.monthly")}
                 </span>
                 <span
                   className={cn(
@@ -92,7 +94,7 @@ export function SignupPlansCard() {
                   {spec.priceUsd}$
                 </span>
                 <span className="mt-0.5 block text-[11px] text-[#8f97c9]">
-                  {isYearly ? "per year" : "per month"}
+                  {isYearly ? t("auth.plans.perYear") : t("auth.plans.perMonth")}
                 </span>
               </li>
             );
@@ -101,11 +103,11 @@ export function SignupPlansCard() {
 
         <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-[12px] font-semibold text-[#f0b95e]">
           <Smartphone size={14} aria-hidden />
-          Pay via SHAM Cash — from day one, even before your trial ends
+          {t("auth.plans.shamCash")}
         </p>
         <p className="mt-2 flex items-center justify-center gap-1 text-center text-[11px] text-[#8f97c9]">
           <ShieldCheck size={12} aria-hidden />
-          Cancel anytime — your data stays yours
+          {t("auth.plans.cancelAnytime")}
         </p>
       </div>
       </div>

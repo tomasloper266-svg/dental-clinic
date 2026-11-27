@@ -1,8 +1,11 @@
+"use client";
+
 import { Info } from "lucide-react";
+import { useI18n } from "@/components/i18n/I18nProvider";
 
 // تنبيه المسار البديل — يُعرض حين لا تُربط قناة إرسال (SMS/بريد) فيُسلَّم
 // الرمز هنا مباشرة بدل اختلاقه. الشكل يوضح أنه مؤقت حتى ربط الخدمة.
-// إنكليزي لتطابق بقية صفحات المصادقة.
+// النصوص من القاموس حسب لغة الجلسة.
 export function FallbackCodeNotice({
   code,
   destinationHint,
@@ -10,6 +13,8 @@ export function FallbackCodeNotice({
   code: string;
   destinationHint?: string;
 }) {
+  const { t } = useI18n();
+
   return (
     <div
       role="status"
@@ -17,10 +22,13 @@ export function FallbackCodeNotice({
     >
       <p className="flex items-start gap-2 text-sm font-medium text-[#7a5a12]">
         <Info size={16} className="mt-0.5 shrink-0" aria-hidden />
-        No SMS/email provider is linked yet, so the verification code is shown
-        here directly.
+        {t("auth.fallback.noProvider")}
         {destinationHint && (
-          <> Registered destination: <span dir="ltr" className="numeric">{destinationHint}</span>.</>
+          <>
+            {t("auth.fallback.registeredDestinationPrefix")}
+            <span dir="ltr" className="numeric">{destinationHint}</span>
+            {t("auth.fallback.registeredDestinationSuffix")}
+          </>
         )}
       </p>
       <p
@@ -30,8 +38,7 @@ export function FallbackCodeNotice({
         {code}
       </p>
       <p className="mt-2 text-xs text-[#9a7a2a]">
-        Once a provider is connected, the code will be delivered through the
-        channel instead of shown on screen.
+        {t("auth.fallback.afterProvider")}
       </p>
     </div>
   );

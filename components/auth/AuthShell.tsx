@@ -1,12 +1,18 @@
+"use client";
+
 import Link from "next/link";
 import { cn } from "@/components/ui/cn";
+import { useI18n } from "@/components/i18n/I18nProvider";
+import { LanguageSwitcher } from "@/components/shell/LanguageSwitcher";
 import { BrandHero, BrandLock } from "@/components/auth/BrandMark";
 
 // هيكل صفحات المصادقة — نسخة طبق الأصل من التصميم المرجعي:
 // بطاقة بيضاء مقسومة، لوح أزرق flush مع حافة البطاقة، والميلانة
 // الكبيرة (110px) في الزاوية السفلية لجهة اللوح. كل الألوان ثابتة
-// (بلا رموز ثيم) + color-scheme: light + dir=ltr — حتى لا تنقلب
-// الحقول والألوان في الوضع الليلي إطلاقاً.
+// (بلا رموز ثيم) + color-scheme: light — حتى لا تنقلب الحقول والألوان
+// في الوضع الليلي إطلاقاً. الاتجاه من لغة الجلسة (useI18n): الإنجليزية
+// LTR مطابقة للتصميم المرجعي، والعربية RTL بانعكاس الشبكة نفسه،
+// والميلانة بزوايا منطقية (rounded-hero*) فتبقى تحت اللوح في الاتجاهين.
 const PANEL_BG = "#6C7CE6";
 const CTA_BG = "#5B6CE4";
 
@@ -19,27 +25,38 @@ export function AuthShell({
   ctaHref = "/signup",
 }: {
   children: React.ReactNode;
-  /** يعكس جانب اللوح الأزرق — صفحة التسجيل (اللوح يميناً والفورم يساراً) */
+  /** يعكس جانب اللوح الأزرق — صفحة التسجيل (اللوح يميناً والفورم يساراً في LTR) */
   flip?: boolean;
   greetingTitle?: string;
   greetingSubtitle?: string;
   ctaLabel?: string;
   ctaHref?: string;
 }) {
+  const { dir } = useI18n();
+
   return (
     <main
-      dir="ltr"
+      dir={dir}
       style={{ colorScheme: "light" }}
       className="flex min-h-screen items-center justify-center bg-[#dfe3f5] px-4 py-10"
     >
       <div
         className={cn(
           "relative w-full max-w-4xl overflow-hidden bg-white shadow-[0_30px_60px_-15px_rgba(76,88,180,0.35)] lg:grid lg:grid-cols-2",
-          flip ? "rounded-[28px] rounded-br-[110px]" : "rounded-[28px] rounded-bl-[110px]",
+          flip ? "rounded-hero-flip" : "rounded-hero",
         )}
       >
+        {/* مبدّل اللغة — ركن بطاقة النموذج العلوي الخارجي، خافت لا يزاحم
+         * التصميم؛ الزوايا المنطقية (start/end) تعكس موضعه مع الاتجاه */}
+        <div
+          className={cn("absolute top-5 z-10", flip ? "start-5" : "end-5")}
+        >
+          <LanguageSwitcher tone="auth" />
+        </div>
+
         {/* لوح الترحيب — أزرق flush مع حافة البطاقة، بلا هوامش داخلية.
-         * LTR: العمود الأول يُرسم يساراً؛ اللوح يساراً للدخول ويميناً للتسجيل. */}
+         * الترتيب المنطقي: flip يضع اللوح آخر عمود؛ انعكاس dir مع RTL
+         * يعيده إلى الجهة المقابلة تلقائياً فتبقى الميلانة تحت اللوح. */}
         <aside
           className={cn(
             "relative hidden lg:block",
