@@ -9,9 +9,53 @@ import { Drawer } from "@/components/ui/Drawer";
 import {
   mobileBarNav,
   navGroups,
+  badgeTotal,
   type BadgeKey,
   type NavGroup,
 } from "./nav-items";
+
+/**
+ * زر درج «المزيد» — يحمل نقطة تنبيه حمراء عند وجود شارات قائمة،
+ * نظير عدّاد جرس الشريط العلوي فلا تختفي التنبيهات على الموبايل.
+ */
+function MoreButton({
+  active,
+  expanded,
+  total,
+  onOpen,
+}: {
+  active: boolean;
+  /** حالة الدرج الفعلية — لسمة aria-expanded لا للتنشيط البصري */
+  expanded: boolean;
+  total: number;
+  onOpen: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-expanded={expanded}
+      aria-label={total > 0 ? `المزيد — لديك ${total} تنبيه` : "المزيد"}
+      className={cn(
+        "flex flex-1 flex-col items-center gap-0.5 rounded-field px-2 py-1 text-[11px] transition-colors",
+        active
+          ? "bg-primary-50 font-semibold text-primary-700"
+          : "text-warm-500 hover:text-ink-900",
+      )}
+    >
+      <span className="relative">
+        <MoreHorizontal size={20} aria-hidden />
+        {total > 0 && (
+          <span
+            aria-hidden
+            className="absolute -end-1 -top-0.5 size-2 rounded-full bg-danger-500"
+          />
+        )}
+      </span>
+      المزيد
+    </button>
+  );
+}
 
 type BottomNavProps = {
   badges: Record<BadgeKey, number>;
@@ -41,7 +85,7 @@ function BarEntry({
         "flex flex-1 flex-col items-center gap-0.5 rounded-field px-2 py-1 text-[11px] transition-colors",
         active
           ? "bg-primary-50 font-semibold text-primary-700"
-          : "text-steel-500 hover:text-ink-900",
+          : "text-warm-500 hover:text-ink-900",
       )}
     >
       <Icon size={20} aria-hidden />
@@ -125,20 +169,12 @@ export function BottomNav({ badges }: BottomNavProps) {
             active={barActive(item.href)}
           />
         ))}
-        <button
-          type="button"
-          onClick={() => setMoreOpen(true)}
-          aria-expanded={moreOpen}
-          className={cn(
-            "flex flex-1 flex-col items-center gap-0.5 rounded-field px-2 py-1 text-[11px] transition-colors",
-            moreActive
-              ? "bg-primary-50 font-semibold text-primary-700"
-              : "text-steel-500 hover:text-ink-900",
-          )}
-        >
-          <MoreHorizontal size={20} aria-hidden />
-          المزيد
-        </button>
+        <MoreButton
+          active={moreActive}
+          expanded={moreOpen}
+          total={badgeTotal(badges)}
+          onOpen={() => setMoreOpen(true)}
+        />
       </nav>
 
       <Drawer open={moreOpen} onClose={() => setMoreOpen(false)} title="المزيد">
@@ -152,7 +188,7 @@ export function BottomNav({ badges }: BottomNavProps) {
                 <p
                   className={cn(
                     "px-3 pb-1 pt-2 text-[11px] font-semibold",
-                    groupActive ? "text-primary-700" : "text-steel-500",
+                    groupActive ? "text-primary-700" : "text-warm-500",
                   )}
                 >
                   {group.label}

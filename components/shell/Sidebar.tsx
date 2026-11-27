@@ -40,7 +40,8 @@ const FAINT_TEXT = "var(--color-warm-400)";
 const ACCENT = "var(--color-primary-600)";
 /* توهج الأيقونة النشطة — نظير --glowS في المرجع */
 const ICON_GLOW = "drop-shadow(0 0 10px rgba(91, 108, 228, 0.35))";
-const BADGE_BG = "#FB7185";
+/* شارات التنقل — رمز الخطر الدلالي نفسه المستهلك في جرس الشريط العلوي */
+const BADGE_BG = "var(--color-danger-500)";
 
 /**
  * نقي — اسم ترويسة السايدبار: «{اسم العيادة} لطب الأسنان» لما وُجد اسم

@@ -72,6 +72,12 @@ describe("الشريط العلوي على هوية المرجع", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("يعرض بلاطة DENTIQ المصغّرة على الموبايل بدل حرف الشعار", () => {
+    render(<Topbar />);
+    const brand = screen.getByTestId("topbar-brand");
+    expect(brand.querySelector("svg")).not.toBeNull();
+  });
+
   it("مهام الشريط الحالية تبقى: القفل اليدوي والثيم والعنوان الحالي", () => {
     // الثيم الداكن افتراضي في التطبيق — يحمل صنف dark على html من الخادم
     document.documentElement.classList.add("dark");
