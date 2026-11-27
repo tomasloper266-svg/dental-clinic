@@ -10,6 +10,7 @@
     "test": "vitest run",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "seed:demo": "tsx prisma/seed-demo.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -39,6 +40,7 @@
     "prettier-plugin-tailwindcss": "^0.8.1",
     "prisma": "^7.10.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^4.1.12"
   }
