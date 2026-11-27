@@ -8,6 +8,9 @@ export default defineConfig({
     environment: "jsdom",
     include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
     setupFiles: ["./tests/setup.ts"],
+    // ملفات التكامل تشترك في قاعدة بيانات واحدة — التنفيذ المتوازي يجعل
+    // تنظيف ملف يحذف بيانات ملف آخر (انتهاك مفاتيح أجنبية). تتابع إجباري.
+    fileParallelism: false,
   },
   resolve: {
     alias: {
